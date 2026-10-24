@@ -1,0 +1,659 @@
+{
+ "conditions": [
+  {
+   "tag": "base",
+   "eval_id": "bc2rl-s4-eval-base",
+   "init": "nobc",
+   "method": "initial",
+   "seed": null,
+   "endpoint": "initial",
+   "train_run": null,
+   "bc_steps": 0,
+   "online_rounds": 0
+  },
+  {
+   "tag": "nobc-grpo-s11-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-grpo-s11",
+   "init": "nobc",
+   "method": "grpo",
+   "seed": 11,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-nobc-grpo-s11",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "nobc-grpo-s11-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-grpo-s11",
+   "init": "nobc",
+   "method": "grpo",
+   "seed": 11,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-nobc-grpo-s11",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "nobc-filtered-s11-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-filtered-s11",
+   "init": "nobc",
+   "method": "filtered",
+   "seed": 11,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-nobc-filtered-s11",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "nobc-filtered-s11-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-filtered-s11",
+   "init": "nobc",
+   "method": "filtered",
+   "seed": 11,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-nobc-filtered-s11",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "light-grpo-s11-r240",
+   "eval_id": "bc2rl-s4-eval-light-grpo-s11",
+   "init": "light",
+   "method": "grpo",
+   "seed": 11,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-light-grpo-s11",
+   "bc_steps": 16,
+   "online_rounds": 240
+  },
+  {
+   "tag": "light-grpo-s11-r256",
+   "eval_id": "bc2rl-s4-eval-light-grpo-s11",
+   "init": "light",
+   "method": "grpo",
+   "seed": 11,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-light-grpo-s11",
+   "bc_steps": 16,
+   "online_rounds": 256
+  },
+  {
+   "tag": "light-filtered-s11-r240",
+   "eval_id": "bc2rl-s4-eval-light-filtered-s11",
+   "init": "light",
+   "method": "filtered",
+   "seed": 11,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-light-filtered-s11",
+   "bc_steps": 16,
+   "online_rounds": 240
+  },
+  {
+   "tag": "light-filtered-s11-r256",
+   "eval_id": "bc2rl-s4-eval-light-filtered-s11",
+   "init": "light",
+   "method": "filtered",
+   "seed": 11,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-light-filtered-s11",
+   "bc_steps": 16,
+   "online_rounds": 256
+  },
+  {
+   "tag": "extended-grpo-s11-r128",
+   "eval_id": "bc2rl-s4-eval-extended-grpo-s11",
+   "init": "extended",
+   "method": "grpo",
+   "seed": 11,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-extended-grpo-s11",
+   "bc_steps": 128,
+   "online_rounds": 128
+  },
+  {
+   "tag": "extended-grpo-s11-r256",
+   "eval_id": "bc2rl-s4-eval-extended-grpo-s11",
+   "init": "extended",
+   "method": "grpo",
+   "seed": 11,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-extended-grpo-s11",
+   "bc_steps": 128,
+   "online_rounds": 256
+  },
+  {
+   "tag": "extended-filtered-s11-r128",
+   "eval_id": "bc2rl-s4-eval-extended-filtered-s11",
+   "init": "extended",
+   "method": "filtered",
+   "seed": 11,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-extended-filtered-s11",
+   "bc_steps": 128,
+   "online_rounds": 128
+  },
+  {
+   "tag": "extended-filtered-s11-r256",
+   "eval_id": "bc2rl-s4-eval-extended-filtered-s11",
+   "init": "extended",
+   "method": "filtered",
+   "seed": 11,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-extended-filtered-s11",
+   "bc_steps": 128,
+   "online_rounds": 256
+  },
+  {
+   "tag": "light-s11",
+   "eval_id": "bc2rl-s4-eval-bcpath-s11",
+   "init": "light",
+   "method": "initial",
+   "seed": 11,
+   "endpoint": "initial",
+   "train_run": "bc2rl-s1-bc-broad-s11",
+   "bc_steps": 16,
+   "online_rounds": 0
+  },
+  {
+   "tag": "extended-s11",
+   "eval_id": "bc2rl-s4-eval-bcpath-s11",
+   "init": "extended",
+   "method": "initial",
+   "seed": 11,
+   "endpoint": "initial",
+   "train_run": "bc2rl-s1-bc-broad-s11",
+   "bc_steps": 128,
+   "online_rounds": 0
+  },
+  {
+   "tag": "contbc-s11",
+   "eval_id": "bc2rl-s4-eval-bcpath-s11",
+   "init": "extended",
+   "method": "contbc",
+   "seed": 11,
+   "endpoint": "bc256",
+   "train_run": "bc2rl-s1-bc-broad-s11",
+   "bc_steps": 256,
+   "online_rounds": 0
+  },
+  {
+   "tag": "nobc-grpo-s22-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-grpo-s22",
+   "init": "nobc",
+   "method": "grpo",
+   "seed": 22,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-nobc-grpo-s22",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "nobc-grpo-s22-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-grpo-s22",
+   "init": "nobc",
+   "method": "grpo",
+   "seed": 22,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-nobc-grpo-s22",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "nobc-filtered-s22-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-filtered-s22",
+   "init": "nobc",
+   "method": "filtered",
+   "seed": 22,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-nobc-filtered-s22",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "nobc-filtered-s22-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-filtered-s22",
+   "init": "nobc",
+   "method": "filtered",
+   "seed": 22,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-nobc-filtered-s22",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "light-grpo-s22-r240",
+   "eval_id": "bc2rl-s4-eval-light-grpo-s22",
+   "init": "light",
+   "method": "grpo",
+   "seed": 22,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-light-grpo-s22",
+   "bc_steps": 16,
+   "online_rounds": 240
+  },
+  {
+   "tag": "light-grpo-s22-r256",
+   "eval_id": "bc2rl-s4-eval-light-grpo-s22",
+   "init": "light",
+   "method": "grpo",
+   "seed": 22,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-light-grpo-s22",
+   "bc_steps": 16,
+   "online_rounds": 256
+  },
+  {
+   "tag": "light-filtered-s22-r240",
+   "eval_id": "bc2rl-s4-eval-light-filtered-s22",
+   "init": "light",
+   "method": "filtered",
+   "seed": 22,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-light-filtered-s22",
+   "bc_steps": 16,
+   "online_rounds": 240
+  },
+  {
+   "tag": "light-filtered-s22-r256",
+   "eval_id": "bc2rl-s4-eval-light-filtered-s22",
+   "init": "light",
+   "method": "filtered",
+   "seed": 22,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-light-filtered-s22",
+   "bc_steps": 16,
+   "online_rounds": 256
+  },
+  {
+   "tag": "extended-grpo-s22-r128",
+   "eval_id": "bc2rl-s4-eval-extended-grpo-s22",
+   "init": "extended",
+   "method": "grpo",
+   "seed": 22,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-extended-grpo-s22",
+   "bc_steps": 128,
+   "online_rounds": 128
+  },
+  {
+   "tag": "extended-grpo-s22-r256",
+   "eval_id": "bc2rl-s4-eval-extended-grpo-s22",
+   "init": "extended",
+   "method": "grpo",
+   "seed": 22,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-extended-grpo-s22",
+   "bc_steps": 128,
+   "online_rounds": 256
+  },
+  {
+   "tag": "extended-filtered-s22-r128",
+   "eval_id": "bc2rl-s4-eval-extended-filtered-s22",
+   "init": "extended",
+   "method": "filtered",
+   "seed": 22,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-extended-filtered-s22",
+   "bc_steps": 128,
+   "online_rounds": 128
+  },
+  {
+   "tag": "extended-filtered-s22-r256",
+   "eval_id": "bc2rl-s4-eval-extended-filtered-s22",
+   "init": "extended",
+   "method": "filtered",
+   "seed": 22,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-extended-filtered-s22",
+   "bc_steps": 128,
+   "online_rounds": 256
+  },
+  {
+   "tag": "light-s22",
+   "eval_id": "bc2rl-s4-eval-bcpath-s22",
+   "init": "light",
+   "method": "initial",
+   "seed": 22,
+   "endpoint": "initial",
+   "train_run": "bc2rl-s1-bc-broad-s22",
+   "bc_steps": 16,
+   "online_rounds": 0
+  },
+  {
+   "tag": "extended-s22",
+   "eval_id": "bc2rl-s4-eval-bcpath-s22",
+   "init": "extended",
+   "method": "initial",
+   "seed": 22,
+   "endpoint": "initial",
+   "train_run": "bc2rl-s1-bc-broad-s22",
+   "bc_steps": 128,
+   "online_rounds": 0
+  },
+  {
+   "tag": "contbc-s22",
+   "eval_id": "bc2rl-s4-eval-bcpath-s22",
+   "init": "extended",
+   "method": "contbc",
+   "seed": 22,
+   "endpoint": "bc256",
+   "train_run": "bc2rl-s1-bc-broad-s22",
+   "bc_steps": 256,
+   "online_rounds": 0
+  },
+  {
+   "tag": "nobc-grpo-s33-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-grpo-s33",
+   "init": "nobc",
+   "method": "grpo",
+   "seed": 33,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-nobc-grpo-s33",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "nobc-grpo-s33-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-grpo-s33",
+   "init": "nobc",
+   "method": "grpo",
+   "seed": 33,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-nobc-grpo-s33",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "nobc-filtered-s33-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-filtered-s33",
+   "init": "nobc",
+   "method": "filtered",
+   "seed": 33,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-nobc-filtered-s33",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "nobc-filtered-s33-r256",
+   "eval_id": "bc2rl-s4-eval-nobc-filtered-s33",
+   "init": "nobc",
+   "method": "filtered",
+   "seed": 33,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-nobc-filtered-s33",
+   "bc_steps": 0,
+   "online_rounds": 256
+  },
+  {
+   "tag": "light-grpo-s33-r240",
+   "eval_id": "bc2rl-s4-eval-light-grpo-s33",
+   "init": "light",
+   "method": "grpo",
+   "seed": 33,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-light-grpo-s33",
+   "bc_steps": 16,
+   "online_rounds": 240
+  },
+  {
+   "tag": "light-grpo-s33-r256",
+   "eval_id": "bc2rl-s4-eval-light-grpo-s33",
+   "init": "light",
+   "method": "grpo",
+   "seed": 33,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-light-grpo-s33",
+   "bc_steps": 16,
+   "online_rounds": 256
+  },
+  {
+   "tag": "light-filtered-s33-r240",
+   "eval_id": "bc2rl-s4-eval-light-filtered-s33",
+   "init": "light",
+   "method": "filtered",
+   "seed": 33,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-light-filtered-s33",
+   "bc_steps": 16,
+   "online_rounds": 240
+  },
+  {
+   "tag": "light-filtered-s33-r256",
+   "eval_id": "bc2rl-s4-eval-light-filtered-s33",
+   "init": "light",
+   "method": "filtered",
+   "seed": 33,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-light-filtered-s33",
+   "bc_steps": 16,
+   "online_rounds": 256
+  },
+  {
+   "tag": "extended-grpo-s33-r128",
+   "eval_id": "bc2rl-s4-eval-extended-grpo-s33",
+   "init": "extended",
+   "method": "grpo",
+   "seed": 33,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-extended-grpo-s33",
+   "bc_steps": 128,
+   "online_rounds": 128
+  },
+  {
+   "tag": "extended-grpo-s33-r256",
+   "eval_id": "bc2rl-s4-eval-extended-grpo-s33",
+   "init": "extended",
+   "method": "grpo",
+   "seed": 33,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-extended-grpo-s33",
+   "bc_steps": 128,
+   "online_rounds": 256
+  },
+  {
+   "tag": "extended-filtered-s33-r128",
+   "eval_id": "bc2rl-s4-eval-extended-filtered-s33",
+   "init": "extended",
+   "method": "filtered",
+   "seed": 33,
+   "endpoint": "total",
+   "train_run": "bc2rl-s2-extended-filtered-s33",
+   "bc_steps": 128,
+   "online_rounds": 128
+  },
+  {
+   "tag": "extended-filtered-s33-r256",
+   "eval_id": "bc2rl-s4-eval-extended-filtered-s33",
+   "init": "extended",
+   "method": "filtered",
+   "seed": 33,
+   "endpoint": "online",
+   "train_run": "bc2rl-s2-extended-filtered-s33",
+   "bc_steps": 128,
+   "online_rounds": 256
+  },
+  {
+   "tag": "light-s33",
+   "eval_id": "bc2rl-s4-eval-bcpath-s33",
+   "init": "light",
+   "method": "initial",
+   "seed": 33,
+   "endpoint": "initial",
+   "train_run": "bc2rl-s1-bc-broad-s33",
+   "bc_steps": 16,
+   "online_rounds": 0
+  },
+  {
+   "tag": "extended-s33",
+   "eval_id": "bc2rl-s4-eval-bcpath-s33",
+   "init": "extended",
+   "method": "initial",
+   "seed": 33,
+   "endpoint": "initial",
+   "train_run": "bc2rl-s1-bc-broad-s33",
+   "bc_steps": 128,
+   "online_rounds": 0
+  },
+  {
+   "tag": "contbc-s33",
+   "eval_id": "bc2rl-s4-eval-bcpath-s33",
+   "init": "extended",
+   "method": "contbc",
+   "seed": 33,
+   "endpoint": "bc256",
+   "train_run": "bc2rl-s1-bc-broad-s33",
+   "bc_steps": 256,
+   "online_rounds": 0
+  }
+ ],
+ "train_runs": [
+  {
+   "run_id": "bc2rl-s2-nobc-grpo-s11",
+   "kind": "online",
+   "init": "nobc",
+   "method": "grpo",
+   "seed": 11
+  },
+  {
+   "run_id": "bc2rl-s2-nobc-filtered-s11",
+   "kind": "online",
+   "init": "nobc",
+   "method": "filtered",
+   "seed": 11
+  },
+  {
+   "run_id": "bc2rl-s2-light-grpo-s11",
+   "kind": "online",
+   "init": "light",
+   "method": "grpo",
+   "seed": 11
+  },
+  {
+   "run_id": "bc2rl-s2-light-filtered-s11",
+   "kind": "online",
+   "init": "light",
+   "method": "filtered",
+   "seed": 11
+  },
+  {
+   "run_id": "bc2rl-s2-extended-grpo-s11",
+   "kind": "online",
+   "init": "extended",
+   "method": "grpo",
+   "seed": 11
+  },
+  {
+   "run_id": "bc2rl-s2-extended-filtered-s11",
+   "kind": "online",
+   "init": "extended",
+   "method": "filtered",
+   "seed": 11
+  },
+  {
+   "run_id": "bc2rl-s1-bc-broad-s11",
+   "kind": "bc",
+   "init": "bc",
+   "method": "bc",
+   "seed": 11
+  },
+  {
+   "run_id": "bc2rl-s2-nobc-grpo-s22",
+   "kind": "online",
+   "init": "nobc",
+   "method": "grpo",
+   "seed": 22
+  },
+  {
+   "run_id": "bc2rl-s2-nobc-filtered-s22",
+   "kind": "online",
+   "init": "nobc",
+   "method": "filtered",
+   "seed": 22
+  },
+  {
+   "run_id": "bc2rl-s2-light-grpo-s22",
+   "kind": "online",
+   "init": "light",
+   "method": "grpo",
+   "seed": 22
+  },
+  {
+   "run_id": "bc2rl-s2-light-filtered-s22",
+   "kind": "online",
+   "init": "light",
+   "method": "filtered",
+   "seed": 22
+  },
+  {
+   "run_id": "bc2rl-s2-extended-grpo-s22",
+   "kind": "online",
+   "init": "extended",
+   "method": "grpo",
+   "seed": 22
+  },
+  {
+   "run_id": "bc2rl-s2-extended-filtered-s22",
+   "kind": "online",
+   "init": "extended",
+   "method": "filtered",
+   "seed": 22
+  },
+  {
+   "run_id": "bc2rl-s1-bc-broad-s22",
+   "kind": "bc",
+   "init": "bc",
+   "method": "bc",
+   "seed": 22
+  },
+  {
+   "run_id": "bc2rl-s2-nobc-grpo-s33",
+   "kind": "online",
+   "init": "nobc",
+   "method": "grpo",
+   "seed": 33
+  },
+  {
+   "run_id": "bc2rl-s2-nobc-filtered-s33",
+   "kind": "online",
+   "init": "nobc",
+   "method": "filtered",
+   "seed": 33
+  },
+  {
+   "run_id": "bc2rl-s2-light-grpo-s33",
+   "kind": "online",
+   "init": "light",
+   "method": "grpo",
+   "seed": 33
+  },
+  {
+   "run_id": "bc2rl-s2-light-filtered-s33",
+   "kind": "online",
+   "init": "light",
+   "method": "filtered",
+   "seed": 33
+  },
+  {
+   "run_id": "bc2rl-s2-extended-grpo-s33",
+   "kind": "online",
+   "init": "extended",
+   "method": "grpo",
+   "seed": 33
+  },
+  {
+   "run_id": "bc2rl-s2-extended-filtered-s33",
+   "kind": "online",
+   "init": "extended",
+   "method": "filtered",
+   "seed": 33
+  },
+  {
+   "run_id": "bc2rl-s1-bc-broad-s33",
+   "kind": "bc",
+   "init": "bc",
+   "method": "bc",
+   "seed": 33
+  }
+ ]
+}
