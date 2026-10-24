@@ -131,6 +131,7 @@ def cmd_online(cfg):
             raise SystemExit(f"unknown method {on['method']}")
         skipped = len(use) == 0
         gn, ratio_dev, loss_total = None, 0.0, 0.0
+        tp_max, tp_sum, tp_n, tp_out = 0.0, 0.0, 0.0, 0.0     # two-pass (no-grad vs grad) log-prob diagnostic
         if not skipped:
             model.train()
             opt.zero_grad(set_to_none=True)
@@ -140,7 +141,16 @@ def cmd_online(cfg):
                 lp_g = gather_completion(lp, cm, cap)
                 m = tmask[rows_i]
                 if on["method"] == "grpo":
-                    ls, ratio = grpo_loss_sum(lp_g, old_lp[rows_i], adv[rows_i].to(lp_g.device), m, on["clip"])
+                    # Old log-probs come from this same forward pass (detached): with one update per fresh
+                    # batch the rollout policy equals the current parameters, so the ratio is exactly 1.
+                    # A separate no-grad pass differs only by BF16 numerics (padding/batch shape); using it
+                    # would clip tokens spuriously. Its deviation is logged as a stale-policy diagnostic.
+                    ls, ratio = grpo_loss_sum(lp_g, lp_g.detach(), adv[rows_i].to(lp_g.device), m, on["clip"])
+                    dev = (lp_g.detach() - old_lp[rows_i]).abs() * m
+                    tp_max = max(tp_max, float(dev.max()))
+                    tp_sum += float(dev.sum())
+                    tp_n += float(m.sum())
+                    tp_out += float((((dev.exp() > 1 + on["clip"]) | ((-dev).exp() < 1 - on["clip"])).float() * m).sum())
                     loss = ls / (Q * cap)
                     ratio_dev = max(ratio_dev, float(((ratio - 1).abs() * m).max()))
                 else:
@@ -163,6 +173,8 @@ def cmd_online(cfg):
         rows.append({"round": rnd, "reward_mean": float(rewards.mean()), "successes": int(rewards.sum()),
                      "mixed_groups": n_mixed, "all_success_groups": n_all, "all_fail_groups": n_none,
                      "skipped": skipped, "loss": loss_total, "grad_norm": gn, "ratio_max_dev": ratio_dev,
+                     "twopass_absdev_max": tp_max, "twopass_absdev_mean": tp_sum / max(tp_n, 1.0),
+                     "twopass_frac_outside_clip": tp_out / max(tp_n, 1.0),
                      "entropy": entropy, "mean_len": float(ntok.float().mean()),
                      "truncated": int(sum(o["finish"] == "length" for o in outs)),
                      "format_valid": float(np.mean([v["format_valid"] for v in ver])),
@@ -220,7 +232,8 @@ def cmd_online(cfg):
         atomic_json(os.path.join(res, "summary.json"), summary)
         keys = ["round", "reward_mean", "successes", "mixed_groups", "all_success_groups", "all_fail_groups",
                 "skipped", "loss", "grad_norm", "ratio_max_dev", "entropy", "mean_len", "truncated", "format_valid",
-                "valid_prefix", "gen_tokens", "opt_steps", "round_s", "gen_s"]
+                "valid_prefix", "gen_tokens", "opt_steps", "round_s", "gen_s", "twopass_absdev_max",
+                "twopass_absdev_mean", "twopass_frac_outside_clip"]
         with open(os.path.join(res, "rounds.csv"), "w") as f:
             f.write(",".join(keys) + ",r3,r5,r10\n")
             for r in rows:

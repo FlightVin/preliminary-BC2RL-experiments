@@ -58,7 +58,7 @@ def stage0():
     # LR calibration: same disposable init, equal rollout rounds, development prompts and selection set
     for method in ("grpo", "filtered"):
         for lr in (5e-6, 1e-5):
-            rid = f"bc2rl-s0-cal2-{method}-lr{lr:.0e}"
+            rid = f"bc2rl-s0-cal{3 if method == 'grpo' else 2}-{method}-lr{lr:.0e}"   # cal3: GRPO rerun after the same-pass ratio fix
             write(f"stage0/cal-{method}-lr{lr:.0e}.yaml", dict(
                 BASE, run_id=rid, seed=7,
                 online={"method": method, "lr": lr, "rounds": 64, "prompts_per_round": 32, "group": 4,

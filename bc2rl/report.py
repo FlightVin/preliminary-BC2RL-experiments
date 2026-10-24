@@ -216,7 +216,7 @@ def cmd_report(cfg):
                 crow.append([tr["run_id"], tr.get("init"), tr.get("method"), tr.get("seed"), r["round"],
                              r["reward_mean"], r["mixed_groups"], r["all_success_groups"], r["all_fail_groups"],
                              int(r["skipped"]), r["entropy"], r["mean_len"], r["grad_norm"] if r["grad_norm"] is not None else "",
-                             r["ratio_max_dev"], r["format_valid"], r["truncated"], r["gen_tokens"]])
+                             r.get("twopass_absdev_mean", r["ratio_max_dev"]), r["format_valid"], r["truncated"], r["gen_tokens"]])
         for c in s.get("checkpoints", []):
             if c.get("val"):
                 vm = c["val"]["metrics"]
@@ -225,7 +225,7 @@ def cmd_report(cfg):
                              c.get("heldout_bc_loss", ""), "", "", "", "", "", c.get("gpu_s_so_far", "")])
     write_csv(os.path.join(out, "curves.csv"),
               ["run_id", "init", "method", "seed", "round", "reward_or_val_pass@1", "mixed_or_val_mixed4", "all_success",
-               "all_fail", "skipped", "entropy_or_heldout_loss", "mean_len", "grad_norm", "ratio_max_dev",
+               "all_fail", "skipped", "entropy_or_heldout_loss", "mean_len", "grad_norm", "twopass_absdev_mean",
                "format_valid", "truncated", "gen_tokens_or_gpu_s"], crow)
     write_csv(os.path.join(out, "cost.csv"), ["run_id", "kind", "init", "method", "seed", "status", "gpu_hours",
                                               "segments", "gpus", "generated_tokens", "opt_steps"], cost)

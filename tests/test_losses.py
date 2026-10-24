@@ -57,3 +57,15 @@ def test_filtered_loss_reduction():
     assert abs(float(loss) - 3.5 / 6) < 1e-7
     loss.backward()
     assert torch.allclose(logp.grad, -mask / (S * L))
+
+
+def test_same_pass_detached_ratio_is_exactly_one_and_unclipped():
+    # As used in online.py: old = logp.detach(). Ratio == 1 everywhere, so clipping never zeroes a
+    # gradient, and the gradient equals the ratio-1 policy gradient -A * mask / (Q * Lmax).
+    logp = torch.tensor([[-3.0, -0.2], [-1.0, -5.0]], requires_grad=True)
+    adv = torch.tensor([1.5, -0.7])
+    mask = torch.ones(2, 2)
+    ls, ratio = grpo_loss_sum(logp, logp.detach(), adv, mask, 0.2)
+    assert torch.equal(ratio, torch.ones_like(ratio))
+    (ls / 8).backward()
+    assert torch.allclose(logp.grad, -(adv.unsqueeze(1) * mask) / 8)
