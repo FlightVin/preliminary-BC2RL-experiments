@@ -19,7 +19,11 @@ CKPT_INTERVAL_S = 300          # full-state checkpoint at most every 5 min (PROJ
 
 
 def load_config(path):
-    cfg = yaml.safe_load(open(path))
+    text = open(path).read()
+    try:
+        cfg = json.loads(text)        # configs are written as JSON; PyYAML (YAML 1.1) reads 5e-06 as a string
+    except json.JSONDecodeError:
+        cfg = yaml.safe_load(text)
     cfg.setdefault("proj_data", os.environ.get("PROJ_DATA", ""))
     if not cfg["proj_data"]:
         raise SystemExit("proj_data unset (config or $PROJ_DATA)")

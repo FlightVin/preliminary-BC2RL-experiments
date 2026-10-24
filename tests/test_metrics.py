@@ -53,3 +53,12 @@ def test_paired_bootstrap_identical_conditions_zero_diff():
 def test_rare_event_bound_matches_proposal():
     assert abs(metrics.zero_event_upper_bound(288) - 0.0103) < 2e-4
     assert abs(metrics.zero_event_upper_bound(96) - 0.0307) < 2e-4
+
+
+def test_config_floats_parse_as_numbers(tmp_path):
+    import json as _json
+    from bc2rl.runtime import load_config
+    p = tmp_path / "c.yaml"
+    _json.dump({"run_id": "x", "proj_data": "/tmp", "online": {"lr": 5e-06}, "bc": {"lr": 1e-05}}, open(p, "w"))
+    c = load_config(str(p))
+    assert isinstance(c["online"]["lr"], float) and c["online"]["lr"] == 5e-06 and c["bc"]["lr"] == 1e-05
