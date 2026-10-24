@@ -1,0 +1,47 @@
+{
+ "prompt_variant": "format",
+ "model": {
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0
+  }
+ },
+ "data": {
+  "version": "v1",
+  "main_seed": 20261024,
+  "dev_seed": 1024,
+  "min_value": 2,
+  "max_value": 20,
+  "max_target": 1000,
+  "max_abs_intermediate": 10000,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "format_example_inputs": 4
+ },
+ "run_id": "bc2rl-s0-eval-devlight-format",
+ "seed": 0,
+ "evaluate": {
+  "split": "dev",
+  "variant": "format",
+  "attempts": 15,
+  "cap": 256,
+  "seed": 1,
+  "batch_seqs": 480,
+  "checkpoints": [
+   {
+    "tag": "devlight16",
+    "adapter": "runs/bc2rl-s0-bc-devlight/adapters/step0016.safetensors",
+    "save_samples": true
+   }
+  ]
+ }
+}

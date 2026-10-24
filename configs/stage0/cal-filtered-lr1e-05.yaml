@@ -1,0 +1,61 @@
+{
+ "prompt_variant": "format",
+ "model": {
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0
+  }
+ },
+ "data": {
+  "version": "v1",
+  "main_seed": 20261024,
+  "dev_seed": 1024,
+  "min_value": 2,
+  "max_value": 20,
+  "max_target": 1000,
+  "max_abs_intermediate": 10000,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "format_example_inputs": 4
+ },
+ "run_id": "bc2rl-s0-cal-filtered-lr1e-05",
+ "seed": 7,
+ "online": {
+  "method": "filtered",
+  "lr": 1e-05,
+  "rounds": 64,
+  "prompts_per_round": 32,
+  "group": 4,
+  "cap": 256,
+  "micro": 8,
+  "clip": 0.2,
+  "prompt_split": "devdemo",
+  "stream_seed": 7,
+  "init": {
+   "adapter": "runs/bc2rl-s0-bc-devlight/adapters/step0016.safetensors",
+   "tag": "devlight16"
+  },
+  "save_rounds": [
+   64
+  ],
+  "val_rounds": [
+   0,
+   32,
+   64
+  ]
+ },
+ "val": {
+  "split": "dev",
+  "attempts": 8,
+  "cap": 256
+ }
+}

@@ -42,6 +42,22 @@ def stage0():
                                           bc={"split": "devdemo", "steps": 16, "batch": 32, "micro": 32, "lr": 1e-4,
                                               "save_steps": [16]},
                                           val={"split": "dev", "attempts": 4, "cap": 256}))
+    write("stage0/eval-devlight-format.yaml",
+          ev("bc2rl-s0-eval-devlight-format", "dev", "format", 256,
+             [{"tag": "devlight16", "adapter": "runs/bc2rl-s0-bc-devlight/adapters/step0016.safetensors",
+               "save_samples": True}]))
+    # LR calibration: same disposable init, equal rollout rounds, development prompts and selection set
+    for method in ("grpo", "filtered"):
+        for lr in (5e-6, 1e-5):
+            rid = f"bc2rl-s0-cal-{method}-lr{lr:.0e}"
+            write(f"stage0/cal-{method}-lr{lr:.0e}.yaml", dict(
+                BASE, run_id=rid, seed=7,
+                online={"method": method, "lr": lr, "rounds": 64, "prompts_per_round": 32, "group": 4,
+                        "cap": 256, "micro": 8, "clip": 0.2, "prompt_split": "devdemo", "stream_seed": 7,
+                        "init": {"adapter": "runs/bc2rl-s0-bc-devlight/adapters/step0016.safetensors",
+                                 "tag": "devlight16"},
+                        "save_rounds": [64], "val_rounds": [0, 32, 64]},
+                val={"split": "dev", "attempts": 8, "cap": 256}))
 
 
 if __name__ == "__main__":
