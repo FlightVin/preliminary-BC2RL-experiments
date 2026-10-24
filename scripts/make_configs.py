@@ -26,7 +26,8 @@ def write(path, cfg):
 
 
 def ev(run_id, split, variant, cap, ckpts, attempts=15, seed=1):
-    return dict(BASE, run_id=run_id, seed=0, evaluate={"split": split, "variant": variant, "attempts": attempts,
+    return dict(BASE, run_id=run_id, seed=0, evaluate={"split": split, "allow_test": split == "test",
+                                                       "variant": variant, "attempts": attempts,
                                                        "cap": cap, "seed": seed, "batch_seqs": 480,
                                                        "checkpoints": ckpts})
 
@@ -74,6 +75,7 @@ def main_matrix():
     fz = json.load(open(os.path.join(ROOT, "configs", "frozen.json")))
     cap, R, total = fz["cap"], fz["rounds"], fz["total_budget"]
     online_frozen = fz["lr"] is not None and R is not None
+    conds, train_runs = [], []
     bc_steps = {"nobc": 0, "light": fz["light_steps"], "extended": fz["extended_steps"]}
     val = {"split": "val", "attempts": 4, "cap": cap}
     for seed in fz["seeds"]:
@@ -99,6 +101,40 @@ def main_matrix():
                             "val_rounds": sorted({0, 64, 128, total_ep, R}),
                             "endpoints": {"online": R, "total": total_ep}},
                     val=val))
+                rid = f"bc2rl-s2-{init}-{method}-s{seed}"
+                cks = [{"tag": f"{init}-{method}-s{seed}-r{r}", "adapter": f"runs/{rid}/adapters/round{r:04d}.safetensors"}
+                       for r in sorted({R, total_ep})]
+                write(f"main/eval-{init}-{method}-s{seed}.yaml",
+                      ev(f"bc2rl-s4-eval-{init}-{method}-s{seed}", "test", "format", cap, cks, seed=fz["eval_seed"]))
+                for r in sorted({R, total_ep}):
+                    eps = [e for e, v in (("online", R), ("total", total_ep)) if v == r]
+                    for e in eps:
+                        conds.append({"tag": f"{init}-{method}-s{seed}-r{r}", "eval_id": f"bc2rl-s4-eval-{init}-{method}-s{seed}",
+                                      "init": init, "method": method, "seed": seed, "endpoint": e,
+                                      "train_run": rid, "bc_steps": bc_steps[init], "online_rounds": r})
+                train_runs.append({"run_id": rid, "kind": "online", "init": init, "method": method, "seed": seed})
+        # initial checkpoints and the continued-BC endpoint of this seed's BC path
+        bcr = f"bc2rl-s1-bc-broad-s{seed}"
+        ick = [{"tag": f"light-s{seed}", "adapter": f"runs/{bcr}/adapters/step{bc_steps['light']:04d}.safetensors"},
+               {"tag": f"extended-s{seed}", "adapter": f"runs/{bcr}/adapters/step{bc_steps['extended']:04d}.safetensors"},
+               {"tag": f"contbc-s{seed}", "adapter": f"runs/{bcr}/adapters/step{fz['contbc_steps']:04d}.safetensors"}]
+        write(f"main/eval-bcpath-s{seed}.yaml", ev(f"bc2rl-s4-eval-bcpath-s{seed}", "test", "format", cap, ick,
+                                                    seed=fz["eval_seed"]))
+        for t, init, m, ep, st in ((f"light-s{seed}", "light", "initial", "initial", bc_steps["light"]),
+                                   (f"extended-s{seed}", "extended", "initial", "initial", bc_steps["extended"]),
+                                   (f"contbc-s{seed}", "extended", "contbc", "bc256", fz["contbc_steps"])):
+            conds.append({"tag": t, "eval_id": f"bc2rl-s4-eval-bcpath-s{seed}", "init": init, "method": m,
+                          "seed": seed, "endpoint": ep, "train_run": bcr, "bc_steps": st, "online_rounds": 0})
+        train_runs.append({"run_id": bcr, "kind": "bc", "init": "bc", "method": "bc", "seed": seed})
+    if online_frozen:
+        write("main/eval-base.yaml", ev("bc2rl-s4-eval-base", "test", "format", cap,
+                                         [{"tag": "base", "adapter": "base"}], seed=fz["eval_seed"]))
+        conds.insert(0, {"tag": "base", "eval_id": "bc2rl-s4-eval-base", "init": "nobc", "method": "initial",
+                         "seed": None, "endpoint": "initial", "train_run": None, "bc_steps": 0, "online_rounds": 0})
+        full = os.path.join(ROOT, "configs", "main", "matrix.json")
+        json.dump({"conditions": conds, "train_runs": train_runs}, open(full, "w"), indent=1)
+        print(f"main/matrix.json: {len(conds)} conditions, "
+              f"{len({c['tag'] for c in conds})} unique evaluated checkpoints, {len(train_runs)} training runs")
 
 
 if __name__ == "__main__":

@@ -106,6 +106,9 @@ def cmd_evaluate(cfg):
     if ev["split"] == "test":
         if not ev.get("allow_test") or not os.path.exists(os.path.join(pd, *FREEZE_FILE)):
             raise SystemExit("test split is locked until the protocol freeze file exists and allow_test is set")
+        fz = json.load(open(os.path.join(pd, *FREEZE_FILE)))
+        if fz.get("lr") is None or fz.get("rounds") is None or fz.get("cap") != ev["cap"]:
+            raise SystemExit(f"freeze file incomplete or cap mismatch: {fz}")
     data, man = load_data(cfg, [ev["split"]])
     problems = data[ev["split"]]
     if ev.get("limit_per_inputs"):
@@ -158,7 +161,9 @@ def cmd_evaluate(cfg):
         atomic_json(sum_path, s)
         summaries[tag] = s
         ledger.flush(note=f"done {tag}")
-        print(f"[eval] {tag}: {json.dumps(s['metrics'])} wall={wall:.0f}s tokens={s['generated_tokens']}")
+        shown = "metrics hidden (test split; read only through the frozen report)" if ev["split"] == "test" \
+            else json.dumps(s["metrics"])
+        print(f"[eval] {tag}: {shown} wall={wall:.0f}s tokens={s['generated_tokens']}")
         if res_dir:
             atomic_json(os.path.join(res_dir, f"eval_{tag}.json"),
                         {k: v for k, v in s.items() if k != "records"})
