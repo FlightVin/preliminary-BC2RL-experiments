@@ -63,8 +63,8 @@ def test_gpu_submission_limits():
 
 
 def test_reservations_count_until_visible():
-    a = acc([{"jobid": None, "gpus": 1}, {"jobid": "7", "gpus": 1}])
-    assert a.ours_gpu == 2          # job 7 already counted by squeue; the unseen one adds 1
+    a = acc([{"jobid": None, "gpus": 1}, {"jobid": "7", "gpus": 1}, {"jobid": "99", "gpus": 1}])
+    assert a.ours_gpu == 2          # 7 counted by squeue; 99 confirmed and finished; the unconfirmed adds 1
 
 
 def test_recipe_rules():

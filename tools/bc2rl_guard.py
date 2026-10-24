@@ -171,9 +171,8 @@ def account(jobs: list[Job], L: int, cpu_limit: int, ours: dict[str, str],
         else:
             acc.U += j.gpus               # unknown -> external capacity
             acc.unknown.append(j)
-    seen = {j.jobid for j in jobs}
-    for r in reserved:                    # local reservations not yet visible in squeue
-        if r.get("jobid") and r["jobid"] in seen:
+    for r in reserved:                    # in-flight reservation: submission not yet confirmed
+        if r.get("jobid"):                # confirmed -> squeue (or a terminal state) is the truth
             continue
         acc.ours_gpu += int(r.get("gpus", 0))
     return acc
