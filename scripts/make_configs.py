@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""Write every run configuration from one place, so the frozen matrix is reproducible.
+
+Usage: python scripts/make_configs.py <stage>   (stage0 | main)
+"""
+import os
+import sys
+
+import json
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA = {"version": "v1", "main_seed": 20261024, "dev_seed": 1024, "min_value": 2, "max_value": 20,
+        "max_target": 1000, "max_abs_intermediate": 10000, "ops": ["+", "-", "*"], "horizons": [3, 5, 10],
+        "format_example_inputs": 4}
+LORA = {"r": 16, "alpha": 32, "dropout": 0.0}
+BASE = {"prompt_variant": "format", "model": {"lora": LORA}, "data": DATA}
+
+
+def write(path, cfg):
+    full = os.path.join(ROOT, "configs", path)
+    os.makedirs(os.path.dirname(full), exist_ok=True)
+    with open(full, "w") as f:          # JSON is valid YAML; no PyYAML needed to write configs
+        json.dump(cfg, f, indent=1)
+        f.write("\n")
+    print(path)
+
+
+def ev(run_id, split, variant, cap, ckpts, attempts=15, seed=1):
+    return dict(BASE, run_id=run_id, seed=0, evaluate={"split": split, "variant": variant, "attempts": attempts,
+                                                       "cap": cap, "seed": seed, "batch_seqs": 480,
+                                                       "checkpoints": ckpts})
+
+
+def stage0():
+    write("data_v1.yaml", dict(BASE, run_id="data-v1", seed=0))
+    base = [{"tag": "base", "adapter": "base", "save_samples": True}]
+    write("stage0/eval-base-format.yaml", ev("bc2rl-s0-eval-base-format", "dev", "format", 256, base))
+    write("stage0/eval-base-zeroshot.yaml", ev("bc2rl-s0-eval-base-zeroshot", "dev", "zeroshot", 256, base))
+    write("stage0/eval-base-format-cap512.yaml", ev("bc2rl-s0-eval-base-format-cap512", "dev", "format", 512, base))
+    # disposable light-BC dev path: 16 steps on the 512 development demonstrations
+    write("stage0/bc-devlight.yaml", dict(BASE, run_id="bc2rl-s0-bc-devlight", seed=7,
+                                          bc={"split": "devdemo", "steps": 16, "batch": 32, "micro": 32, "lr": 1e-4,
+                                              "save_steps": [16]},
+                                          val={"split": "dev", "attempts": 4, "cap": 256}))
+
+
+if __name__ == "__main__":
+    {"stage0": stage0}[sys.argv[1]]()

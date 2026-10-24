@@ -76,8 +76,30 @@ def cmd_generate(cfg):
         "format_example": splits["format"][0].to_json(),
     }
     atomic_json(os.path.join(d, "manifest.json"), man)
+    try:
+        man["token_stats"] = token_stats(cfg, splits)
+        atomic_json(os.path.join(d, "token_stats.json"), man["token_stats"])
+    except (OSError, KeyError) as e:          # tokenizer not available (unit tests)
+        print(f"token stats skipped: {e}")
     print(json.dumps({s: v["by_inputs"] for s, v in man["splits"].items()}))
     out = cfg.get("_results_dir")
     if out:
         atomic_json(os.path.join(out, "data_manifest.json"), man)
     return 0
+
+
+def token_stats(cfg, splits):
+    """Reference-completion and prompt token lengths by split and input count (cap check)."""
+    from .modeling import chat_prompt, load_tokenizer, model_info
+    tok = load_tokenizer(model_info(cfg["proj_data"])["path"])
+    fmt = splits["format"][0]
+    out = {}
+    for s in ("devdemo", "bc", "val", "dev"):
+        for h in sorted({p.n_inputs for p in splits[s]}):
+            ps = [p for p in splits[s] if p.n_inputs == h]
+            comp = [len(tok(task.completion_text(p), add_special_tokens=False).input_ids) + 1 for p in ps]
+            prm = [len(tok(chat_prompt(tok, task.prompt_text(p, "format", fmt)), add_special_tokens=False).input_ids)
+                   for p in ps]
+            out[f"{s}:{h}"] = {"ref_completion_max": max(comp), "ref_completion_mean": sum(comp) / len(comp),
+                               "prompt_format_max": max(prm)}
+    return out
