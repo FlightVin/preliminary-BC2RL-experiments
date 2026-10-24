@@ -46,6 +46,23 @@ def horizon_weighted(values, horizons):
     return float(np.mean(list(by.values()))), by
 
 
+def bootstrap_indices(horizons, n_boot=10000, seed=0):
+    """Horizon-stratified resampling indices, shared by every condition (paired bootstrap)."""
+    horizons = np.asarray(horizons)
+    rng = np.random.default_rng(seed)
+    out = {}
+    for h in sorted(set(horizons.tolist())):
+        ix = np.flatnonzero(horizons == h)
+        out[h] = ix[rng.integers(0, len(ix), size=(n_boot, len(ix)))]
+    return out
+
+
+def boot_weighted(values, idx):
+    """(n_boot,) horizon-weighted means of one per-problem array under shared indices."""
+    v = np.asarray(values, float)
+    return np.mean([v[ix].mean(axis=1) for ix in idx.values()], axis=0)
+
+
 def paired_bootstrap(per_cond: dict, horizons, n_boot=10000, seed=0, diffs=()):
     """Paired, horizon-stratified bootstrap over whole problems.
 
@@ -53,23 +70,14 @@ def paired_bootstrap(per_cond: dict, horizons, n_boot=10000, seed=0, diffs=()):
     diffs: iterable of (a, b) names; reports CI of weighted(a) - weighted(b).
     Returns {name or 'a - b': (point, lo95, hi95)}. Same resampled indices for every condition.
     """
-    horizons = np.asarray(horizons)
-    hs = sorted(set(horizons.tolist()))
-    idx_by_h = {h: np.flatnonzero(horizons == h) for h in hs}
-    rng = np.random.default_rng(seed)
-    names = list(per_cond)
-    arr = {k: np.asarray(v, float) for k, v in per_cond.items()}
-    samples = {k: np.empty(n_boot) for k in names}
-    for b in range(n_boot):
-        picks = {h: rng.choice(ix, size=len(ix), replace=True) for h, ix in idx_by_h.items()}
-        for k in names:
-            samples[k][b] = np.mean([arr[k][picks[h]].mean() for h in hs])
+    idx = bootstrap_indices(horizons, n_boot, seed)
+    samples = {k: boot_weighted(v, idx) for k, v in per_cond.items()}
     out = {}
-    for k in names:
-        pt = horizon_weighted(arr[k], horizons)[0]
+    for k, v in per_cond.items():
+        pt = horizon_weighted(v, horizons)[0]
         out[k] = (pt, float(np.percentile(samples[k], 2.5)), float(np.percentile(samples[k], 97.5)))
     for a, b in diffs:
-        pt = horizon_weighted(arr[a], horizons)[0] - horizon_weighted(arr[b], horizons)[0]
+        pt = horizon_weighted(per_cond[a], horizons)[0] - horizon_weighted(per_cond[b], horizons)[0]
         d = samples[a] - samples[b]
         out[f"{a} - {b}"] = (pt, float(np.percentile(d, 2.5)), float(np.percentile(d, 97.5)))
     return out
