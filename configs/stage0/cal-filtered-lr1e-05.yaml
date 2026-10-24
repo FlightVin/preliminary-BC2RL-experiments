@@ -27,7 +27,7 @@
   ],
   "format_example_inputs": 4
  },
- "run_id": "bc2rl-s0-cal-filtered-lr1e-05",
+ "run_id": "bc2rl-s0-cal2-filtered-lr1e-05",
  "seed": 7,
  "online": {
   "method": "filtered",
