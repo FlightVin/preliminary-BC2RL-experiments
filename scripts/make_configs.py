@@ -42,6 +42,15 @@ def stage0():
                                           bc={"split": "devdemo", "steps": 16, "batch": 32, "micro": 32, "lr": 1e-4,
                                               "save_steps": [16]},
                                           val={"split": "dev", "attempts": 4, "cap": 256}))
+    # continuation of the same disposable dev BC path (seed 7, same order) to 128 steps: learnability gate
+    write("stage0/bc-devext.yaml", dict(BASE, run_id="bc2rl-s0-bc-devext", seed=7,
+                                        bc={"split": "devdemo", "steps": 128, "batch": 32, "micro": 8, "lr": 1e-4,
+                                            "save_steps": [16, 32, 64, 128]},
+                                        val={"split": "dev", "attempts": 4, "cap": 256}))
+    write("stage0/eval-devext-format.yaml",
+          ev("bc2rl-s0-eval-devext-format", "dev", "format", 256,
+             [{"tag": f"devext{k}", "adapter": f"runs/bc2rl-s0-bc-devext/adapters/step{k:04d}.safetensors",
+               "save_samples": k == 128} for k in (32, 64, 128)]))
     write("stage0/eval-devlight-format.yaml",
           ev("bc2rl-s0-eval-devlight-format", "dev", "format", 256,
              [{"tag": "devlight16", "adapter": "runs/bc2rl-s0-bc-devlight/adapters/step0016.safetensors",
