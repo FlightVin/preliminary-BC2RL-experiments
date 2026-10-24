@@ -60,5 +60,36 @@ def stage0():
                 val={"split": "dev", "attempts": 8, "cap": 256}))
 
 
+def main_matrix():
+    """Frozen main matrix. FROZEN values come from configs/frozen.json (written at the freeze)."""
+    fz = json.load(open(os.path.join(ROOT, "configs", "frozen.json")))
+    cap, R, total = fz["cap"], fz["rounds"], fz["total_budget"]
+    bc_steps = {"nobc": 0, "light": fz["light_steps"], "extended": fz["extended_steps"]}
+    val = {"split": "val", "attempts": 4, "cap": cap}
+    for seed in fz["seeds"]:
+        write(f"main/bc-broad-s{seed}.yaml", dict(
+            BASE, run_id=f"bc2rl-s1-bc-broad-s{seed}", seed=seed,
+            bc={"split": "bc", "steps": fz["contbc_steps"], "batch": 32, "micro": 8, "lr": 1e-4,
+                "save_steps": sorted({bc_steps["light"], 64, bc_steps["extended"], 192, fz["contbc_steps"]})},
+            val=val))
+        for init in ("nobc", "light", "extended"):
+            if init == "nobc":
+                ini = {"adapter": "none", "tag": "nobc"}
+            else:
+                ini = {"adapter": f"runs/bc2rl-s1-bc-broad-s{seed}/adapters/step{bc_steps[init]:04d}.safetensors",
+                       "tag": f"{init}-s{seed}"}
+            total_ep = total - bc_steps[init]
+            for method in ("grpo", "filtered"):
+                write(f"main/on-{init}-{method}-s{seed}.yaml", dict(
+                    BASE, run_id=f"bc2rl-s2-{init}-{method}-s{seed}", seed=seed,
+                    online={"method": method, "lr": fz["lr"][method], "rounds": R, "prompts_per_round": 32,
+                            "group": 4, "cap": cap, "micro": 8, "clip": 0.2, "prompt_split": "online",
+                            "stream_seed": seed, "init": ini,
+                            "save_rounds": sorted({64, 128, total_ep, R}),
+                            "val_rounds": sorted({0, 64, 128, total_ep, R}),
+                            "endpoints": {"online": R, "total": total_ep}},
+                    val=val))
+
+
 if __name__ == "__main__":
-    {"stage0": stage0}[sys.argv[1]]()
+    {"stage0": stage0, "main": main_matrix}[sys.argv[1]]()
