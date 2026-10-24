@@ -104,3 +104,11 @@ Each run writes full attempt-level records and checkpoints to `PROJ_DATA`, and a
 Deliver `reports/initial_study.md` and `reports/initial_study.pdf`, plus machine-readable result tables and figure-generation commands. Include the frozen run matrix and deviations; measured suitability; all metrics by initialization/method/seed/horizon; equal-online-round and total-training-batch comparisons; coverage–reliability and compute curves; actual GPU-hour ledger; failure/rare-event analysis; supported, contradicted, and unresolved claims; and at most two concrete follow-ups. Cite the proposal's relevant primary sources and distinguish inherited claims from new measurements.
 
 Before completion, audit the report against raw artifacts and Slurm accounting, independently recompute a sample of metric and cost rows, verify every scheduled arm is complete/failed/not-run with a reason, and review prose and figures. Record the audit, update FINDINGS/STATE/CHECKLIST, and release only BC2RL-owned allocations. A usable final report is mandatory even if feasibility or resource gates stop training early.
+
+## Owner amendments
+
+### A1 — 2026-10-24 (supersedes the `reports/initial_study.pdf` deliverable)
+> "Oh write the report as an MD file and not PDF - include plots into it for better understanding. Update state and checklist and proceed autonomously."
+
+Effect: deliver `reports/initial_study.md` with the figures embedded as images (committed PNG files
+under `reports/figures/`), plus the machine-readable tables. No PDF is produced.
