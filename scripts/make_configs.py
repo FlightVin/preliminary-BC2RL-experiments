@@ -73,6 +73,7 @@ def main_matrix():
     """Frozen main matrix. FROZEN values come from configs/frozen.json (written at the freeze)."""
     fz = json.load(open(os.path.join(ROOT, "configs", "frozen.json")))
     cap, R, total = fz["cap"], fz["rounds"], fz["total_budget"]
+    online_frozen = fz["lr"] is not None and R is not None
     bc_steps = {"nobc": 0, "light": fz["light_steps"], "extended": fz["extended_steps"]}
     val = {"split": "val", "attempts": 4, "cap": cap}
     for seed in fz["seeds"]:
@@ -81,7 +82,7 @@ def main_matrix():
             bc={"split": "bc", "steps": fz["contbc_steps"], "batch": 32, "micro": 8, "lr": 1e-4,
                 "save_steps": sorted({bc_steps["light"], 64, bc_steps["extended"], 192, fz["contbc_steps"]})},
             val=val))
-        for init in ("nobc", "light", "extended"):
+        for init in ("nobc", "light", "extended") if online_frozen else ():
             if init == "nobc":
                 ini = {"adapter": "none", "tag": "nobc"}
             else:

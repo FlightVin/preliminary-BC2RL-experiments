@@ -1,0 +1,12 @@
+{
+ "_note": "Frozen protocol values. Stage 1 fields frozen 2026-10-24 13:30 EDT after the learnability gate; lr/rounds frozen after calibration.",
+ "data_version": "v1",
+ "cap": 256,
+ "seeds": [11, 22, 33],
+ "light_steps": 16,
+ "extended_steps": 128,
+ "contbc_steps": 256,
+ "rounds": null,
+ "total_budget": null,
+ "lr": null
+}
