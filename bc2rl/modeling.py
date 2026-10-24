@@ -172,9 +172,7 @@ def seq_logprobs(model, seqs, pad_id, micro=8, grad=False, want_entropy=False):
         ctx = torch.enable_grad() if grad else torch.no_grad()
         with ctx:
             logits = model(input_ids=ids, attention_mask=att).logits[:, :-1]
-            lp, ent = token_logprobs(logits, ids[:, 1:])
-            if not want_entropy:
-                ent = None
+            lp, ent = token_logprobs(logits, ids[:, 1:], want_entropy)
         yield slice(s, s + len(part)), lp, cm, ent
 
 

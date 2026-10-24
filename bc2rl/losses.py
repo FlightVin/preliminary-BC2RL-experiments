@@ -38,9 +38,9 @@ def filtered_loss_sum(logp, mask):
     return -(logp * mask).sum()
 
 
-def token_logprobs(logits: torch.Tensor, targets: torch.Tensor):
-    """Per-token log p(target) and entropy of the full next-token distribution (float32)."""
+def token_logprobs(logits: torch.Tensor, targets: torch.Tensor, want_entropy: bool = True):
+    """Per-token log p(target) and (optionally) entropy of the next-token distribution (float32)."""
     lp = torch.log_softmax(logits.float(), dim=-1)
     tok = lp.gather(-1, targets.unsqueeze(-1)).squeeze(-1)
-    ent = -(lp.exp() * lp).sum(-1)
+    ent = -(lp.exp() * lp).sum(-1) if want_entropy else None
     return tok, ent
