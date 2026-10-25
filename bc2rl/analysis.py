@@ -187,7 +187,7 @@ def _p_zero(c, n, m):
 
 
 def coverage(init, final, n_sim=10000, seed=0):
-    """Exploratory X1 (DECISIONS 2026-10-25 16:00): per stratum, problems lost (initial c > 0 of all initial attempts,
+    """Exploratory X1 (DECISIONS 2026-10-25 15:42): per stratum, problems lost (initial c > 0 of all initial attempts,
     final 0) and gained (initial 0, final > 0), each against its no-change expectation and a 95% simulation band."""
     pos = {p: i for i, p in enumerate(final["pids"])}
     ia, fa, h = init["att"], final["att"][[pos[p] for p in init["pids"]]], init["h"]

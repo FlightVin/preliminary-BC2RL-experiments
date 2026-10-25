@@ -1,6 +1,7 @@
 # BC2RL: signal, transfer and retention after behavior cloning — initial study
 
-**Status: DRAFT (2026-10-25 10:30 EDT).** Sections marked **PENDING** wait for runs that are queued.
+**Status: DRAFT (2026-10-25 15:55 EDT).** All runs are complete. Sections marked **TEST PENDING** wait for the single
+test unblinding after the result freeze.
 Test results are blinded until the result set is frozen (latest Tue 2026-10-27 15:00 EDT). Every number
 below comes from development or validation data unless a section says "test".
 
@@ -12,15 +13,19 @@ This study tests three hypotheses with Qwen2.5-0.5B-Instruct (LoRA r16) on a ver
 | hypothesis | experiment | status |
 |---|---|---|
 | H1: signal availability does not fully determine transfer | E2 matched-update pairs at fixed BC checkpoints | **E2 not run**: pre-launch check failed (Section 6); E0 + observational E3 only |
-| H2: aggregate improvement can conceal loss of existing competence | E3 retention on initially consistent problems | PENDING |
-| H3: directional constraints preserve competence beyond shrinking | E4 projection vs norm-matched vs sham | conditional (gate in Section 8) |
+| H2: aggregate improvement can conceal loss of existing competence | E3 retention on initially consistent problems | pre-registered test **measurement-limited** on validation (n = 0-5 < 12); 3-input coverage loss observed (Section 8); test pending |
+| H3: directional constraints preserve competence beyond shrinking | E4 projection vs norm-matched vs sham | **not run**: validation gate not met (0/3 seeds; Section 8) |
 
 Facts established so far:
 - The untouched model is at the floor (dev pass@1 2.2% / 0% / 0% for 3 / 5 / 10 inputs).
 - Behavior cloning (BC) creates distinct initial profiles at 3 and 5 inputs. 10 inputs stays at or near zero
   for every checkpoint measured. The study therefore cannot test long-horizon (9-operation) learning.
-- Online GRPO from the light-BC checkpoint raises validation pass@1 from 0.042 to 0.184 in 256 rounds
-  (seed 11), almost all of it at 3 inputs.
+- All 12 online branches (light/extended BC x GRPO/filtered x 3 seeds) raise validation pass@1 (+0.09 to +0.17) and
+  pass^15 (+0.10 to +0.15); simultaneous 95% bands over k exclude zero. Overall pass@15 does not change.
+- The gain is at 3 inputs. There, pass@15 falls (point estimates: extended-BC -0.13 to -0.27, light-BC -0.13 to +0.04)
+  while pass^15 rises: online training makes partly solved problems reliable and loses some others. The aggregate
+  curve hides this loss (validation; test pending).
+- GRPO and filtered supervision do not differ consistently on validation (17/18 paired contrasts include zero).
 
 ## 2. What changed (protocol amendment A2)
 
@@ -154,36 +159,90 @@ Source: `results/bc2rl-e2-taylordiag-dev-s7/taylor_diag.json`, calibration `runs
 
 ## 7. E3: online trajectories and paired method comparison
 
-**PENDING** for 11 of 12 branches. Complete: light-BC + GRPO, seed 11 (job 10917856, RTX A6000, 256 rounds,
-250 optimizer steps, 6 rounds skipped with no mixed group). Validation pass@1 (144 x 4):
+All 12 branches are complete (jobs 10917856, 10921467-70, 10926005; commits 5deefef / 90db8b9 / 7eac985 with
+identical E3 code). Every branch ran 256 rounds from an initial adapter whose sha256 matches Stage 1. Rounds without
+a mixed group give no GRPO step: GRPO took 250 / 250 / 238 steps from light BC and 255 / 254 / 253 from extended BC
+(seeds 11 / 22 / 33); filtered supervision took 256 steps in every branch. Test evaluations of every branch are done
+and stay hidden.
 
-| round | overall | 3 inputs | 5 inputs | 10 inputs |
-|---:|---:|---:|---:|---:|
-| 0 | 0.042 | 0.120 | 0.005 | 0 |
-| 64 | 0.156 | 0.458 | 0.010 | 0 |
-| 128 | 0.167 | 0.453 | 0.047 | 0 |
-| 240 | 0.198 | 0.526 | 0.068 | 0 |
-| 256 | 0.184 | 0.490 | 0.062 | 0 |
+The learning signal is sparse. For light-grpo-s11, on average only 4.2, 3.7, 3.2 and 2.9 of 32 groups were mixed in
+rounds 1-64, 65-128, 129-192 and 193-256; about 26 groups failed completely throughout. Light-BC branches have fewer
+mixed groups than extended-BC branches during most of training (figure, left).
 
-The learning signal is sparse. In each round, 32 prompts give 32 groups of 4 attempts. On average only 4.2, 3.7,
-3.2 and 2.9 groups were mixed in rounds 1-64, 65-128, 129-192 and 193-256. All-success groups rose from 1.1 to 3.1,
-and about 26 groups failed completely throughout. GRPO therefore learned from 9-13% of the sampled groups, and the
-signal shrank as 3-input problems saturated (observational, one run).
+![E3 trajectories: mixed groups per round and validation pass@1](figures/e3_trajectories.png)
 
-![E3 trajectory: mixed groups per round and validation pass@1](figures/e3_trajectories.png)
+### 7.1 Validation endpoint (val15: 144 problems x 15 attempts, initial and round-256 adapters)
 
-## 8. Retention (H2) and the E4 gate
+| branch | pass@1 gain [simultaneous 95%] | pass^15 gain | pass@15 gain | pass@15 gain at 3 inputs |
+|---|---|---|---|---|
+| light-grpo s11 / s22 / s33 | +0.150 / +0.169 / +0.125 | +0.104 / +0.132 / +0.111 | -0.014 / +0.062 / +0.007 | -0.083 / -0.021 / -0.125 |
+| light-filtered s11 / s22 / s33 | +0.163 / +0.147 / +0.165 | +0.111 / +0.111 / +0.153 | +0.007 / +0.076 / +0.042 | -0.125 / +0.042 / +0.021 |
+| extended-grpo s11 / s22 / s33 | +0.090 / +0.129 / +0.097 | +0.139 / +0.146 / +0.132 | -0.049 / +0.000 / +0.042 | -0.188 / -0.167 / -0.125 |
+| extended-filtered s11 / s22 / s33 | +0.106 / +0.110 / +0.102 | +0.146 / +0.125 / +0.132 | -0.049 / +0.014 / -0.014 | -0.271 / -0.188 / -0.167 |
 
-**PENDING.** Rules (amendment Section 5): attempts 1-7 of the initial 15-attempt evaluation define the initially
-consistent subgroup (>= 6/7); attempts 8-15 give an independent baseline; the final checkpoint gets 15 fresh
-attempts. Retention claims use k = 1..8 only and need >= 12 problems per stratum.
+Every pass@1 and pass^15 gain has a simultaneous band that excludes zero. Every overall pass@15 band includes zero
+except light-filtered-s22 (+0.076 [+0.014, +0.139]). The 3-input column is a point estimate (no per-stratum band).
+Bands and all k = 1..15 are in `results/bc2rl-an-val2-main-s0/contrasts.csv`.
+
+![pass@k by input count, validation](figures/curves_val_passat.png)
+![pass^k by input count, validation](figures/curves_val_passhat.png)
+
+At 3 inputs the initial extended-BC adapters have the highest coverage (pass@15 about 0.9-0.96) and the lowest
+reliability; after either online method both curves flatten near 0.6-0.8. The number of 3-input problems solved in
+all 15 attempts rose from 0-1 to 15-22 of 48 in every branch. 10 inputs stays at the floor (pass@1 <= 0.010 in all 36
+validation panels).
+
+GRPO minus filtered (same initial adapter and seed): 17 of 18 contrasts (pass@1, pass@15, pass^15 x 6 pairs) have
+simultaneous bands that include zero. The exceptions point in opposite directions: light-s33 pass^15 -0.042
+[-0.080, -0.004]; extended-s33 pass@15 +0.056 [0.000, +0.111]. The validation data show no consistent method effect.
+
+![GRPO minus filtered, validation](figures/contrast_val15_grpo_minus_filtered.png)
+
+**TEST PENDING:** the same tables on test (288 x 15), from one analysis run after the result freeze.
+
+## 8. Retention (H2), coverage loss and the E4 gate
+
+Pre-registered rule (amendment Section 5): attempts 1-7 of the initial 15-attempt evaluation define the initially
+consistent subgroup (>= 6/7); attempts 8-15 give an independent baseline; the final adapter gets 15 fresh attempts.
+Retention claims use k = 1..8 and need >= 12 problems per stratum.
+
+**Validation result: measurement-limited.** The subgroup has 0 problems for every light-BC branch and 3-5 problems
+(all at 3 inputs) for the extended-BC branches. No branch reaches 12. On these few problems the final success rate
+is higher than the baseline (pass@1 +0.20 to +0.29), so the data give no sign of loss among consistent problems, and
+no power to detect it.
+
+![Initially consistent problems, validation](figures/retention_val15.png)
+
+**E4 gate:** at least 2 extended-BC GRPO seeds with >= 12 consistent problems and a pass@1 fall >= 5 points. Result:
+0/3 seeds. E4 is not run ("mechanism not established; subgroup too small to measure").
+
+**Exploratory X1: coverage loss (defined 2026-10-25 15:42 EDT after the validation look, before any test read).**
+A problem is *lost* when the initial adapter solved it at least once in 15 attempts and the round-256 adapter
+solved it in none of 15. The reference "no change" draws each problem's rate from its Jeffreys posterior
+(Beta(c + 1/2, 15 - c + 1/2)); the band is the 95% range of 10,000 simulations. 3-input validation results:
+
+| initial BC | method | lost / initially solvable (s11, s22, s33) | expected [95% band] |
+|---|---|---|---|
+| extended | GRPO | 10/46, 9/43, 7/44 | 3.7 [1,7], 3.4 [1,7], 3.8 [1,7] |
+| extended | filtered | 13/46, 9/43, 10/44 | same |
+| light | GRPO | 8/38, 8/35, 10/34 | 9.3 [5,14], 6.3 [2,11], 5.0 [1,9] |
+| light | filtered | 12/38, 5/35, 6/34 | same |
+
+Extended-BC branches lose more problems than the reference in 5 of 6 branches (the sixth is at the band edge), with
+both methods. Light-BC branches stay inside the band in 5 of 6. Limits: the reference depends on its prior (it is
+calibrated only when true rates follow Beta(1/2, 1/2); for gains at 5 inputs it is clearly miscalibrated), the
+analysis was chosen after seeing validation data, and it is observational. It describes where coverage was lost; it
+does not identify why. **TEST PENDING** (X1 runs once on test).
 
 ## 9. Compute
 
 | component | GPU-hours | source |
 |---|---:|---|
 | consumed before amendment A2 (Stage 0, Stage 1, one branch, base test eval) | 4.08 | sacct + cost ledger |
-| E3 remaining, E2, evaluation, reserve | forecast ~36 | DECISIONS 2026-10-25 |
+| E3 workers w1-w5 (11 branches, 3 BC-path test evals, 15 val15 evals; incl. preempted segments) | 9.35 | sacct 2026-10-25 15:49 |
+| E2 calibration + Taylor diagnostic | 0.28 | sacct |
+| total allocated GPU-hours, all BC2RL GPU jobs | 13.75 | sacct 2026-10-25 15:49 |
+| CPU-only jobs (analysis, data, tests, A3 export/migration) | not GPU-accounted | `preempt_cpu_qos` |
 
 ## 10. Deviations, missing runs and limitations
 
