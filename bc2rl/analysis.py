@@ -265,6 +265,17 @@ def _style(ax):
     ax.tick_params(colors=MUTED, labelsize=8)
 
 
+def _kaxis(ax):
+    from matplotlib.ticker import MaxNLocator
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.set_xlabel("k")
+
+
+INIT_LS = {"light": "--", "extended": "-", "contbc": ":"}
+INIT_LABEL = {"light": "light BC (16 steps)", "extended": "extended BC (128 steps)", "contbc": "continued BC (256 steps)"}
+METHOD_LABEL = {"initial": "initial BC checkpoint", "grpo": "after GRPO (r256)", "filtered": "after filtered (r256)"}
+
+
 def figures(out, panels, curves_rows, contrast_sets, ret_sets, mech_rows, toy_csv, traj):
     import matplotlib
     matplotlib.use("Agg")
@@ -281,25 +292,31 @@ def figures(out, panels, curves_rows, contrast_sets, ret_sets, mech_rows, toy_cs
     for split, names in by_split.items():
         for fam, lab in (("pass@", "pass@k"), ("pass^", "pass^k")):
             fig, axes = plt.subplots(1, 3, figsize=(11, 3.4), sharey=True)
+            used_m, used_i = set(), set()
             for ax, hh in zip(axes, (3, 5, 10)):
                 for name in names:
                     sp = panels[name]["spec"]
                     rows = [r for r in curves_rows if r["panel"] == name and r["family"] == fam]
                     if not rows or sp.get("figure") is False:
                         continue
-                    col = COLORS.get(sp.get("method", "initial"), MUTED)
-                    ls = "--" if sp.get("init") == "light" else "-"
-                    ax.plot([r["k"] for r in rows], [r[f"h{hh}"] for r in rows], color=col, ls=ls, lw=1.2, alpha=0.8)
+                    m, i = sp.get("method", "initial"), sp.get("init", "extended")
+                    used_m.add(m)
+                    used_i.add(i)
+                    ax.plot([r["k"] for r in rows], [r[f"h{hh}"] for r in rows], color=COLORS.get(m, MUTED),
+                            ls=INIT_LS.get(i, "-"), lw=1.2, alpha=0.8)
                 ax.set_title(f"{hh} inputs", fontsize=9)
-                ax.set_xlabel("k")
+                _kaxis(ax)
                 _style(ax)
             axes[0].set_ylabel(lab)
             from matplotlib.lines import Line2D
-            hd = [Line2D([], [], color=COLORS["initial"]), Line2D([], [], color=COLORS["grpo"]),
-                  Line2D([], [], color=COLORS["filtered"]), Line2D([], [], color=MUTED, ls="--"),
-                  Line2D([], [], color=MUTED, ls="-")]
-            fig.legend(hd, ["initial BC checkpoint", "after GRPO (r256)", "after filtered (r256)", "light BC", "extended BC"],
-                       loc="lower center", ncol=5, frameon=False, fontsize=8)
+            ms = [m for m in METHOD_LABEL if m in used_m]
+            ins = [i for i in INIT_LS if i in used_i]
+            hd = [Line2D([], [], color=COLORS[m]) for m in ms] + [Line2D([], [], color=MUTED, ls=INIT_LS[i]) for i in ins]
+            if not hd:                     # every panel of this split has figure: false
+                plt.close(fig)
+                continue
+            fig.legend(hd, [METHOD_LABEL[m] for m in ms] + [INIT_LABEL[i] for i in ins],
+                       loc="lower center", ncol=len(hd), frameon=False, fontsize=8)
             fig.suptitle(f"{lab} by input count ({split} panels; one line per checkpoint/seed)", fontsize=10)
             fig.tight_layout(rect=(0, 0.08, 1, 0.95))
             fn = f"curves_{split}_{'passat' if fam == 'pass@' else 'passhat'}.png"
@@ -318,15 +335,15 @@ def figures(out, panels, curves_rows, contrast_sets, ret_sets, mech_rows, toy_cs
                 if not rr:
                     continue
                 k = [r["k"] for r in rr]
-                col = COLORS["grpo"] if "light" in name else COLORS["filtered"]
-                ax.plot(k, [r["diff"] for r in rr], color=col, lw=1.4, alpha=0.9)
-                ax.fill_between(k, [r["sim_lo"] for r in rr], [r["sim_hi"] for r in rr], color=col, alpha=0.08, lw=0)
+                ls = INIT_LS["light"] if "light" in name else INIT_LS["extended"]
+                ax.plot(k, [r["diff"] for r in rr], color=INK, ls=ls, lw=1.4, alpha=0.9)
+                ax.fill_between(k, [r["sim_lo"] for r in rr], [r["sim_hi"] for r in rr], color=INK, alpha=0.06, lw=0)
             ax.axhline(0, color=MUTED, lw=0.8)
-            ax.set_xlabel("k")
+            _kaxis(ax)
             ax.set_ylabel(f"difference in {fam}k")
             _style(ax)
         from matplotlib.lines import Line2D
-        fig.legend([Line2D([], [], color=COLORS["grpo"]), Line2D([], [], color=COLORS["filtered"])],
+        fig.legend([Line2D([], [], color=INK, ls=INIT_LS["light"]), Line2D([], [], color=INK, ls=INIT_LS["extended"])],
                    ["light-BC init (one line per seed)", "extended-BC init (one line per seed)"], loc="lower center",
                    ncol=2, frameon=False, fontsize=8)
         fig.suptitle(f"{setname}: paired difference curves; shaded = simultaneous 95% band over k", fontsize=10)
