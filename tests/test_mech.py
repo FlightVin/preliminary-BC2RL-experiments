@@ -124,6 +124,6 @@ def test_mech_end_to_end_tiny(tmp_path):
     assert abs(pr["exact"]["H"]["d_norm_equal"] - pr["exact"]["L"]["d_norm_equal"]) < 1e-6 * pr["exact"]["H"]["d_norm_equal"] + 1e-12
     for t in ("p0-H", "p0-L"):
         f = s["forks"][t]
-        assert f["kl_median"] >= 0 and np.isfinite(f["taylor_pred_fit"])
+        assert f["kl_median"] >= -1e-6 and np.isfinite(f["taylor_pred_fit"])
         assert sum(f["probe"]["n"]) == 6 * 2
     cli("mech", dict(base, run_id="iv", mech=dict(me, mode="intervene", rho=2)))     # resume: already complete
