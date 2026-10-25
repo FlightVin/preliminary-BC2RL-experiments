@@ -1,0 +1,61 @@
+{
+ "prompt_variant": "format",
+ "model": {
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0
+  }
+ },
+ "data": {
+  "version": "v1",
+  "main_seed": 20261024,
+  "dev_seed": 1024,
+  "min_value": 2,
+  "max_value": 20,
+  "max_target": 1000,
+  "max_abs_intermediate": 10000,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "format_example_inputs": 4
+ },
+ "run_id": "bc2rl-e2-extended-s22",
+ "seed": 22,
+ "mech": {
+  "group": 4,
+  "cap": 256,
+  "micro": 8,
+  "lr": 1e-05,
+  "groups_per_arm": 8,
+  "pool_prompts": 1024,
+  "pool_seed": 20261025,
+  "max_mixed": 512,
+  "max_pools": 8,
+  "pool_split_seed": 777,
+  "len_tol": 0.05,
+  "search_budget": 3000,
+  "eval_seed": 1,
+  "probe_attempts": 15,
+  "kl_samples": 4,
+  "batch_seqs": 480,
+  "mode": "intervene",
+  "adapter": "runs/bc2rl-s1-bc-broad-s22/adapters/step0128.safetensors",
+  "adapter_sha256": "e36aabf6d9b3205af240ef816afe87b3690685b7943877f515f66feca69ee834",
+  "source_splits": [
+   "online"
+  ],
+  "sample_seed": 20261036,
+  "n_pairs": 4,
+  "rho": {
+   "from_calibration": "runs/bc2rl-e2-calib-devlight-s7/calibration.json"
+  }
+ }
+}

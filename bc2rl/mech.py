@@ -518,7 +518,7 @@ def cmd_mech(cfg):
                                 fit_cls, sel, ledger, res_dir)
 
     # ---- stage 4: forks
-    rho = me["rho"]
+    rho, rho_src = resolve_rho(me, pd)
     probe = mdata["probe"]
     kl_texts = [chat_prompt(tok, task.prompt_text(p, variant, fmt)) for p in probe]
     kl_path = run.path("kl_samples.jsonl.gz")
@@ -564,7 +564,7 @@ def cmd_mech(cfg):
         if stop.stop:
             raise SystemExit(143)
     summary = {"run_id": run.id, "config_hash": run.chash, "adapter_sha256": asha, "theta0_sha": theta0_sha,
-               "rho": rho, "selection": sel, "pairs_used": use_pairs,
+               "rho": rho, "rho_source": rho_src, "selection": sel, "pairs_used": use_pairs,
                "forks": {t: json.load(open(run.path("forks", f"{t}.json"))) for t, _ in forks},
                "anchor_manifest": mman["splits"], "gpu_s_total": ledger.total_gpu_s(), "wall_s": time.time() - t_start,
                "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"}
@@ -578,6 +578,19 @@ def cmd_mech(cfg):
     atomic_json(run.path("DONE.json"), {"config_hash": run.chash, "artifacts": []})
     ledger.flush(note="complete")
     return 0
+
+
+def resolve_rho(me, pd):
+    """rho is a number, or {"from_calibration": <path under PROJ_DATA>} applying the frozen development rule.
+    The calibration must have passed its checks."""
+    r = me["rho"]
+    if not isinstance(r, dict):
+        return float(r), "config"
+    path = os.path.join(pd, r["from_calibration"])
+    cal = json.load(open(path))
+    if cal.get("chosen_rho") is None or not cal.get("checks", {}).get("all_ok"):
+        raise SystemExit(f"calibration {path} has no valid rho or failed its checks: {cal.get('checks')}")
+    return float(cal["chosen_rho"]), path
 
 
 def calibrate_radius(cfg, run, model, tok, params, theta0, h, disp, pairs, data, fmt, fit_seqs, fit_cls, sel,
@@ -606,7 +619,16 @@ def calibrate_radius(cfg, run, model, tok, params, theta0, h, disp, pairs, data,
         print(f"[calib] rho {rho}: stat {row['stat']}", flush=True)
     ok = [r["rho"] for r in grid if r["stat"] is not None and r["stat"] <= me["kl_target"]]
     chosen = max(ok) if ok else None
-    out = {"run_id": run.id, "rule": f"largest rho in {me['rho_grid']} with max-over-displacements median "
+    checks = {"n_displacements": len(disp), "h_norm_positive": bool(float(h.norm()) > 0),
+              "finite": bool(all(torch.isfinite(d).all() for d in disp.values()))}
+    if chosen is not None:
+        row = next(r for r in grid if r["rho"] == chosen)
+        ratios = {k: (v["actual"] / v["pred"] if v["pred"] else None) for k, v in row["taylor"].items()}
+        checks["taylor_ratio_at_chosen"] = ratios
+        checks["taylor_ok"] = bool(all(x is not None and 0.5 <= x <= 2.0 for x in ratios.values()))
+    checks["all_ok"] = bool(chosen is not None and checks["n_displacements"] >= 2 and checks["h_norm_positive"]
+                            and checks["finite"] and checks.get("taylor_ok", False))
+    out = {"run_id": run.id, "checks": checks, "rule": f"largest rho in {me['rho_grid']} with max-over-displacements median "
                                      f"sampled-token KL <= {me['kl_target']}", "chosen_rho": chosen, "grid": grid,
            "pairs": pairs, "selection": sel, "gpu_s_total": ledger.total_gpu_s()}
     assert torch.equal(flat_params(params), theta0)

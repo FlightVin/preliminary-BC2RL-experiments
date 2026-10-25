@@ -1,0 +1,76 @@
+{
+ "name": "e2",
+ "stop_on_failure": true,
+ "tasks": [
+  {
+   "id": "calib-devlight-s7",
+   "steps": [
+    {
+     "name": "calib",
+     "cmd": "mech",
+     "config": "configs/mech/calib.yaml"
+    }
+   ]
+  },
+  {
+   "id": "e2-light-s11",
+   "steps": [
+    {
+     "name": "mech",
+     "cmd": "mech",
+     "config": "configs/mech/e2-light-s11.yaml"
+    }
+   ]
+  },
+  {
+   "id": "e2-extended-s11",
+   "steps": [
+    {
+     "name": "mech",
+     "cmd": "mech",
+     "config": "configs/mech/e2-extended-s11.yaml"
+    }
+   ]
+  },
+  {
+   "id": "e2-light-s22",
+   "steps": [
+    {
+     "name": "mech",
+     "cmd": "mech",
+     "config": "configs/mech/e2-light-s22.yaml"
+    }
+   ]
+  },
+  {
+   "id": "e2-extended-s22",
+   "steps": [
+    {
+     "name": "mech",
+     "cmd": "mech",
+     "config": "configs/mech/e2-extended-s22.yaml"
+    }
+   ]
+  },
+  {
+   "id": "e2-light-s33",
+   "steps": [
+    {
+     "name": "mech",
+     "cmd": "mech",
+     "config": "configs/mech/e2-light-s33.yaml"
+    }
+   ]
+  },
+  {
+   "id": "e2-extended-s33",
+   "steps": [
+    {
+     "name": "mech",
+     "cmd": "mech",
+     "config": "configs/mech/e2-extended-s33.yaml"
+    }
+   ]
+  }
+ ]
+}

@@ -70,6 +70,7 @@ def main():
             continue
         tres = os.path.join(a.results_dir, tid)
         os.makedirs(tres, exist_ok=True)
+        task_failed = False
         for k, step in enumerate(t["steps"]):
             cmd = [py, "-m", "bc2rl", step["cmd"], "--config", step["config"]]
             if step.get("results", True):
@@ -77,12 +78,7 @@ def main():
             print(f"[worker] {now()} {tid} step {k} ({step.get('name', '')}): {' '.join(cmd)}", flush=True)
             t0 = time.time()
             p = subprocess.Popen(cmd)
-            while True:
-                try:
-                    rc = p.wait()
-                    break
-                except InterruptedError:
-                    continue
+            rc = p.wait()
             print(f"[worker] {now()} {tid} step {k} exit {rc} after {time.time() - t0:.0f}s", flush=True)
             if rc != 0:
                 if rc < 0 or rc > 128:
@@ -91,11 +87,15 @@ def main():
                     sys.exit(143)
                 open(os.path.join(cdir, "FAILED"), "w").write(f"{job} step {k} rc {rc} {now()}\n")
                 status["tasks"][tid] = f"FAILED step {k} rc {rc}"
-                failed = True
+                task_failed = failed = True
                 break
-        else:
+        if not task_failed:
             open(os.path.join(cdir, "DONE"), "w").write(f"{job} {now()}\n")
             status["tasks"][tid] = "done"
+        elif wl.get("stop_on_failure"):
+            json.dump(status, open(os.path.join(a.results_dir, "worker_status.json"), "w"), indent=1)
+            print("[worker] stop_on_failure: later tasks wait for the orchestrator", flush=True)
+            break
         json.dump(status, open(os.path.join(a.results_dir, "worker_status.json"), "w"), indent=1)
     json.dump(status, open(os.path.join(a.results_dir, "worker_status.json"), "w"), indent=1)
     print(f"[worker] finished: {json.dumps(status['tasks'])}", flush=True)

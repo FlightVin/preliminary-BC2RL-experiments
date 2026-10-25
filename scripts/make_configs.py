@@ -189,11 +189,7 @@ def mech():
         MECH, mode="calibrate", adapter="runs/bc2rl-s0-bc-devlight/adapters/step0016.safetensors",
         source_splits=["dev", "devdemo"], pool_prompts=656, sample_seed=20261025 + 900, n_pairs=2,
         kl_split="dev", kl_target=0.01, rho_grid=[1, 2, 4, 8, 16, 32, 64, 128])))
-    fzm = os.path.join(ROOT, "configs", "mech", "frozen_mech.json")
-    if not os.path.exists(fzm):
-        print("frozen_mech.json absent: E2 checkpoint configs not written (calibrate first)")
-        return
-    rho = json.load(open(fzm))["rho"]
+    rho = {"from_calibration": "runs/bc2rl-e2-calib-devlight-s7/calibration.json"}   # frozen rule, applied at run time
     res = os.path.join(ROOT, "slurm-agentic-engineering", "results")
     for ci, seed in enumerate((11, 22, 33)):
         summ = json.load(open(os.path.join(res, f"bc2rl-s1-bcbroad-main-s{seed}", "summary.json")))
@@ -203,6 +199,16 @@ def mech():
                 MECH, mode="intervene", adapter=f"runs/bc2rl-s1-bc-broad-s{seed}/adapters/step{step:04d}.safetensors",
                 adapter_sha256=sha[step], source_splits=["online"], sample_seed=20261025 + 10 * ci + (step == 128),
                 n_pairs=4, rho=rho)))
+    tasks = [{"id": "calib-devlight-s7", "steps": [{"name": "calib", "cmd": "mech", "config": "configs/mech/calib.yaml"}]}]
+    for seed in (11, 22, 33):
+        for name in ("light", "extended"):
+            tasks.append({"id": f"e2-{name}-s{seed}", "steps": [{"name": "mech", "cmd": "mech",
+                                                                 "config": f"configs/mech/e2-{name}-s{seed}.yaml"}]})
+    full = os.path.join(ROOT, "configs", "worklists", "e2.json")
+    with open(full, "w") as f:
+        json.dump({"name": "e2", "stop_on_failure": True, "tasks": tasks}, f, indent=1)
+        f.write("\n")
+    print(f"worklists/e2.json: {[t['id'] for t in tasks]}")
 
 
 if __name__ == "__main__":
