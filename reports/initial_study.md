@@ -1,6 +1,6 @@
 # BC2RL: signal, transfer and retention after behavior cloning — initial study
 
-**Status: DRAFT (2026-10-25 00:30 EDT).** Sections marked **PENDING** wait for runs that are queued.
+**Status: DRAFT (2026-10-25 10:30 EDT).** Sections marked **PENDING** wait for runs that are queued.
 Test results are blinded until the result set is frozen (latest Tue 2026-10-27 15:00 EDT). Every number
 below comes from development or validation data unless a section says "test".
 
@@ -84,14 +84,40 @@ The pre-registered gate (5-input pass@1 >= 2% with >= 5/48 solved) passed. The g
 | 22 | 0.038 | 0.097 | 0.158 |
 | 33 | 0.040 | 0.151 | 0.141 |
 
-10-input validation pass@1 is <= 0.005 for every checkpoint. Per-input-count error mixes, success-count
-histograms and mixed-group frequencies: **PENDING** (`audit.csv` from the analysis job).
+10-input validation pass@1 is <= 0.005 for every checkpoint.
+
+### 4.4 Audit by input count (validation 144 x 4; range over seeds 11 / 22 / 33)
+
+| inputs | quantity | light BC | extended BC | continued BC |
+|---:|---|---|---|---|
+| 3 | pass@1 | 0.089-0.115 | 0.271-0.411 | 0.380-0.422 |
+| 3 | problems with a mixed 4-attempt group | 0.31-0.40 | 0.63-0.67 | 0.60-0.73 |
+| 5 | pass@1 | 0-0.010 | 0.010-0.042 | 0.036-0.047 |
+| 5 | problems with a mixed 4-attempt group | 0-0.04 | 0.04-0.15 | 0.13-0.19 |
+| 10 | pass@1 | 0 | 0 | 0-0.005 |
+| 10 | problems with a mixed 4-attempt group | 0 | 0 | 0-0.02 |
+
+- The dominant light-BC failure is an illegal operand (an unavailable or reused number): 0.54-0.89 of attempts.
+  After extended or continued BC, the dominant failure at 3 and 5 inputs is a legal chain with a wrong final value.
+- Format validity is >= 0.75 for every BC checkpoint (untouched model: 0.57-0.72).
+- Light BC truncates often at 10 inputs (256-token cap): 0.03, 0.29 and 0.67 of attempts for seeds 22, 11 and 33.
+  Some 10-input failures of light BC are therefore length failures, not only arithmetic failures.
+- Consequence: GRPO receives almost all of its signal from 3-input problems, some from 5-input problems and none from
+  10-input problems. The study cannot test long-horizon learning. Source: `audit.csv` (analysis code, commit 26eae27).
+
+![pass@k by input count, validation 4-attempt panels](figures/curves_val4_passat.png)
 
 ## 5. E0: exact two-task model (analytic control)
 
-**PENDING** (job `bc2rl-e0-cpuprep-main-s0`). The construction shows that identical initial success curves
-and mixed-group probabilities can lead to opposite transfer, so a success profile alone cannot determine the
-effect of an update.
+E0 is mathematics, not a measurement. Two tasks share one parameter theta. In the *aligned* model both tasks
+improve together; in the *opposing* model one task improves while the other degrades. At theta = 0 both models have
+identical success curves and identical mixed-group probabilities, but the full-batch policy gradient is 0.25 in the
+aligned model and exactly 0 in the opposing model. In the opposing model, mean success (pass@1) stays at 0.5 for
+every theta, while pass@k falls and pass^k rises for every k > 1. A success profile alone therefore cannot determine
+whether an update transfers, and pass@1 alone can hide a change in competence. All numeric checks pass (CPU job
+10921829): estimator bias <= 1e-15, GRPO and mixed-group identities exact to 2e-16, Taylor residual ratio <= 0.045.
+
+![E0 exact two-task model](figures/e0_toy.png)
 
 ## 6. E2: matched-update intervention (H1)
 
@@ -114,6 +140,13 @@ log-likelihood. Primary behavioral endpoint: paired change in probe pass@1 (48 x
 | 128 | 0.167 | 0.453 | 0.047 | 0 |
 | 240 | 0.198 | 0.526 | 0.068 | 0 |
 | 256 | 0.184 | 0.490 | 0.062 | 0 |
+
+The learning signal is sparse. In each round, 32 prompts give 32 groups of 4 attempts. On average only 4.2, 3.7,
+3.2 and 2.9 groups were mixed in rounds 1-64, 65-128, 129-192 and 193-256. All-success groups rose from 1.1 to 3.1,
+and about 26 groups failed completely throughout. GRPO therefore learned from 9-13% of the sampled groups, and the
+signal shrank as 3-input problems saturated (observational, one run).
+
+![E3 trajectory: mixed groups per round and validation pass@1](figures/e3_trajectories.png)
 
 ## 8. Retention (H2) and the E4 gate
 

@@ -421,14 +421,14 @@ def figures(out, panels, curves_rows, contrast_sets, ret_sets, mech_rows, toy_cs
         fig, axes = plt.subplots(1, 3, figsize=(12, 3.4))
         th = [float(r["theta"]) for r in rows if r["model"] == "opposing"]
         p = np.linspace(0, 1, 101)
-        for G, col in ((2, COLORS["initial"]), (4, COLORS["grpo"]), (8, COLORS["filtered"])):
-            axes[0].plot(p, 1 - p ** G - (1 - p) ** G, color=col, label=f"G={G}")
+        for G, ls in ((2, ":"), (4, "-"), (8, "--")):       # method colors are reserved for GRPO / filtered
+            axes[0].plot(p, 1 - p ** G - (1 - p) ** G, color=INK, ls=ls, label=f"G={G}")
         axes[0].set_xlabel("success probability p")
         axes[0].set_ylabel("P(mixed group)")
         axes[0].legend(frameon=False, fontsize=8)
         for k, ls in ((1, "-"), (4, "--"), (8, ":")):
-            axes[1].plot(th, [float(r[f"C{k}"]) for r in rows if r["model"] == "opposing"], color=COLORS["grpo"], ls=ls, label=f"k={k}")
-            axes[2].plot(th, [float(r[f"R{k}"]) for r in rows if r["model"] == "opposing"], color=COLORS["filtered"], ls=ls, label=f"k={k}")
+            axes[1].plot(th, [float(r[f"C{k}"]) for r in rows if r["model"] == "opposing"], color=INK, ls=ls, label=f"k={k}")
+            axes[2].plot(th, [float(r[f"R{k}"]) for r in rows if r["model"] == "opposing"], color=INK, ls=ls, label=f"k={k}")
         axes[1].set_title("opposing features: pass@k (coverage)", fontsize=9)
         axes[2].set_title("opposing features: pass^k (repeated success)", fontsize=9)
         for ax in axes[1:]:
@@ -447,7 +447,7 @@ def figures(out, panels, curves_rows, contrast_sets, ret_sets, mech_rows, toy_cs
         fig, axes = plt.subplots(1, 2, figsize=(10, 3.6))
         for name, t in traj.items():
             col = COLORS[t["method"]]
-            ls = "--" if t["init"] == "light" else "-"
+            ls = INIT_LS.get(t["init"], "-")
             r = np.array(t["rounds"])
             mg = np.array(t["mixed"], float)
             w = 16
