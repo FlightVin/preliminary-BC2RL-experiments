@@ -86,7 +86,33 @@ phase test-eval "test -s $PROJ_DATA/evals/bc2rl-s4-eval-{init}-{method}-s{seed}/
     print("\n".join(out))
 
 
+def workers(time="08:00:00", worklist="e3", n=4):
+    """Bounded sequential workers (amendment A2): each job claims and runs tasks from one worklist in
+    priority order (scripts/worker.py). Workers are interchangeable; a task runs in exactly one."""
+    out = []
+    for w in range(1, n + 1):
+        expid = f"bc2rl-{worklist}w-w{w}-main-s0"
+        body = HEAD.format(time=time, hyp=f"Worker {w} for worklist {worklist}: run registered tasks sequentially; "
+                           "each task keeps its own config, run_id, checkpoints and cost ledger.")
+        body += f"""
+phase precondition "true" '
+    test -s $PROJ_DATA/frozen/protocol_frozen.json || {{ echo "PRECONDITION: protocol freeze file missing"; exit 1; }}
+    nvidia-smi --query-gpu=name,memory.used --format=csv,noheader
+'
+phase worker "test -s $AE_RESULTS/worker_done.json" '
+    $PY scripts/worker.py --worklist configs/worklists/{worklist}.json --results-dir $AE_RESULTS
+    cp $AE_RESULTS/worker_status.json $AE_RESULTS/worker_done.json
+'
+"""
+        open(os.path.join(EXP, f"{expid}.sh"), "w").write(body)
+        out.append(expid)
+    print("\n".join(out))
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     t = args[args.index("--time") + 1] if "--time" in args else "08:00:00"
-    {"stage2": stage2, "stage4": stage4}[args[0]](t)
+    if args[0] == "workers":
+        workers(t, args[args.index("--worklist") + 1], int(args[args.index("--n") + 1]))
+    else:
+        {"stage2": stage2, "stage4": stage4}[args[0]](t)

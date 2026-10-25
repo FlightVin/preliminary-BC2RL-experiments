@@ -137,5 +137,43 @@ def main_matrix():
               f"{len({c['tag'] for c in conds})} unique evaluated checkpoints, {len(train_runs)} training runs")
 
 
+def amend1():
+    """Amendment A2 (2026-10-25): E3 = {light, extended} x {grpo, filtered} x 3 seeds under the frozen
+    branch configs (unchanged), plus 15-attempt validation of each initial checkpoint and each round-256
+    endpoint (retention and the E4 gate on validation). Writes the E3 worklist in priority order."""
+    fz = json.load(open(os.path.join(ROOT, "configs", "frozen.json")))
+    cap, R = fz["cap"], fz["rounds"]
+    tasks = []
+    for seed in fz["seeds"]:
+        bcr = f"bc2rl-s1-bc-broad-s{seed}"
+        init_ck = [{"tag": f"light-s{seed}", "adapter": f"runs/{bcr}/adapters/step{fz['light_steps']:04d}.safetensors"},
+                   {"tag": f"extended-s{seed}", "adapter": f"runs/{bcr}/adapters/step{fz['extended_steps']:04d}.safetensors"}]
+        write(f"amend1/val15-init-s{seed}.yaml", ev(f"bc2rl-e3-val15-init-s{seed}", "val", "format", cap, init_ck,
+                                                    seed=fz["eval_seed"]))
+        tasks.append({"id": f"init-s{seed}", "steps": [
+            {"name": "test-eval-bcpath", "cmd": "evaluate", "results": False,
+             "config": f"configs/main/eval-bcpath-s{seed}.yaml"},
+            {"name": "val15-init", "cmd": "evaluate", "config": f"configs/amend1/val15-init-s{seed}.yaml"}]})
+        for init, method in (("light", "grpo"), ("light", "filtered"), ("extended", "grpo"), ("extended", "filtered")):
+            rid = f"bc2rl-s2-{init}-{method}-s{seed}"
+            write(f"amend1/val15-{init}-{method}-s{seed}.yaml",
+                  ev(f"bc2rl-e3-val15-{init}-{method}-s{seed}", "val", "format", cap,
+                     [{"tag": f"{init}-{method}-s{seed}-r{R}", "adapter": f"runs/{rid}/adapters/round{R:04d}.safetensors"}],
+                     seed=fz["eval_seed"]))
+            steps = [{"name": "online", "cmd": "online", "config": f"configs/main/on-{init}-{method}-s{seed}.yaml"},
+                     {"name": "test-eval", "cmd": "evaluate", "results": False,
+                      "config": f"configs/main/eval-{init}-{method}-s{seed}.yaml"},
+                     {"name": "val15", "cmd": "evaluate", "config": f"configs/amend1/val15-{init}-{method}-s{seed}.yaml"}]
+            if (init, method, seed) == ("light", "grpo", 11):
+                steps = steps[2:]            # trained and test-evaluated in job 10917856 (protocol 5deefef)
+            tasks.append({"id": f"{init}-{method}-s{seed}", "steps": steps})
+    full = os.path.join(ROOT, "configs", "worklists", "e3.json")
+    os.makedirs(os.path.dirname(full), exist_ok=True)
+    with open(full, "w") as f:
+        json.dump({"name": "e3", "tasks": tasks}, f, indent=1)
+        f.write("\n")
+    print(f"worklists/e3.json: {len(tasks)} tasks: {[t['id'] for t in tasks]}")
+
+
 if __name__ == "__main__":
-    {"stage0": stage0, "main": main_matrix}[sys.argv[1]]()
+    {"stage0": stage0, "main": main_matrix, "amend1": amend1}[sys.argv[1]]()

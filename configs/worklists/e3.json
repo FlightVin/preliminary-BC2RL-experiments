@@ -1,0 +1,294 @@
+{
+ "name": "e3",
+ "tasks": [
+  {
+   "id": "init-s11",
+   "steps": [
+    {
+     "name": "test-eval-bcpath",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-bcpath-s11.yaml"
+    },
+    {
+     "name": "val15-init",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-init-s11.yaml"
+    }
+   ]
+  },
+  {
+   "id": "light-grpo-s11",
+   "steps": [
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-light-grpo-s11.yaml"
+    }
+   ]
+  },
+  {
+   "id": "light-filtered-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/main/on-light-filtered-s11.yaml"
+    },
+    {
+     "name": "test-eval",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-light-filtered-s11.yaml"
+    },
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-light-filtered-s11.yaml"
+    }
+   ]
+  },
+  {
+   "id": "extended-grpo-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/main/on-extended-grpo-s11.yaml"
+    },
+    {
+     "name": "test-eval",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-extended-grpo-s11.yaml"
+    },
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-extended-grpo-s11.yaml"
+    }
+   ]
+  },
+  {
+   "id": "extended-filtered-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/main/on-extended-filtered-s11.yaml"
+    },
+    {
+     "name": "test-eval",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-extended-filtered-s11.yaml"
+    },
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-extended-filtered-s11.yaml"
+    }
+   ]
+  },
+  {
+   "id": "init-s22",
+   "steps": [
+    {
+     "name": "test-eval-bcpath",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-bcpath-s22.yaml"
+    },
+    {
+     "name": "val15-init",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-init-s22.yaml"
+    }
+   ]
+  },
+  {
+   "id": "light-grpo-s22",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/main/on-light-grpo-s22.yaml"
+    },
+    {
+     "name": "test-eval",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-light-grpo-s22.yaml"
+    },
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-light-grpo-s22.yaml"
+    }
+   ]
+  },
+  {
+   "id": "light-filtered-s22",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/main/on-light-filtered-s22.yaml"
+    },
+    {
+     "name": "test-eval",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-light-filtered-s22.yaml"
+    },
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-light-filtered-s22.yaml"
+    }
+   ]
+  },
+  {
+   "id": "extended-grpo-s22",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/main/on-extended-grpo-s22.yaml"
+    },
+    {
+     "name": "test-eval",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-extended-grpo-s22.yaml"
+    },
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-extended-grpo-s22.yaml"
+    }
+   ]
+  },
+  {
+   "id": "extended-filtered-s22",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/main/on-extended-filtered-s22.yaml"
+    },
+    {
+     "name": "test-eval",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-extended-filtered-s22.yaml"
+    },
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-extended-filtered-s22.yaml"
+    }
+   ]
+  },
+  {
+   "id": "init-s33",
+   "steps": [
+    {
+     "name": "test-eval-bcpath",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-bcpath-s33.yaml"
+    },
+    {
+     "name": "val15-init",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-init-s33.yaml"
+    }
+   ]
+  },
+  {
+   "id": "light-grpo-s33",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/main/on-light-grpo-s33.yaml"
+    },
+    {
+     "name": "test-eval",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-light-grpo-s33.yaml"
+    },
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-light-grpo-s33.yaml"
+    }
+   ]
+  },
+  {
+   "id": "light-filtered-s33",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/main/on-light-filtered-s33.yaml"
+    },
+    {
+     "name": "test-eval",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-light-filtered-s33.yaml"
+    },
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-light-filtered-s33.yaml"
+    }
+   ]
+  },
+  {
+   "id": "extended-grpo-s33",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/main/on-extended-grpo-s33.yaml"
+    },
+    {
+     "name": "test-eval",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-extended-grpo-s33.yaml"
+    },
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-extended-grpo-s33.yaml"
+    }
+   ]
+  },
+  {
+   "id": "extended-filtered-s33",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/main/on-extended-filtered-s33.yaml"
+    },
+    {
+     "name": "test-eval",
+     "cmd": "evaluate",
+     "results": false,
+     "config": "configs/main/eval-extended-filtered-s33.yaml"
+    },
+    {
+     "name": "val15",
+     "cmd": "evaluate",
+     "config": "configs/amend1/val15-extended-filtered-s33.yaml"
+    }
+   ]
+  }
+ ]
+}
