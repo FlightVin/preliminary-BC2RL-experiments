@@ -11,7 +11,7 @@ This study tests three hypotheses with Qwen2.5-0.5B-Instruct (LoRA r16) on a ver
 
 | hypothesis | experiment | status |
 |---|---|---|
-| H1: signal availability does not fully determine transfer | E2 matched-update pairs at fixed BC checkpoints | PENDING |
+| H1: signal availability does not fully determine transfer | E2 matched-update pairs at fixed BC checkpoints | **E2 not run**: pre-launch check failed (Section 6); E0 + observational E3 only |
 | H2: aggregate improvement can conceal loss of existing competence | E3 retention on initially consistent problems | PENDING |
 | H3: directional constraints preserve competence beyond shrinking | E4 projection vs norm-matched vs sham | conditional (gate in Section 8) |
 
@@ -119,14 +119,38 @@ whether an update transfers, and pass@1 alone can hide a change in competence. A
 
 ![E0 exact two-task model](figures/e0_toy.png)
 
-## 6. E2: matched-update intervention (H1)
+## 6. E2: matched-update intervention (H1) — not run
 
-**PENDING.** Design (pre-registered in the amendment, Section 4): for each BC checkpoint, 1,024 online prompts
-x 4 completions; mixed groups only; pairs of 8-group minibatches with exactly matched (input count, success
-count) histograms and mean lengths within 5%; high versus low alignment of the actual fresh-state AdamW
-displacement with the anchor-fit log-likelihood gradient; equal displacement norms; one development-calibrated
-radius; each update applied once to a fresh copy. Primary mechanistic endpoint: paired change in anchor-check
-log-likelihood. Primary behavioral endpoint: paired change in probe pass@1 (48 x 15).
+**E2 was not run as an intervention.** Its pre-registered pre-launch check failed at the calibrated radius, and the
+decision rule fixed before the diagnostic (amendment Section 11) excludes the experiment. This is a
+measurement-limited result. The design is unchanged (amendment Section 4): matched high- vs low-alignment GRPO
+minibatches, equal-norm actual AdamW displacements, one radius, and the paired anchor-check log-likelihood change.
+
+What happened (development data only; dev light-BC checkpoint, seed 7):
+- The radius rule chose rho = 1, which is one real AdamW step (median sampled-token KL 0.0048; 0.021 at rho = 2).
+- The Taylor check compares the actual anchor-fit log-likelihood change with the first-order prediction h.d. It needs
+  a ratio in [0.5, 2]. In the BF16 model the ratios were 0.20, 4.45, 0.24 and 13.7.
+- A diagnostic (job 10925931) separated three causes:
+  - **Implementation:** correct. In fp32, four random directions of equal norm follow h.d with ratio 0.96-1.03.
+  - **Measurement floor:** the BF16 forward pass changes the anchor log-likelihood by up to 2.5e-4 for random
+    directions whose true effect is < 2.4e-6. A one-step effect (2.5e-5 to 1.9e-4) is at or below this floor.
+  - **Curvature:** in fp32 the ratios are 0.83, 1.40, 0.70 and 2.89. A fit a*rho + b*rho^2 recovers the predicted
+    linear term (a / h.d = 0.62-1.06), but every GRPO displacement has a negative second-order term
+    (b = -3.5e-5 to -5.4e-5), about 10^4 times the value for random directions. For the low-alignment update with the
+    smallest predicted change, this term is about twice the predicted first-order term after one step.
+
+Interpretation, limited to these 4 displacements on one development checkpoint: first-order alignment with the anchor
+gradient does not by itself predict the one-step anchor change of a GRPO update, because the update also lies along
+high-curvature directions of the anchor objective. This is descriptive and does not test H1.
+
+| displacement | alignment cos(h, d) | predicted h.d | actual (fp32) | ratio | fitted b |
+|---|---:|---:|---:|---:|---:|
+| pair 0, high | +0.059 | +1.72e-4 | +1.43e-4 | 0.83 | -3.5e-5 |
+| pair 0, low | -0.035 | -1.12e-4 | -1.58e-4 | 1.40 | -4.9e-5 |
+| pair 1, high | +0.047 | +1.53e-4 | +1.07e-4 | 0.70 | -4.9e-5 |
+| pair 1, low | -0.009 | -2.46e-5 | -7.12e-5 | 2.89 | -5.4e-5 |
+
+Source: `results/bc2rl-e2-taylordiag-dev-s7/taylor_diag.json`, calibration `runs/bc2rl-e2-calib-devlight-s7/calibration.json`.
 
 ## 7. E3: online trajectories and paired method comparison
 
