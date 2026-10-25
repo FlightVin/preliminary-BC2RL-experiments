@@ -118,11 +118,13 @@ def test_mech_end_to_end_tiny(tmp_path):
     assert cal["chosen_rho"] == 2 and len(cal["grid"]) == 2
     cli("mech", dict(base, run_id="iv", mech=dict(me, mode="intervene", rho=2)))
     s = json.load(open(pd / "runs" / "iv" / "summary.json"))
-    assert set(s["forks"]) == {"base", "p0-H", "p0-L"}
     pr = s["pairs_used"][0]
+    i = pr["pair"]
+    assert set(s["forks"]) == {"base", f"p{i}-H", f"p{i}-L"}
+    assert all(p["status"] != "ok" for p in s["selection"]["pairs"] if p["pair"] < i)   # earlier pools were not usable
     assert pr["hist_H"] == pr["hist_L"]
     assert abs(pr["exact"]["H"]["d_norm_equal"] - pr["exact"]["L"]["d_norm_equal"]) < 1e-6 * pr["exact"]["H"]["d_norm_equal"] + 1e-12
-    for t in ("p0-H", "p0-L"):
+    for t in (f"p{i}-H", f"p{i}-L"):
         f = s["forks"][t]
         assert f["kl_median"] >= -1e-6 and np.isfinite(f["taylor_pred_fit"])
         assert sum(f["probe"]["n"]) == 6 * 2

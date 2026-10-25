@@ -149,7 +149,10 @@ unreported pilot. Seeds 22 and 33 follow if the seed-11 implementation checks pa
 12. **Pre-launch checks (canary on seed-11 light).** Finite gradients; h norm > 0; AdamW equivalence;
     Taylor check on the selection anchor (predicted versus actual change, same sign and ratio in
     [0.5, 2] for rho at calibration); KL statistic <= 0.01; restored-checkpoint hash equality.
-13. **Shortage rule.** If fewer than 4 pools can be formed, run the pairs that exist and report the
+13. **Pool replacement (clarification 2026-10-25 01:00, before any E2 outcome).** Pairs use the first
+    `n_pairs` pools in pool order whose composition is feasible and whose arms meet the length rule. A pool that
+    fails either check is reported and the next pool replaces it. The checks use only source-pool statistics.
+14. **Shortage rule.** If fewer than 4 pools can be formed, run the pairs that exist and report the
     count. Do not relax matching or generate more candidates without a recorded forecast update.
 
 ## 5. E3 retention analysis rules (fixed before any final 15-attempt evaluation is read)
