@@ -1,6 +1,6 @@
 # BC2RL: signal, transfer and retention after behavior cloning — initial study
 
-**Status: DRAFT (2026-10-25 15:55 EDT).** All runs are complete. Sections marked **TEST PENDING** wait for the single
+**Status: DRAFT (2026-10-25 15:51 EDT).** All runs are complete. Sections marked **TEST PENDING** wait for the single
 test unblinding after the result freeze.
 Test results are blinded until the result set is frozen (latest Tue 2026-10-27 15:00 EDT). Every number
 below comes from development or validation data unless a section says "test".
