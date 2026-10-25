@@ -1,0 +1,70 @@
+{
+ "prompt_variant": "format",
+ "model": {
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0
+  }
+ },
+ "data": {
+  "version": "v1",
+  "main_seed": 20261024,
+  "dev_seed": 1024,
+  "min_value": 2,
+  "max_value": 20,
+  "max_target": 1000,
+  "max_abs_intermediate": 10000,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "format_example_inputs": 4
+ },
+ "run_id": "bc2rl-e2-calib-devlight-s7",
+ "seed": 7,
+ "mech": {
+  "group": 4,
+  "cap": 256,
+  "micro": 8,
+  "lr": 1e-05,
+  "groups_per_arm": 8,
+  "pool_prompts": 656,
+  "pool_seed": 20261025,
+  "max_mixed": 512,
+  "max_pools": 8,
+  "pool_split_seed": 777,
+  "len_tol": 0.05,
+  "search_budget": 3000,
+  "eval_seed": 1,
+  "probe_attempts": 15,
+  "kl_samples": 4,
+  "batch_seqs": 480,
+  "mode": "calibrate",
+  "adapter": "runs/bc2rl-s0-bc-devlight/adapters/step0016.safetensors",
+  "source_splits": [
+   "dev",
+   "devdemo"
+  ],
+  "sample_seed": 20261925,
+  "n_pairs": 2,
+  "kl_split": "dev",
+  "kl_target": 0.01,
+  "rho_grid": [
+   1,
+   2,
+   4,
+   8,
+   16,
+   32,
+   64,
+   128
+  ]
+ }
+}

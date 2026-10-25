@@ -175,5 +175,35 @@ def amend1():
     print(f"worklists/e3.json: {len(tasks)} tasks: {[t['id'] for t in tasks]}")
 
 
+MECH = {"group": 4, "cap": 256, "micro": 8, "lr": 1e-05, "groups_per_arm": 8, "pool_prompts": 1024,
+        "pool_seed": 20261025, "max_mixed": 512, "max_pools": 8, "pool_split_seed": 777, "len_tol": 0.05,
+        "search_budget": 3000, "eval_seed": 1, "probe_attempts": 15, "kl_samples": 4, "batch_seqs": 480}
+
+
+def mech():
+    """E0/E2 configs (amendment A2 Section 4). rho comes from configs/mech/frozen_mech.json once calibrated."""
+    write("mech/toy.yaml", dict(BASE, run_id="bc2rl-e0-toy", seed=0))
+    write("mech/mechdata.yaml", dict(BASE, run_id="bc2rl-e2-mechdata", seed=0,
+                                     mechdata={"seed": 20261025, "per_inputs": 16}))
+    write("mech/calib.yaml", dict(BASE, run_id="bc2rl-e2-calib-devlight-s7", seed=7, mech=dict(
+        MECH, mode="calibrate", adapter="runs/bc2rl-s0-bc-devlight/adapters/step0016.safetensors",
+        source_splits=["dev", "devdemo"], pool_prompts=656, sample_seed=20261025 + 900, n_pairs=2,
+        kl_split="dev", kl_target=0.01, rho_grid=[1, 2, 4, 8, 16, 32, 64, 128])))
+    fzm = os.path.join(ROOT, "configs", "mech", "frozen_mech.json")
+    if not os.path.exists(fzm):
+        print("frozen_mech.json absent: E2 checkpoint configs not written (calibrate first)")
+        return
+    rho = json.load(open(fzm))["rho"]
+    res = os.path.join(ROOT, "slurm-agentic-engineering", "results")
+    for ci, seed in enumerate((11, 22, 33)):
+        summ = json.load(open(os.path.join(res, f"bc2rl-s1-bcbroad-main-s{seed}", "summary.json")))
+        sha = {c["step"]: c["sha256"] for c in summ["checkpoints"]}
+        for name, step in (("light", 16), ("extended", 128)):
+            write(f"mech/e2-{name}-s{seed}.yaml", dict(BASE, run_id=f"bc2rl-e2-{name}-s{seed}", seed=seed, mech=dict(
+                MECH, mode="intervene", adapter=f"runs/bc2rl-s1-bc-broad-s{seed}/adapters/step{step:04d}.safetensors",
+                adapter_sha256=sha[step], source_splits=["online"], sample_seed=20261025 + 10 * ci + (step == 128),
+                n_pairs=4, rho=rho)))
+
+
 if __name__ == "__main__":
-    {"stage0": stage0, "main": main_matrix, "amend1": amend1}[sys.argv[1]]()
+    {"stage0": stage0, "main": main_matrix, "amend1": amend1, "mech": mech}[sys.argv[1]]()

@@ -1,4 +1,4 @@
-"""python -m bc2rl {generate,bc,online,evaluate,report} --config <yaml> [--run-id ID] [--results-dir DIR]"""
+"""python -m bc2rl {generate,bc,online,evaluate,report,toy,mechdata,mech} --config <yaml> [--run-id ID] [--results-dir DIR]"""
 from __future__ import annotations
 
 import argparse
@@ -9,7 +9,7 @@ from .runtime import load_config
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="bc2rl")
-    ap.add_argument("command", choices=["generate", "bc", "online", "evaluate", "report"])
+    ap.add_argument("command", choices=["generate", "bc", "online", "evaluate", "report", "toy", "mechdata", "mech"])
     ap.add_argument("--config", required=True)
     ap.add_argument("--run-id", help="explicit run identifier; resume uses the same id (overrides config run_id)")
     ap.add_argument("--results-dir", help="directory for the small harvested distillate (e.g. $AE_RESULTS)")
@@ -32,6 +32,15 @@ def main(argv=None):
     if a.command == "evaluate":
         from .evaluate import cmd_evaluate
         return cmd_evaluate(cfg)
+    if a.command == "toy":
+        from .toy import cmd_toy
+        return cmd_toy(cfg)
+    if a.command == "mechdata":
+        from .mech import cmd_mechdata
+        return cmd_mechdata(cfg)
+    if a.command == "mech":
+        from .mech import cmd_mech
+        return cmd_mech(cfg)
     if a.command == "report":
         from .report import cmd_report
         return cmd_report(cfg)
