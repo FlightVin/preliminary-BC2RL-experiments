@@ -234,6 +234,27 @@ calibrated only when true rates follow Beta(1/2, 1/2); for gains at 5 inputs it 
 analysis was chosen after seeing validation data, and it is observational. It describes where coverage was lost; it
 does not identify why. **TEST PENDING** (X1 runs once on test).
 
+### 8.1 Anchor-trace likelihood along the E3 trajectories (pre-registered secondary diagnostic; descriptive)
+
+For each branch, an fp32 forward pass measures the mean normalized log-likelihood of the reference traces of 48
+held-out anchor-check problems (16 per input count; mechanism split, no validation or test data) at rounds 0, 64,
+128 and 256 (job 10928308, `scripts/e3_anchor_audit.py`). A repeated measurement differs by 0.0.
+
+| initial BC | method | change r0 -> r256, all (mean [min, max] over 3 seeds) | 3 inputs | 5 inputs | 10 inputs |
+|---|---|---|---:|---:|---:|
+| light | GRPO | -0.075 [-0.080, -0.072] | -0.057 | -0.079 | -0.090 |
+| light | filtered | -0.103 [-0.133, -0.068] | -0.052 | -0.114 | -0.144 |
+| extended | GRPO | -0.097 [-0.116, -0.084] | -0.036 | -0.097 | -0.157 |
+| extended | filtered | -0.123 [-0.145, -0.111] | -0.036 | -0.124 | -0.208 |
+
+![Anchor-check log-likelihood by round](figures/e3_anchor_ll.png)
+
+All 12 branches move away from the reference traces. The fall is mostly on numeric tokens, grows with input count,
+and is larger for filtered BC than for GRPO in the group means (4 of 6 seed pairs). It does not follow the coverage
+loss of X1: at 3 inputs the extended-BC branches lose less reference-trace likelihood than the light-BC branches, but
+they lose more 3-input problems. Reference-trace drift therefore does not explain the coverage loss. Three seeds, no
+uncertainty band; descriptive only.
+
 ## 9. Compute
 
 | component | GPU-hours | source |
@@ -241,7 +262,8 @@ does not identify why. **TEST PENDING** (X1 runs once on test).
 | consumed before amendment A2 (Stage 0, Stage 1, one branch, base test eval) | 4.08 | sacct + cost ledger |
 | E3 workers w1-w5 (11 branches, 3 BC-path test evals, 15 val15 evals; incl. preempted segments) | 9.35 | sacct 2026-10-25 15:49 |
 | E2 calibration + Taylor diagnostic | 0.28 | sacct |
-| total allocated GPU-hours, all BC2RL GPU jobs | 13.75 | sacct 2026-10-25 15:49 |
+| E3 anchor audit (2 preempted segments, 2:16 + 0:43 min) | 0.05 | sacct 2026-10-25 18:30 |
+| total allocated GPU-hours, all BC2RL GPU jobs | 13.80 | sacct |
 | CPU-only jobs (analysis, data, tests, A3 export/migration) | not GPU-accounted | `preempt_cpu_qos` |
 
 ## 10. Deviations, missing runs and limitations
@@ -259,6 +281,8 @@ python -m bc2rl toy       --config configs/mech/toy.yaml
 python -m bc2rl mechdata  --config configs/mech/mechdata.yaml
 python -m bc2rl mech      --config configs/mech/calib.yaml ; configs/mech/e2-{light,extended}-s{seed}.yaml
 python -m bc2rl analyze   --config configs/analysis/final.yaml
+python scripts/e3_anchor_audit.py --config configs/mech/calib.yaml --out <dir>
+python scripts/plot_anchor_audit.py --audit <dir>/anchor_audit.json --out <dir>
 ```
 
 ## References
