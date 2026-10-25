@@ -223,7 +223,7 @@ result set is frozen (latest Tuesday 15:00 EDT).
 | core envelope 240 GPU-h | measured forecast about 40 GPU-h (DECISIONS 2026-10-25) | planning only, not a scientific endpoint |
 | anchor/probe splits | new draws from generator v1, seed 20261025 | disclosed data extension |
 
-## 11. Dated clarification D-E2-1 (2026-10-25 11:45 EDT; before any E2 outcome on a study checkpoint)
+## 11. Dated clarification D-E2-1 (2026-10-25 11:15 EDT, committed 11:18 in 8183d04; before any E2 outcome on a study checkpoint)
 
 **Event.** Radius calibration (job 10921831, commit 463ecc9, dev light-BC seed 7) chose rho = 1 by the step-8 KL rule
 (statistic 0.0048 at rho = 1, 0.021 at rho = 2). The Taylor check at rho = 1 failed: actual / predicted anchor-fit change
@@ -250,3 +250,14 @@ sign directions of equal norm. rho < 1 is diagnostic only.
 3. If the diagnostic shows an implementation error (for example bf16 and fp32 disagree on h by cos < 0.9, or the random
    directions show a first-order effect), the error is fixed and tested first, and rule 1 or 2 is applied to the
    corrected measurement.
+
+**Outcome (2026-10-25 11:30 EDT; job 10925931, commit 8183d04, dev only).** Rule 2 applies. E2 is not run as an intervention.
+- No implementation error: in fp32, h agrees with the bf16 h (cos 0.992), and 4 random equal-norm sign directions follow
+  the linear prediction (ratio at rho = 1: 1.03, 0.96, 1.02, 1.01; fitted linear term / prediction 0.92-1.08).
+- bf16 floor confirmed: the same random directions give changes of up to 2.5e-4 in bf16 (prediction <= 2.4e-6);
+  repeated evaluation at theta0 is bitwise deterministic in both precisions.
+- fp32 ratios at rho = 1 for p0-H, p0-L, p1-H, p1-L: 0.83, 1.40, 0.70, **2.89** (rule 1 needs all in [0.5, 2]).
+  The fitted linear term agrees with h.d (ratio 1.06, 0.95, 1.03, 0.62), but every GRPO displacement has a negative
+  second-order term (-3.5e-5 to -5.4e-5 per rho^2) that is comparable to the first-order term at one step for
+  low-alignment arms. Random directions have second-order terms of order 1e-9 to 1e-8.
+- Not changed after the outcome: the rho grid, the KL target, the ratio interval, the rule.
