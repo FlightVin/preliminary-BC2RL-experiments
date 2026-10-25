@@ -222,3 +222,31 @@ result set is frozen (latest Tuesday 15:00 EDT).
 | E1 expectations before online outcomes | recorded after one branch's validation curve | disclosed |
 | core envelope 240 GPU-h | measured forecast about 40 GPU-h (DECISIONS 2026-10-25) | planning only, not a scientific endpoint |
 | anchor/probe splits | new draws from generator v1, seed 20261025 | disclosed data extension |
+
+## 11. Dated clarification D-E2-1 (2026-10-25 11:45 EDT; before any E2 outcome on a study checkpoint)
+
+**Event.** Radius calibration (job 10921831, commit 463ecc9, dev light-BC seed 7) chose rho = 1 by the step-8 KL rule
+(statistic 0.0048 at rho = 1, 0.021 at rho = 2). The Taylor check at rho = 1 failed: actual / predicted anchor-fit change
+= 0.20, 4.45, 0.24, 13.7 for p0-H, p0-L, p1-H, p1-L. The code applies the step-12 Taylor check already at calibration
+(stricter than step 12, which applies it to the seed-11 light canary); the seed-11 light job therefore refused to start.
+Observed only on development data. No anchor-check, probe, validation or test outcome of any E2 checkpoint exists.
+
+**Diagnosis seen so far.** Actual anchor-fit changes at rho = 1, 2, 4 are not monotone for the H arms (about +4e-5,
+-1.8e-4, +1e-5), a size comparable to the predicted first-order change (1.5e-4 to 1.8e-4). This pattern fits a bf16
+measurement floor; above rho = 8 a curvature term dominates. An implementation error is not excluded yet.
+
+**Diagnostic (dev only).** `scripts/e2_taylor_diag.py` repeats the measurement on the same checkpoint, anchor-fit set
+and 4 saved displacements in bf16 and in an fp32 forward pass, for rho in {0.25, 0.5, 1, 2, 4, 8}, plus 4 random
+sign directions of equal norm. rho < 1 is diagnostic only.
+
+**Decision rule, fixed before the diagnostic runs.**
+1. If in fp32 all 4 displacements have the same sign and ratio in [0.5, 2] at rho = 1: all anchor log-likelihood
+   endpoints, the anchor direction h, the selection and the Taylor check use an fp32 forward pass from now on.
+   Sampling, probe evaluation and the KL statistic stay as frozen (BF16 policy). rho stays 1. A fresh calibration run
+   in this mode must pass every step-12 check before seed 11 starts.
+2. Otherwise E2 is not run as an intervention. The report states "E2 not run: pre-launch Taylor check failed at a
+   one-step radius", with the calibration and diagnostic data as a measurement-limited result. The rho grid, the KL
+   target and the ratio interval are not changed.
+3. If the diagnostic shows an implementation error (for example bf16 and fp32 disagree on h by cos < 0.9, or the random
+   directions show a first-order effect), the error is fixed and tested first, and rule 1 or 2 is applied to the
+   corrected measurement.
