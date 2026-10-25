@@ -8,6 +8,7 @@ Reads attempt-level records under $PROJ_DATA and writes tables, JSON and PNG fig
   contrasts.csv    paired difference curves with pointwise and simultaneous 95% bootstrap bands
   retention.csv    7/8-split retention (initially consistent subgroup), k = 1..8, by stratum
   transitions.csv  initial class (first 7 attempts) x final success count
+  coverage.csv     exploratory X1: coverage loss (initial c > 0 -> final 0) and gain vs a no-change reference
   e4_gate.json     E4 gate on validation
   mech.csv/json    E2 per-pair contrasts and checkpoint summaries
 Test panels are read only when `allow_test` is true (after the result set is frozen).
@@ -18,6 +19,7 @@ from __future__ import annotations
 import csv
 import itertools
 import json
+import math
 import os
 from collections import Counter, defaultdict
 
@@ -175,6 +177,35 @@ def retention(init, final, n_boot, min_n=12, seed=0, kmax=8):
         for (a, b), v in sorted(cnt.items()):
             trans.append({"n_inputs": hh, "initial_class": a, "final_bin": b, "problems": v})
     return rows, trans, {"S": S, "base_c": base.sum(1), "final_c": fcnt, "h": h, "c7": c7}
+
+
+def _p_zero(c, n, m):
+    """No-change reference: P(0 successes in m fresh attempts | c of n initial), Jeffreys posterior predictive."""
+    a, b = c + 0.5, n - c + 0.5
+    lbeta = lambda x, y: math.lgamma(x) + math.lgamma(y) - math.lgamma(x + y)
+    return math.exp(lbeta(a, b + m) - lbeta(a, b))
+
+
+def coverage(init, final, n_sim=10000, seed=0):
+    """Exploratory X1 (DECISIONS 2026-10-25 16:00): per stratum, problems lost (initial c > 0 of all initial attempts,
+    final 0) and gained (initial 0, final > 0), each against its no-change expectation and a 95% simulation band."""
+    pos = {p: i for i, p in enumerate(final["pids"])}
+    ia, fa, h = init["att"], final["att"][[pos[p] for p in init["pids"]]], init["h"]
+    n, m = ia.shape[1], fa.shape[1]
+    ic, fc = ia.sum(1), fa.sum(1)
+    p0 = np.array([_p_zero(int(c), n, m) for c in ic])
+    rng = np.random.default_rng(seed)
+    rows = []
+    for hh in sorted(set(h.tolist())) + ["all"]:
+        sel = (h == hh) if hh != "all" else np.ones(len(h), bool)
+        row = {"n_inputs": hh}
+        for kind, msk, pe, obs in (("lost", sel & (ic > 0), p0, fc == 0), ("gained", sel & (ic == 0), 1 - p0, fc > 0)):
+            sims = (rng.random((n_sim, int(msk.sum()))) < pe[msk]).sum(1)
+            lo, hi = np.percentile(sims, [2.5, 97.5]) if msk.any() else (0.0, 0.0)
+            row.update({f"{kind}_n": int(msk.sum()), kind: int((obs & msk).sum()), f"{kind}_expected": float(pe[msk].sum()),
+                        f"{kind}_lo": float(lo), f"{kind}_hi": float(hi)})
+        rows.append(row)
+    return rows
 
 
 def failure_mix(final, S_pids):
@@ -560,6 +591,13 @@ def cmd_analyze(cfg):
         trans_rows += trans
         ret_sets[r.get("set", "retention")][r["name"]] = d
     write_csv(os.path.join(out, "retention.csv"), ret_rows)
+    cov_rows = []
+    for r in an.get("retention", []):
+        if r["initial"] in panels and r["final"] in panels:
+            for x in coverage(panels[r["initial"]], panels[r["final"]], n_sim=n_boot):
+                x.update(name=r["name"], split=r.get("split"), init=r.get("init"), method=r.get("method"), seed=r.get("seed"))
+                cov_rows.append(x)
+    write_csv(os.path.join(out, "coverage.csv"), cov_rows)
     write_csv(os.path.join(out, "transitions.csv"), trans_rows)
     # E4 gate (validation)
     gate = {"rule": "final val pass@1 on initially consistent subset falls >= 5 pp vs independent baseline in >= 2 "
