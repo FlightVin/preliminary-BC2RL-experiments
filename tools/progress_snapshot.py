@@ -14,7 +14,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 HARNESS = os.path.join(os.path.dirname(HERE), "slurm-agentic-engineering")
-DEADLINE = dt.datetime(2026, 10, 27, 9, 0, tzinfo=dt.timezone(dt.timedelta(hours=-4)))  # EDT
+DEADLINE = dt.datetime(2026, 10, 27, 19, 0, tzinfo=dt.timezone(dt.timedelta(hours=-4)))  # EDT
 
 
 def sh(cmd):
@@ -60,7 +60,7 @@ def main():
     counts = {k: len(re.findall(rf"^\s*- \[{re.escape(k)}\]", ck, re.M)) for k in ("x", "~", "!", " ")}
     left = DEADLINE - now
     lines = [f"# BC2RL progress snapshot {now:%Y-%m-%d %H:%M} UTC",
-             "", f"- Time to deadline (2026-10-27 09:00 EDT): {left.total_seconds() / 3600:.1f} h",
+             "", f"- Time to deadline (2026-10-27 19:00 EDT): {left.total_seconds() / 3600:.1f} h",
              f"- Guard: `{guard}`",
              f"- Checklist items: done {counts['x']}, active {counts['~']}, blocked {counts['!']}, pending {counts[' ']}",
              f"- BC2RL submissions: {len(rows)}; allocated GPU-hours (sacct, all segments, GPU jobs): {tot:.2f}",
