@@ -268,7 +268,26 @@ uncertainty band; descriptive only.
 
 ## 10. Deviations, missing runs and limitations
 
-See the amendment, Section 10. Updated at the end of the study.
+Planned deviations are in the amendment, Section 10. This table gives the outcome of each planned arm.
+
+| arm | status | reason / record |
+|---|---|---|
+| E0 exact two-task model | done | Section 5 |
+| E2 matched-update intervention (H1) | not run | pre-launch Taylor check failed at a one-step radius; rule 2 of D-E2-1 (amendment Section 11), fixed before the diagnostic ran |
+| E3, 12 branches | done | 256 rounds in every branch; optimizer steps 238-256 (the frozen procedure skips the step in a round with no mixed group for GRPO or no success for filtered BC; light-GRPO-s33 skipped 18) |
+| E3 no-BC branches (6) | not run | deferred by amendment A2; cancelled before start |
+| retention test (H2) | measurement-limited on validation | consistent subgroup 0-5 problems < 12 per branch |
+| E4 projection (H3) | not run | pre-registered gate met by 0 of 3 seeds |
+| per-round anchor audit | partly done | anchor log-likelihood at saved adapters done (Section 8.1); the audit-batch alignment was not run |
+| X1 coverage loss | exploratory | defined after the validation look, before any test read (DECISIONS 2026-10-25 15:42) |
+
+**Limitations.**
+- One model (Qwen2.5-0.5B-Instruct, LoRA r16) and one synthetic task family. No claim of generality.
+- The 10-input stratum stays at floor in every panel. The study makes no long-horizon claim.
+- Three seeds per cell. Seed-level differences between GRPO and filtered BC are mostly inside their bands.
+- All mechanism evidence is observational (E2 and E4 did not run). No causal mechanism is claimed.
+- X1 and Section 8.1 were analysed after the validation results were seen. Test results confirm or reject them once.
+- Laptop work under amendment A3 was CPU analysis and report writing only; no model runs used laptop hardware.
 
 ## 11. Reproduction
 
