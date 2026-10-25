@@ -18,7 +18,7 @@ PD = os.environ.get("PROJ_DATA", "")
 @pytest.mark.parametrize("scale", [1e-6, 10.0])
 def test_adam_first_step_matches_torch_adamw(scale):
     torch.manual_seed(0)
-    p = torch.nn.Parameter(torch.randn(1000))
+    p = torch.nn.Parameter(torch.zeros(1000))           # zero start: p - p0 is the update without cancellation
     g = torch.randn(1000) * scale
     g[:10] = 0.0
     p0 = p.detach().clone()
@@ -31,9 +31,11 @@ def test_adam_first_step_matches_torch_adamw(scale):
 
 
 def test_apportion_exact_and_capped():
-    c = apportion({(3, 1): 9, (3, 2): 5, (5, 1): 2, (3, 3): 1}, 8)
+    counts = {(3, 1): 9, (3, 2): 6, (5, 1): 3, (3, 3): 1}
+    c = apportion(counts, 8)
     assert sum(c.values()) == 8
-    assert all(v <= n // 2 for k, v in c.items() for kk, n in {(3, 1): 9, (3, 2): 5, (5, 1): 2, (3, 3): 1}.items() if k == kk)
+    assert all(v <= counts[k] // 2 for k, v in c.items())
+    assert apportion({(3, 1): 9, (3, 2): 5, (5, 1): 2, (3, 3): 1}, 8) is None     # caps 4+2+1+0 = 7 < 8
     assert apportion({(3, 1): 5, (3, 2): 3}, 8) is None
 
 

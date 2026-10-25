@@ -174,11 +174,10 @@ def anchor_ll(model, seqs, classes, pad_id, Lmax, micro):
     """Mean over problems of (sum completion log p)/Lmax, plus per-problem values and token-class sums."""
     per, num, dlm, n_num, n_dlm = [], 0.0, 0.0, 0, 0
     for sl, lp, cm, _ in seq_logprobs(model, seqs, pad_id, micro, grad=False):
-        g = gather_completion(lp, cm, Lmax)
-        for r in range(g.shape[0]):
+        for r in range(lp.shape[0]):
             k = sl.start + r
-            L = len(seqs[k][1])
-            row = g[r, :L].float()
+            row = lp[r][cm[r].bool()].float()             # all completion tokens, in order
+            assert row.shape[0] == len(seqs[k][1])
             per.append(float(row.sum()) / Lmax)
             cl = torch.tensor(classes[k], device=row.device, dtype=torch.bool)
             num += float(row[cl].sum())
