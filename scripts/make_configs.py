@@ -211,5 +211,59 @@ def mech():
     print(f"worklists/e2.json: {[t['id'] for t in tasks]}")
 
 
+def analysis():
+    """Amendment-A2 analysis configs: `val` (no test panels; E4 gate) and `final` (test opened once)."""
+    seeds = (11, 22, 33)
+    P = []
+    P.append({"name": "dev-base-format", "eval_id": "bc2rl-s0-eval-base-format", "tag": "base", "split": "dev",
+              "method": "initial", "figure": False})
+    P.append({"name": "dev-base-zeroshot", "eval_id": "bc2rl-s0-eval-base-zeroshot", "tag": "base", "split": "dev", "figure": False})
+    P.append({"name": "dev-devlight16", "eval_id": "bc2rl-s0-eval-devlight-format", "tag": "devlight16", "split": "dev", "figure": False})
+    for t in ("devext32", "devext64", "devext128"):
+        P.append({"name": f"dev-{t}", "eval_id": "bc2rl-s0-eval-devext-format", "tag": t, "split": "dev", "figure": False})
+    for sd in seeds:
+        for name, st in (("light", 16), ("extended", 128), ("contbc", 256)):
+            P.append({"name": f"val4-{name}-s{sd}", "path": f"runs/bc2rl-s1-bc-broad-s{sd}/val/step{st:04d}.jsonl.gz",
+                      "split": "val4", "init": name, "method": "initial", "seed": sd})
+        for name in ("light", "extended"):
+            P.append({"name": f"val15-{name}-s{sd}", "eval_id": f"bc2rl-e3-val15-init-s{sd}", "tag": f"{name}-s{sd}",
+                      "split": "val", "init": name, "method": "initial", "seed": sd})
+            P.append({"name": f"test-{name}-s{sd}", "eval_id": f"bc2rl-s4-eval-bcpath-s{sd}", "tag": f"{name}-s{sd}",
+                      "split": "test", "init": name, "method": "initial", "seed": sd})
+            for m in ("grpo", "filtered"):
+                P.append({"name": f"val15-{name}-{m}-s{sd}", "eval_id": f"bc2rl-e3-val15-{name}-{m}-s{sd}",
+                          "tag": f"{name}-{m}-s{sd}-r256", "split": "val", "init": name, "method": m, "seed": sd})
+                P.append({"name": f"test-{name}-{m}-s{sd}", "eval_id": f"bc2rl-s4-eval-{name}-{m}-s{sd}",
+                          "tag": f"{name}-{m}-s{sd}-r256", "split": "test", "init": name, "method": m, "seed": sd})
+                sec = 240 if name == "light" else 128
+                P.append({"name": f"test-{name}-{m}-s{sd}-r{sec}", "eval_id": f"bc2rl-s4-eval-{name}-{m}-s{sd}",
+                          "tag": f"{name}-{m}-s{sd}-r{sec}", "split": "test", "init": name, "method": m, "seed": sd,
+                          "figure": False, "secondary": "total-batch endpoint (original protocol)"})
+        P.append({"name": f"test-contbc-s{sd}", "eval_id": f"bc2rl-s4-eval-bcpath-s{sd}", "tag": f"contbc-s{sd}",
+                  "split": "test", "init": "extended", "method": "contbc", "seed": sd, "figure": False})
+    P.append({"name": "test-base", "eval_id": "bc2rl-s4-eval-base", "tag": "base", "split": "test", "figure": False})
+    C, R, T = [], [], []
+    for split in ("val15", "test"):
+        for sd in seeds:
+            for name in ("light", "extended"):
+                C.append({"name": f"{split}-{name}-s{sd}: GRPO - filtered", "set": f"{split}_grpo_minus_filtered",
+                          "a": f"{split}-{name}-grpo-s{sd}", "b": f"{split}-{name}-filtered-s{sd}"})
+                for m in ("grpo", "filtered"):
+                    C.append({"name": f"{split}-{name}-{m}-s{sd}: final - initial", "set": f"{split}_gain_{m}",
+                              "a": f"{split}-{name}-{m}-s{sd}", "b": f"{split}-{name}-s{sd}"})
+                    R.append({"name": f"{split}-{name}-{m}-s{sd}", "set": f"{split}", "initial": f"{split}-{name}-s{sd}",
+                              "final": f"{split}-{name}-{m}-s{sd}", "split": "val" if split == "val15" else "test",
+                              "init": name, "method": m, "seed": sd})
+    for sd in seeds:
+        for name in ("light", "extended"):
+            for m in ("grpo", "filtered"):
+                T.append({"run_id": f"bc2rl-s2-{name}-{m}-s{sd}", "init": name, "method": m, "seed": sd})
+    mech_runs = ["bc2rl-e2-calib-devlight-s7"][:0] + [f"bc2rl-e2-{n}-s{sd}" for sd in seeds for n in ("light", "extended")]
+    common = {"panels": P, "contrasts": C, "retention": R, "trajectories": T, "mech_runs": mech_runs,
+              "toy_csv": "toy/toy_curves.csv", "n_boot": 10000}
+    write("analysis/val.yaml", dict(BASE, run_id="bc2rl-an-val", seed=0, analysis=dict(common, allow_test=False)))
+    write("analysis/final.yaml", dict(BASE, run_id="bc2rl-an-final", seed=0, analysis=dict(common, allow_test=True)))
+
+
 if __name__ == "__main__":
-    {"stage0": stage0, "main": main_matrix, "amend1": amend1, "mech": mech}[sys.argv[1]]()
+    {"stage0": stage0, "main": main_matrix, "amend1": amend1, "mech": mech, "analysis": analysis}[sys.argv[1]]()

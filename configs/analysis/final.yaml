@@ -1,0 +1,1189 @@
+{
+ "prompt_variant": "format",
+ "model": {
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0
+  }
+ },
+ "data": {
+  "version": "v1",
+  "main_seed": 20261024,
+  "dev_seed": 1024,
+  "min_value": 2,
+  "max_value": 20,
+  "max_target": 1000,
+  "max_abs_intermediate": 10000,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "format_example_inputs": 4
+ },
+ "run_id": "bc2rl-an-final",
+ "seed": 0,
+ "analysis": {
+  "panels": [
+   {
+    "name": "dev-base-format",
+    "eval_id": "bc2rl-s0-eval-base-format",
+    "tag": "base",
+    "split": "dev",
+    "method": "initial",
+    "figure": false
+   },
+   {
+    "name": "dev-base-zeroshot",
+    "eval_id": "bc2rl-s0-eval-base-zeroshot",
+    "tag": "base",
+    "split": "dev",
+    "figure": false
+   },
+   {
+    "name": "dev-devlight16",
+    "eval_id": "bc2rl-s0-eval-devlight-format",
+    "tag": "devlight16",
+    "split": "dev",
+    "figure": false
+   },
+   {
+    "name": "dev-devext32",
+    "eval_id": "bc2rl-s0-eval-devext-format",
+    "tag": "devext32",
+    "split": "dev",
+    "figure": false
+   },
+   {
+    "name": "dev-devext64",
+    "eval_id": "bc2rl-s0-eval-devext-format",
+    "tag": "devext64",
+    "split": "dev",
+    "figure": false
+   },
+   {
+    "name": "dev-devext128",
+    "eval_id": "bc2rl-s0-eval-devext-format",
+    "tag": "devext128",
+    "split": "dev",
+    "figure": false
+   },
+   {
+    "name": "val4-light-s11",
+    "path": "runs/bc2rl-s1-bc-broad-s11/val/step0016.jsonl.gz",
+    "split": "val4",
+    "init": "light",
+    "method": "initial",
+    "seed": 11
+   },
+   {
+    "name": "val4-extended-s11",
+    "path": "runs/bc2rl-s1-bc-broad-s11/val/step0128.jsonl.gz",
+    "split": "val4",
+    "init": "extended",
+    "method": "initial",
+    "seed": 11
+   },
+   {
+    "name": "val4-contbc-s11",
+    "path": "runs/bc2rl-s1-bc-broad-s11/val/step0256.jsonl.gz",
+    "split": "val4",
+    "init": "contbc",
+    "method": "initial",
+    "seed": 11
+   },
+   {
+    "name": "val15-light-s11",
+    "eval_id": "bc2rl-e3-val15-init-s11",
+    "tag": "light-s11",
+    "split": "val",
+    "init": "light",
+    "method": "initial",
+    "seed": 11
+   },
+   {
+    "name": "test-light-s11",
+    "eval_id": "bc2rl-s4-eval-bcpath-s11",
+    "tag": "light-s11",
+    "split": "test",
+    "init": "light",
+    "method": "initial",
+    "seed": 11
+   },
+   {
+    "name": "val15-light-grpo-s11",
+    "eval_id": "bc2rl-e3-val15-light-grpo-s11",
+    "tag": "light-grpo-s11-r256",
+    "split": "val",
+    "init": "light",
+    "method": "grpo",
+    "seed": 11
+   },
+   {
+    "name": "test-light-grpo-s11",
+    "eval_id": "bc2rl-s4-eval-light-grpo-s11",
+    "tag": "light-grpo-s11-r256",
+    "split": "test",
+    "init": "light",
+    "method": "grpo",
+    "seed": 11
+   },
+   {
+    "name": "test-light-grpo-s11-r240",
+    "eval_id": "bc2rl-s4-eval-light-grpo-s11",
+    "tag": "light-grpo-s11-r240",
+    "split": "test",
+    "init": "light",
+    "method": "grpo",
+    "seed": 11,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "val15-light-filtered-s11",
+    "eval_id": "bc2rl-e3-val15-light-filtered-s11",
+    "tag": "light-filtered-s11-r256",
+    "split": "val",
+    "init": "light",
+    "method": "filtered",
+    "seed": 11
+   },
+   {
+    "name": "test-light-filtered-s11",
+    "eval_id": "bc2rl-s4-eval-light-filtered-s11",
+    "tag": "light-filtered-s11-r256",
+    "split": "test",
+    "init": "light",
+    "method": "filtered",
+    "seed": 11
+   },
+   {
+    "name": "test-light-filtered-s11-r240",
+    "eval_id": "bc2rl-s4-eval-light-filtered-s11",
+    "tag": "light-filtered-s11-r240",
+    "split": "test",
+    "init": "light",
+    "method": "filtered",
+    "seed": 11,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "val15-extended-s11",
+    "eval_id": "bc2rl-e3-val15-init-s11",
+    "tag": "extended-s11",
+    "split": "val",
+    "init": "extended",
+    "method": "initial",
+    "seed": 11
+   },
+   {
+    "name": "test-extended-s11",
+    "eval_id": "bc2rl-s4-eval-bcpath-s11",
+    "tag": "extended-s11",
+    "split": "test",
+    "init": "extended",
+    "method": "initial",
+    "seed": 11
+   },
+   {
+    "name": "val15-extended-grpo-s11",
+    "eval_id": "bc2rl-e3-val15-extended-grpo-s11",
+    "tag": "extended-grpo-s11-r256",
+    "split": "val",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 11
+   },
+   {
+    "name": "test-extended-grpo-s11",
+    "eval_id": "bc2rl-s4-eval-extended-grpo-s11",
+    "tag": "extended-grpo-s11-r256",
+    "split": "test",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 11
+   },
+   {
+    "name": "test-extended-grpo-s11-r128",
+    "eval_id": "bc2rl-s4-eval-extended-grpo-s11",
+    "tag": "extended-grpo-s11-r128",
+    "split": "test",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 11,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "val15-extended-filtered-s11",
+    "eval_id": "bc2rl-e3-val15-extended-filtered-s11",
+    "tag": "extended-filtered-s11-r256",
+    "split": "val",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 11
+   },
+   {
+    "name": "test-extended-filtered-s11",
+    "eval_id": "bc2rl-s4-eval-extended-filtered-s11",
+    "tag": "extended-filtered-s11-r256",
+    "split": "test",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 11
+   },
+   {
+    "name": "test-extended-filtered-s11-r128",
+    "eval_id": "bc2rl-s4-eval-extended-filtered-s11",
+    "tag": "extended-filtered-s11-r128",
+    "split": "test",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 11,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "test-contbc-s11",
+    "eval_id": "bc2rl-s4-eval-bcpath-s11",
+    "tag": "contbc-s11",
+    "split": "test",
+    "init": "extended",
+    "method": "contbc",
+    "seed": 11,
+    "figure": false
+   },
+   {
+    "name": "val4-light-s22",
+    "path": "runs/bc2rl-s1-bc-broad-s22/val/step0016.jsonl.gz",
+    "split": "val4",
+    "init": "light",
+    "method": "initial",
+    "seed": 22
+   },
+   {
+    "name": "val4-extended-s22",
+    "path": "runs/bc2rl-s1-bc-broad-s22/val/step0128.jsonl.gz",
+    "split": "val4",
+    "init": "extended",
+    "method": "initial",
+    "seed": 22
+   },
+   {
+    "name": "val4-contbc-s22",
+    "path": "runs/bc2rl-s1-bc-broad-s22/val/step0256.jsonl.gz",
+    "split": "val4",
+    "init": "contbc",
+    "method": "initial",
+    "seed": 22
+   },
+   {
+    "name": "val15-light-s22",
+    "eval_id": "bc2rl-e3-val15-init-s22",
+    "tag": "light-s22",
+    "split": "val",
+    "init": "light",
+    "method": "initial",
+    "seed": 22
+   },
+   {
+    "name": "test-light-s22",
+    "eval_id": "bc2rl-s4-eval-bcpath-s22",
+    "tag": "light-s22",
+    "split": "test",
+    "init": "light",
+    "method": "initial",
+    "seed": 22
+   },
+   {
+    "name": "val15-light-grpo-s22",
+    "eval_id": "bc2rl-e3-val15-light-grpo-s22",
+    "tag": "light-grpo-s22-r256",
+    "split": "val",
+    "init": "light",
+    "method": "grpo",
+    "seed": 22
+   },
+   {
+    "name": "test-light-grpo-s22",
+    "eval_id": "bc2rl-s4-eval-light-grpo-s22",
+    "tag": "light-grpo-s22-r256",
+    "split": "test",
+    "init": "light",
+    "method": "grpo",
+    "seed": 22
+   },
+   {
+    "name": "test-light-grpo-s22-r240",
+    "eval_id": "bc2rl-s4-eval-light-grpo-s22",
+    "tag": "light-grpo-s22-r240",
+    "split": "test",
+    "init": "light",
+    "method": "grpo",
+    "seed": 22,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "val15-light-filtered-s22",
+    "eval_id": "bc2rl-e3-val15-light-filtered-s22",
+    "tag": "light-filtered-s22-r256",
+    "split": "val",
+    "init": "light",
+    "method": "filtered",
+    "seed": 22
+   },
+   {
+    "name": "test-light-filtered-s22",
+    "eval_id": "bc2rl-s4-eval-light-filtered-s22",
+    "tag": "light-filtered-s22-r256",
+    "split": "test",
+    "init": "light",
+    "method": "filtered",
+    "seed": 22
+   },
+   {
+    "name": "test-light-filtered-s22-r240",
+    "eval_id": "bc2rl-s4-eval-light-filtered-s22",
+    "tag": "light-filtered-s22-r240",
+    "split": "test",
+    "init": "light",
+    "method": "filtered",
+    "seed": 22,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "val15-extended-s22",
+    "eval_id": "bc2rl-e3-val15-init-s22",
+    "tag": "extended-s22",
+    "split": "val",
+    "init": "extended",
+    "method": "initial",
+    "seed": 22
+   },
+   {
+    "name": "test-extended-s22",
+    "eval_id": "bc2rl-s4-eval-bcpath-s22",
+    "tag": "extended-s22",
+    "split": "test",
+    "init": "extended",
+    "method": "initial",
+    "seed": 22
+   },
+   {
+    "name": "val15-extended-grpo-s22",
+    "eval_id": "bc2rl-e3-val15-extended-grpo-s22",
+    "tag": "extended-grpo-s22-r256",
+    "split": "val",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 22
+   },
+   {
+    "name": "test-extended-grpo-s22",
+    "eval_id": "bc2rl-s4-eval-extended-grpo-s22",
+    "tag": "extended-grpo-s22-r256",
+    "split": "test",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 22
+   },
+   {
+    "name": "test-extended-grpo-s22-r128",
+    "eval_id": "bc2rl-s4-eval-extended-grpo-s22",
+    "tag": "extended-grpo-s22-r128",
+    "split": "test",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 22,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "val15-extended-filtered-s22",
+    "eval_id": "bc2rl-e3-val15-extended-filtered-s22",
+    "tag": "extended-filtered-s22-r256",
+    "split": "val",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 22
+   },
+   {
+    "name": "test-extended-filtered-s22",
+    "eval_id": "bc2rl-s4-eval-extended-filtered-s22",
+    "tag": "extended-filtered-s22-r256",
+    "split": "test",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 22
+   },
+   {
+    "name": "test-extended-filtered-s22-r128",
+    "eval_id": "bc2rl-s4-eval-extended-filtered-s22",
+    "tag": "extended-filtered-s22-r128",
+    "split": "test",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 22,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "test-contbc-s22",
+    "eval_id": "bc2rl-s4-eval-bcpath-s22",
+    "tag": "contbc-s22",
+    "split": "test",
+    "init": "extended",
+    "method": "contbc",
+    "seed": 22,
+    "figure": false
+   },
+   {
+    "name": "val4-light-s33",
+    "path": "runs/bc2rl-s1-bc-broad-s33/val/step0016.jsonl.gz",
+    "split": "val4",
+    "init": "light",
+    "method": "initial",
+    "seed": 33
+   },
+   {
+    "name": "val4-extended-s33",
+    "path": "runs/bc2rl-s1-bc-broad-s33/val/step0128.jsonl.gz",
+    "split": "val4",
+    "init": "extended",
+    "method": "initial",
+    "seed": 33
+   },
+   {
+    "name": "val4-contbc-s33",
+    "path": "runs/bc2rl-s1-bc-broad-s33/val/step0256.jsonl.gz",
+    "split": "val4",
+    "init": "contbc",
+    "method": "initial",
+    "seed": 33
+   },
+   {
+    "name": "val15-light-s33",
+    "eval_id": "bc2rl-e3-val15-init-s33",
+    "tag": "light-s33",
+    "split": "val",
+    "init": "light",
+    "method": "initial",
+    "seed": 33
+   },
+   {
+    "name": "test-light-s33",
+    "eval_id": "bc2rl-s4-eval-bcpath-s33",
+    "tag": "light-s33",
+    "split": "test",
+    "init": "light",
+    "method": "initial",
+    "seed": 33
+   },
+   {
+    "name": "val15-light-grpo-s33",
+    "eval_id": "bc2rl-e3-val15-light-grpo-s33",
+    "tag": "light-grpo-s33-r256",
+    "split": "val",
+    "init": "light",
+    "method": "grpo",
+    "seed": 33
+   },
+   {
+    "name": "test-light-grpo-s33",
+    "eval_id": "bc2rl-s4-eval-light-grpo-s33",
+    "tag": "light-grpo-s33-r256",
+    "split": "test",
+    "init": "light",
+    "method": "grpo",
+    "seed": 33
+   },
+   {
+    "name": "test-light-grpo-s33-r240",
+    "eval_id": "bc2rl-s4-eval-light-grpo-s33",
+    "tag": "light-grpo-s33-r240",
+    "split": "test",
+    "init": "light",
+    "method": "grpo",
+    "seed": 33,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "val15-light-filtered-s33",
+    "eval_id": "bc2rl-e3-val15-light-filtered-s33",
+    "tag": "light-filtered-s33-r256",
+    "split": "val",
+    "init": "light",
+    "method": "filtered",
+    "seed": 33
+   },
+   {
+    "name": "test-light-filtered-s33",
+    "eval_id": "bc2rl-s4-eval-light-filtered-s33",
+    "tag": "light-filtered-s33-r256",
+    "split": "test",
+    "init": "light",
+    "method": "filtered",
+    "seed": 33
+   },
+   {
+    "name": "test-light-filtered-s33-r240",
+    "eval_id": "bc2rl-s4-eval-light-filtered-s33",
+    "tag": "light-filtered-s33-r240",
+    "split": "test",
+    "init": "light",
+    "method": "filtered",
+    "seed": 33,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "val15-extended-s33",
+    "eval_id": "bc2rl-e3-val15-init-s33",
+    "tag": "extended-s33",
+    "split": "val",
+    "init": "extended",
+    "method": "initial",
+    "seed": 33
+   },
+   {
+    "name": "test-extended-s33",
+    "eval_id": "bc2rl-s4-eval-bcpath-s33",
+    "tag": "extended-s33",
+    "split": "test",
+    "init": "extended",
+    "method": "initial",
+    "seed": 33
+   },
+   {
+    "name": "val15-extended-grpo-s33",
+    "eval_id": "bc2rl-e3-val15-extended-grpo-s33",
+    "tag": "extended-grpo-s33-r256",
+    "split": "val",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 33
+   },
+   {
+    "name": "test-extended-grpo-s33",
+    "eval_id": "bc2rl-s4-eval-extended-grpo-s33",
+    "tag": "extended-grpo-s33-r256",
+    "split": "test",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 33
+   },
+   {
+    "name": "test-extended-grpo-s33-r128",
+    "eval_id": "bc2rl-s4-eval-extended-grpo-s33",
+    "tag": "extended-grpo-s33-r128",
+    "split": "test",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 33,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "val15-extended-filtered-s33",
+    "eval_id": "bc2rl-e3-val15-extended-filtered-s33",
+    "tag": "extended-filtered-s33-r256",
+    "split": "val",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 33
+   },
+   {
+    "name": "test-extended-filtered-s33",
+    "eval_id": "bc2rl-s4-eval-extended-filtered-s33",
+    "tag": "extended-filtered-s33-r256",
+    "split": "test",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 33
+   },
+   {
+    "name": "test-extended-filtered-s33-r128",
+    "eval_id": "bc2rl-s4-eval-extended-filtered-s33",
+    "tag": "extended-filtered-s33-r128",
+    "split": "test",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 33,
+    "figure": false,
+    "secondary": "total-batch endpoint (original protocol)"
+   },
+   {
+    "name": "test-contbc-s33",
+    "eval_id": "bc2rl-s4-eval-bcpath-s33",
+    "tag": "contbc-s33",
+    "split": "test",
+    "init": "extended",
+    "method": "contbc",
+    "seed": 33,
+    "figure": false
+   },
+   {
+    "name": "test-base",
+    "eval_id": "bc2rl-s4-eval-base",
+    "tag": "base",
+    "split": "test",
+    "figure": false
+   }
+  ],
+  "contrasts": [
+   {
+    "name": "val15-light-s11: GRPO - filtered",
+    "set": "val15_grpo_minus_filtered",
+    "a": "val15-light-grpo-s11",
+    "b": "val15-light-filtered-s11"
+   },
+   {
+    "name": "val15-light-grpo-s11: final - initial",
+    "set": "val15_gain_grpo",
+    "a": "val15-light-grpo-s11",
+    "b": "val15-light-s11"
+   },
+   {
+    "name": "val15-light-filtered-s11: final - initial",
+    "set": "val15_gain_filtered",
+    "a": "val15-light-filtered-s11",
+    "b": "val15-light-s11"
+   },
+   {
+    "name": "val15-extended-s11: GRPO - filtered",
+    "set": "val15_grpo_minus_filtered",
+    "a": "val15-extended-grpo-s11",
+    "b": "val15-extended-filtered-s11"
+   },
+   {
+    "name": "val15-extended-grpo-s11: final - initial",
+    "set": "val15_gain_grpo",
+    "a": "val15-extended-grpo-s11",
+    "b": "val15-extended-s11"
+   },
+   {
+    "name": "val15-extended-filtered-s11: final - initial",
+    "set": "val15_gain_filtered",
+    "a": "val15-extended-filtered-s11",
+    "b": "val15-extended-s11"
+   },
+   {
+    "name": "val15-light-s22: GRPO - filtered",
+    "set": "val15_grpo_minus_filtered",
+    "a": "val15-light-grpo-s22",
+    "b": "val15-light-filtered-s22"
+   },
+   {
+    "name": "val15-light-grpo-s22: final - initial",
+    "set": "val15_gain_grpo",
+    "a": "val15-light-grpo-s22",
+    "b": "val15-light-s22"
+   },
+   {
+    "name": "val15-light-filtered-s22: final - initial",
+    "set": "val15_gain_filtered",
+    "a": "val15-light-filtered-s22",
+    "b": "val15-light-s22"
+   },
+   {
+    "name": "val15-extended-s22: GRPO - filtered",
+    "set": "val15_grpo_minus_filtered",
+    "a": "val15-extended-grpo-s22",
+    "b": "val15-extended-filtered-s22"
+   },
+   {
+    "name": "val15-extended-grpo-s22: final - initial",
+    "set": "val15_gain_grpo",
+    "a": "val15-extended-grpo-s22",
+    "b": "val15-extended-s22"
+   },
+   {
+    "name": "val15-extended-filtered-s22: final - initial",
+    "set": "val15_gain_filtered",
+    "a": "val15-extended-filtered-s22",
+    "b": "val15-extended-s22"
+   },
+   {
+    "name": "val15-light-s33: GRPO - filtered",
+    "set": "val15_grpo_minus_filtered",
+    "a": "val15-light-grpo-s33",
+    "b": "val15-light-filtered-s33"
+   },
+   {
+    "name": "val15-light-grpo-s33: final - initial",
+    "set": "val15_gain_grpo",
+    "a": "val15-light-grpo-s33",
+    "b": "val15-light-s33"
+   },
+   {
+    "name": "val15-light-filtered-s33: final - initial",
+    "set": "val15_gain_filtered",
+    "a": "val15-light-filtered-s33",
+    "b": "val15-light-s33"
+   },
+   {
+    "name": "val15-extended-s33: GRPO - filtered",
+    "set": "val15_grpo_minus_filtered",
+    "a": "val15-extended-grpo-s33",
+    "b": "val15-extended-filtered-s33"
+   },
+   {
+    "name": "val15-extended-grpo-s33: final - initial",
+    "set": "val15_gain_grpo",
+    "a": "val15-extended-grpo-s33",
+    "b": "val15-extended-s33"
+   },
+   {
+    "name": "val15-extended-filtered-s33: final - initial",
+    "set": "val15_gain_filtered",
+    "a": "val15-extended-filtered-s33",
+    "b": "val15-extended-s33"
+   },
+   {
+    "name": "test-light-s11: GRPO - filtered",
+    "set": "test_grpo_minus_filtered",
+    "a": "test-light-grpo-s11",
+    "b": "test-light-filtered-s11"
+   },
+   {
+    "name": "test-light-grpo-s11: final - initial",
+    "set": "test_gain_grpo",
+    "a": "test-light-grpo-s11",
+    "b": "test-light-s11"
+   },
+   {
+    "name": "test-light-filtered-s11: final - initial",
+    "set": "test_gain_filtered",
+    "a": "test-light-filtered-s11",
+    "b": "test-light-s11"
+   },
+   {
+    "name": "test-extended-s11: GRPO - filtered",
+    "set": "test_grpo_minus_filtered",
+    "a": "test-extended-grpo-s11",
+    "b": "test-extended-filtered-s11"
+   },
+   {
+    "name": "test-extended-grpo-s11: final - initial",
+    "set": "test_gain_grpo",
+    "a": "test-extended-grpo-s11",
+    "b": "test-extended-s11"
+   },
+   {
+    "name": "test-extended-filtered-s11: final - initial",
+    "set": "test_gain_filtered",
+    "a": "test-extended-filtered-s11",
+    "b": "test-extended-s11"
+   },
+   {
+    "name": "test-light-s22: GRPO - filtered",
+    "set": "test_grpo_minus_filtered",
+    "a": "test-light-grpo-s22",
+    "b": "test-light-filtered-s22"
+   },
+   {
+    "name": "test-light-grpo-s22: final - initial",
+    "set": "test_gain_grpo",
+    "a": "test-light-grpo-s22",
+    "b": "test-light-s22"
+   },
+   {
+    "name": "test-light-filtered-s22: final - initial",
+    "set": "test_gain_filtered",
+    "a": "test-light-filtered-s22",
+    "b": "test-light-s22"
+   },
+   {
+    "name": "test-extended-s22: GRPO - filtered",
+    "set": "test_grpo_minus_filtered",
+    "a": "test-extended-grpo-s22",
+    "b": "test-extended-filtered-s22"
+   },
+   {
+    "name": "test-extended-grpo-s22: final - initial",
+    "set": "test_gain_grpo",
+    "a": "test-extended-grpo-s22",
+    "b": "test-extended-s22"
+   },
+   {
+    "name": "test-extended-filtered-s22: final - initial",
+    "set": "test_gain_filtered",
+    "a": "test-extended-filtered-s22",
+    "b": "test-extended-s22"
+   },
+   {
+    "name": "test-light-s33: GRPO - filtered",
+    "set": "test_grpo_minus_filtered",
+    "a": "test-light-grpo-s33",
+    "b": "test-light-filtered-s33"
+   },
+   {
+    "name": "test-light-grpo-s33: final - initial",
+    "set": "test_gain_grpo",
+    "a": "test-light-grpo-s33",
+    "b": "test-light-s33"
+   },
+   {
+    "name": "test-light-filtered-s33: final - initial",
+    "set": "test_gain_filtered",
+    "a": "test-light-filtered-s33",
+    "b": "test-light-s33"
+   },
+   {
+    "name": "test-extended-s33: GRPO - filtered",
+    "set": "test_grpo_minus_filtered",
+    "a": "test-extended-grpo-s33",
+    "b": "test-extended-filtered-s33"
+   },
+   {
+    "name": "test-extended-grpo-s33: final - initial",
+    "set": "test_gain_grpo",
+    "a": "test-extended-grpo-s33",
+    "b": "test-extended-s33"
+   },
+   {
+    "name": "test-extended-filtered-s33: final - initial",
+    "set": "test_gain_filtered",
+    "a": "test-extended-filtered-s33",
+    "b": "test-extended-s33"
+   }
+  ],
+  "retention": [
+   {
+    "name": "val15-light-grpo-s11",
+    "set": "val15",
+    "initial": "val15-light-s11",
+    "final": "val15-light-grpo-s11",
+    "split": "val",
+    "init": "light",
+    "method": "grpo",
+    "seed": 11
+   },
+   {
+    "name": "val15-light-filtered-s11",
+    "set": "val15",
+    "initial": "val15-light-s11",
+    "final": "val15-light-filtered-s11",
+    "split": "val",
+    "init": "light",
+    "method": "filtered",
+    "seed": 11
+   },
+   {
+    "name": "val15-extended-grpo-s11",
+    "set": "val15",
+    "initial": "val15-extended-s11",
+    "final": "val15-extended-grpo-s11",
+    "split": "val",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 11
+   },
+   {
+    "name": "val15-extended-filtered-s11",
+    "set": "val15",
+    "initial": "val15-extended-s11",
+    "final": "val15-extended-filtered-s11",
+    "split": "val",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 11
+   },
+   {
+    "name": "val15-light-grpo-s22",
+    "set": "val15",
+    "initial": "val15-light-s22",
+    "final": "val15-light-grpo-s22",
+    "split": "val",
+    "init": "light",
+    "method": "grpo",
+    "seed": 22
+   },
+   {
+    "name": "val15-light-filtered-s22",
+    "set": "val15",
+    "initial": "val15-light-s22",
+    "final": "val15-light-filtered-s22",
+    "split": "val",
+    "init": "light",
+    "method": "filtered",
+    "seed": 22
+   },
+   {
+    "name": "val15-extended-grpo-s22",
+    "set": "val15",
+    "initial": "val15-extended-s22",
+    "final": "val15-extended-grpo-s22",
+    "split": "val",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 22
+   },
+   {
+    "name": "val15-extended-filtered-s22",
+    "set": "val15",
+    "initial": "val15-extended-s22",
+    "final": "val15-extended-filtered-s22",
+    "split": "val",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 22
+   },
+   {
+    "name": "val15-light-grpo-s33",
+    "set": "val15",
+    "initial": "val15-light-s33",
+    "final": "val15-light-grpo-s33",
+    "split": "val",
+    "init": "light",
+    "method": "grpo",
+    "seed": 33
+   },
+   {
+    "name": "val15-light-filtered-s33",
+    "set": "val15",
+    "initial": "val15-light-s33",
+    "final": "val15-light-filtered-s33",
+    "split": "val",
+    "init": "light",
+    "method": "filtered",
+    "seed": 33
+   },
+   {
+    "name": "val15-extended-grpo-s33",
+    "set": "val15",
+    "initial": "val15-extended-s33",
+    "final": "val15-extended-grpo-s33",
+    "split": "val",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 33
+   },
+   {
+    "name": "val15-extended-filtered-s33",
+    "set": "val15",
+    "initial": "val15-extended-s33",
+    "final": "val15-extended-filtered-s33",
+    "split": "val",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 33
+   },
+   {
+    "name": "test-light-grpo-s11",
+    "set": "test",
+    "initial": "test-light-s11",
+    "final": "test-light-grpo-s11",
+    "split": "test",
+    "init": "light",
+    "method": "grpo",
+    "seed": 11
+   },
+   {
+    "name": "test-light-filtered-s11",
+    "set": "test",
+    "initial": "test-light-s11",
+    "final": "test-light-filtered-s11",
+    "split": "test",
+    "init": "light",
+    "method": "filtered",
+    "seed": 11
+   },
+   {
+    "name": "test-extended-grpo-s11",
+    "set": "test",
+    "initial": "test-extended-s11",
+    "final": "test-extended-grpo-s11",
+    "split": "test",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 11
+   },
+   {
+    "name": "test-extended-filtered-s11",
+    "set": "test",
+    "initial": "test-extended-s11",
+    "final": "test-extended-filtered-s11",
+    "split": "test",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 11
+   },
+   {
+    "name": "test-light-grpo-s22",
+    "set": "test",
+    "initial": "test-light-s22",
+    "final": "test-light-grpo-s22",
+    "split": "test",
+    "init": "light",
+    "method": "grpo",
+    "seed": 22
+   },
+   {
+    "name": "test-light-filtered-s22",
+    "set": "test",
+    "initial": "test-light-s22",
+    "final": "test-light-filtered-s22",
+    "split": "test",
+    "init": "light",
+    "method": "filtered",
+    "seed": 22
+   },
+   {
+    "name": "test-extended-grpo-s22",
+    "set": "test",
+    "initial": "test-extended-s22",
+    "final": "test-extended-grpo-s22",
+    "split": "test",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 22
+   },
+   {
+    "name": "test-extended-filtered-s22",
+    "set": "test",
+    "initial": "test-extended-s22",
+    "final": "test-extended-filtered-s22",
+    "split": "test",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 22
+   },
+   {
+    "name": "test-light-grpo-s33",
+    "set": "test",
+    "initial": "test-light-s33",
+    "final": "test-light-grpo-s33",
+    "split": "test",
+    "init": "light",
+    "method": "grpo",
+    "seed": 33
+   },
+   {
+    "name": "test-light-filtered-s33",
+    "set": "test",
+    "initial": "test-light-s33",
+    "final": "test-light-filtered-s33",
+    "split": "test",
+    "init": "light",
+    "method": "filtered",
+    "seed": 33
+   },
+   {
+    "name": "test-extended-grpo-s33",
+    "set": "test",
+    "initial": "test-extended-s33",
+    "final": "test-extended-grpo-s33",
+    "split": "test",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 33
+   },
+   {
+    "name": "test-extended-filtered-s33",
+    "set": "test",
+    "initial": "test-extended-s33",
+    "final": "test-extended-filtered-s33",
+    "split": "test",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 33
+   }
+  ],
+  "trajectories": [
+   {
+    "run_id": "bc2rl-s2-light-grpo-s11",
+    "init": "light",
+    "method": "grpo",
+    "seed": 11
+   },
+   {
+    "run_id": "bc2rl-s2-light-filtered-s11",
+    "init": "light",
+    "method": "filtered",
+    "seed": 11
+   },
+   {
+    "run_id": "bc2rl-s2-extended-grpo-s11",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 11
+   },
+   {
+    "run_id": "bc2rl-s2-extended-filtered-s11",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 11
+   },
+   {
+    "run_id": "bc2rl-s2-light-grpo-s22",
+    "init": "light",
+    "method": "grpo",
+    "seed": 22
+   },
+   {
+    "run_id": "bc2rl-s2-light-filtered-s22",
+    "init": "light",
+    "method": "filtered",
+    "seed": 22
+   },
+   {
+    "run_id": "bc2rl-s2-extended-grpo-s22",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 22
+   },
+   {
+    "run_id": "bc2rl-s2-extended-filtered-s22",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 22
+   },
+   {
+    "run_id": "bc2rl-s2-light-grpo-s33",
+    "init": "light",
+    "method": "grpo",
+    "seed": 33
+   },
+   {
+    "run_id": "bc2rl-s2-light-filtered-s33",
+    "init": "light",
+    "method": "filtered",
+    "seed": 33
+   },
+   {
+    "run_id": "bc2rl-s2-extended-grpo-s33",
+    "init": "extended",
+    "method": "grpo",
+    "seed": 33
+   },
+   {
+    "run_id": "bc2rl-s2-extended-filtered-s33",
+    "init": "extended",
+    "method": "filtered",
+    "seed": 33
+   }
+  ],
+  "mech_runs": [
+   "bc2rl-e2-light-s11",
+   "bc2rl-e2-extended-s11",
+   "bc2rl-e2-light-s22",
+   "bc2rl-e2-extended-s22",
+   "bc2rl-e2-light-s33",
+   "bc2rl-e2-extended-s33"
+  ],
+  "toy_csv": "toy/toy_curves.csv",
+  "n_boot": 10000,
+  "allow_test": true
+ }
+}
