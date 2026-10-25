@@ -47,27 +47,35 @@ def test_curves_and_audit():
     assert rows[0]["problems_all_success"] == 1 and rows[0]["frac_success"] == (15 + 8) / 45
 
 
-def test_p_zero_matches_numeric_posterior_predictive():
-    x = np.linspace(0, 1, 200001)[1:-1]
+def test_p_zero_matches_closed_form_product():
+    # B(a, b + m) / B(a, b) = prod_{j<m} (b + j) / (a + b + j) for integer m (independent formula).
     for c in (0, 1, 7, 15):
-        w = x ** (c - 0.5) * (1 - x) ** (15 - c - 0.5)
-        num = float((w * (1 - x) ** 15).sum() / w.sum())
-        assert abs(_p_zero(c, 15, 15) - num) < 2e-3
+        a, b = c + 0.5, 15 - c + 0.5
+        ref = float(np.prod([(b + j) / (a + b + j) for j in range(15)]))
+        assert abs(_p_zero(c, 15, 15) - ref) < 1e-12
+    assert _p_zero(15, 15, 15) < 1e-3 < _p_zero(1, 15, 15) < _p_zero(0, 15, 15) < 1
 
 
-def test_coverage_counts_and_no_change_band():
+def test_coverage_counts_and_calibration_under_no_change():
     rng = np.random.default_rng(1)
     h = [3] * 60 + [5] * 60
-    p = np.r_[rng.uniform(0.05, 0.5, 60), np.zeros(60)]
-    ia = (rng.random((120, 15)) < p[:, None]).astype(int)
-    fa = (rng.random((120, 15)) < p[:, None]).astype(int)    # no change: same success rates
-    rows = coverage(panel(ia, h), panel(fa, h), n_sim=2000)
-    r3 = next(r for r in rows if r["n_inputs"] == 3)
-    assert r3["lost_n"] == int((ia[:60].sum(1) > 0).sum())
-    assert r3["lost"] == int(((ia[:60].sum(1) > 0) & (fa[:60].sum(1) == 0)).sum())
-    assert r3["lost_lo"] <= r3["lost"] <= r3["lost_hi"]
-    r5 = next(r for r in rows if r["n_inputs"] == 5)
-    assert r5["lost_n"] == 0 and r5["gained_n"] == 60 and r5["gained"] == 0
+    obs, exp, inside = [], [], 0
+    for rep in range(200):
+        # true rates drawn from the reference prior Beta(1/2, 1/2): the reference is then calibrated
+        p = np.r_[rng.beta(0.5, 0.5, 60), np.zeros(60)]
+        ia = (rng.random((120, 15)) < p[:, None]).astype(int)
+        fa = (rng.random((120, 15)) < p[:, None]).astype(int)    # no change: same success rates
+        rows = coverage(panel(ia, h), panel(fa, h), n_sim=500, seed=rep)
+        r3 = next(r for r in rows if r["n_inputs"] == 3)
+        if rep == 0:
+            assert r3["lost_n"] == int((ia[:60].sum(1) > 0).sum())
+            assert r3["lost"] == int(((ia[:60].sum(1) > 0) & (fa[:60].sum(1) == 0)).sum())
+            r5 = next(r for r in rows if r["n_inputs"] == 5)
+            assert r5["lost_n"] == 0 and r5["gained_n"] == 60 and r5["gained"] == 0
+        obs.append(r3["lost"]); exp.append(r3["lost_expected"])
+        inside += r3["lost_lo"] <= r3["lost"] <= r3["lost_hi"]
+    assert abs(np.mean(obs) - np.mean(exp)) < 0.15 * np.mean(exp)
+    assert inside >= 180                    # nominal 95% band covers >= 90% of 200 no-change replicates
     rows = coverage(panel(ia, h), panel(np.zeros_like(fa), h), n_sim=2000)    # everything lost
     r3 = next(r for r in rows if r["n_inputs"] == 3)
     assert r3["lost"] == r3["lost_n"] > r3["lost_hi"]
