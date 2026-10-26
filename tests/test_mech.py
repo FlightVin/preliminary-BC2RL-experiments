@@ -129,3 +129,37 @@ def test_mech_end_to_end_tiny(tmp_path):
         assert f["kl_median"] >= -1e-6 and np.isfinite(f["taylor_pred_fit"])
         assert sum(f["probe"]["n"]) == 6 * 2
     cli("mech", dict(base, run_id="iv", mech=dict(me, mode="intervene", rho=2)))     # resume: already complete
+    # A5 / X6: fp32 measurement, sub-step grid with V1-V5, gate, and per-checkpoint validity before forks
+    me2 = dict(me, fp32_measure=True, heldout_split="dev", kl_split="dev", kl_target=10.0, rho_grid=[0.25, 0.5, 1],
+               n_random=2)
+    cli("mech", dict(base, run_id="cal2", mech=dict(me2, mode="calibrate2")))
+    c2 = json.load(open(pd / "runs" / "cal2" / "calibration.json"))
+    assert set(c2["per_rho"]) == {"0.25", "0.5", "1"} and len(c2["rand_rows"]) == 2
+    for v in c2["per_rho"].values():
+        assert set(("V1", "V2", "V3", "V4", "V5", "all_ok")) <= set(v)
+    assert c2["noise_repeat"]["fit"] == 0.0
+    r = subprocess.run([sys.executable, "scripts/x6_gate.py", "--cal", str(pd / "runs" / "cal2" / "calibration.json"),
+                        "--out", str(pd / "runs" / "gate.json")], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    g = json.load(open(pd / "runs" / "gate.json"))
+    assert g["checks"]["all_ok"] == (g["chosen_rho"] is not None)
+    cli("mech", dict(base, run_id="iv2", mech=dict(me2, mode="intervene", rho=0.5, validity_check=True)))
+    s2 = json.load(open(pd / "runs" / "iv2" / "summary.json"))
+    assert s2["measure"] == "fp32" and s2["validity"]["checks"]["rho"] == 0.5
+    assert (len(s2["forks"]) == 3) == s2["validity"]["checks"]["all_ok"]
+
+
+def test_validity_checks_linear_pass_quadratic_fail():
+    from bc2rl.mech import validity_at
+    grid = [0.0625, 0.125, 0.25, 0.5, 1]
+    lin = {"p0-H": [{"rho": r, "pred": 1e-4 * r, "actual": 1.02e-4 * r} for r in grid],
+           "p0-L": [{"rho": r, "pred": -5e-5 * r, "actual": -4.9e-5 * r} for r in grid]}
+    rnd = {"rand0": [{"rho": r, "pred": 2e-6 * r, "actual": 2.05e-6 * r} for r in grid]}
+    ok = validity_at(0.25, lin, [("p0-H", "p0-L")], 0.0, rnd, 0.001)
+    assert ok["all_ok"] and ok["V1"] and ok["V2"] and ok["V3"] and ok["V4"] and ok["V5"]
+    quad = {k: [dict(x, actual=x["actual"] - 2e-4 * x["rho"] ** 2) for x in v] for k, v in lin.items()}
+    bad = validity_at(1, quad, [("p0-H", "p0-L")], 0.0, rnd, 0.001)
+    assert not bad["V3"] and not bad["all_ok"]
+    noisy = validity_at(0.25, lin, [("p0-H", "p0-L")], 1e-5, rnd, 0.001)
+    assert not noisy["V1"]
+    assert not validity_at(0.25, lin, [("p0-H", "p0-L")], 0.0, rnd, 0.02)["V5"]

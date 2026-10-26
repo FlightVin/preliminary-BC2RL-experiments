@@ -152,4 +152,13 @@ updated at least every 8 hours. Before each update: code audit (implementation; 
 review (evidence; clarity), recorded in the harness `audits/` directory.
 
 ## 9. Dated clarifications
-(none yet)
+
+### 9.1 (2026-10-26, before any X6 job or outcome) X6 calibration inputs and code
+- Source pool for the development calibration: `devdemo` + `online` prompts (1,024 drawn with the A2 pool seed). The
+  `dev` split is the held-out reference-trace set of Section 4.2 and is therefore not in the source pool. Reason: the
+  A2 calibration pool (dev + devdemo, 656 prompts) gave only 73 mixed groups and 2 feasible pairs for dev light-BC.
+- "4 matched pairs" means up to 4: the pairs that the frozen pool/matching rules make feasible (at least 2 required;
+  otherwise the calibration of that checkpoint fails). V3 with n displacements requires n - 1 to pass.
+- Random directions: 4 sign vectors scaled to the median norm of the equal-norm displacements (seed 12345).
+- Implementation: `bc2rl/mech.py` options `fp32_measure`, mode `calibrate2`, `validity_check`; gate `scripts/x6_gate.py`;
+  configs `configs/ext/x6-calib-{devlight,devext}.json`; tests in `tests/test_mech.py`.

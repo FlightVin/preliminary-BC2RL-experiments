@@ -10,7 +10,16 @@ Stages of `bc2rl mech` (each saved atomically; a resumed job skips finished stag
               anchor-fit / anchor-check log-likelihood (token classes), probe pass counts (15 attempts),
               sampled-token KL, Taylor check
 mode "calibrate" (development only) replaces stage 4 with the radius grid and writes the frozen rho rule.
+
+Amendment A5 / X6 (protocol/AMENDMENT-A5 Section 4), off by default so A2 configurations behave as before:
+  fp32_measure: true   h, every log-likelihood and every Taylor quantity use an fp32 copy of the model; sampling,
+                       probes and the KL statistic stay on the BF16 policy (adapter weights are fp32 in both).
+  mode "calibrate2"    development radius grid below one step with validity checks V1-V5 (anchor-fit + dev held-out,
+                       random sign directions); writes calibration.json; `scripts/x6_gate.py` combines checkpoints.
+  validity_check: true per-checkpoint V1-V3 on anchor-fit before the forks of a study run; a failing checkpoint is
+                       recorded as invalid and gets no forks.
 """
+import copy
 from __future__ import annotations
 
 import gzip
@@ -363,7 +372,9 @@ def cmd_mech(cfg):
     pd = cfg["proj_data"]
     device = cfg.get("device", "cuda")
     calibrate = me["mode"] == "calibrate"
-    splits = sorted(set(me["source_splits"] + ([me["kl_split"]] if calibrate else [])))
+    calibrate2 = me["mode"] == "calibrate2"
+    splits = sorted(set(me["source_splits"] + ([me["kl_split"]] if calibrate or calibrate2 else [])
+                        + ([me["heldout_split"]] if calibrate2 else [])))
     data, _ = load_data(cfg, splits)
     fmt = data["format"][0]
     mdata, mman = load_mech(cfg)
@@ -378,6 +389,14 @@ def cmd_mech(cfg):
     params = trainable(model)
     theta0 = flat_params(params).clone()
     theta0_sha = vec_sha(theta0)
+    if me.get("fp32_measure"):
+        meas = copy.deepcopy(model).float()
+        meas.eval()
+        mparams = trainable(meas)
+        if not torch.equal(flat_params(mparams), theta0):
+            raise SystemExit("fp32 measurement copy differs from the checkpoint")
+    else:
+        meas, mparams = model, params
     ledger = CostLedger(run.path("cost.json"), "mech")
     G, cap, Lmax, micro, lr = me["group"], me["cap"], me["cap"], me["micro"], me["lr"]
     Qloc = me["groups_per_arm"] * G
@@ -433,8 +452,8 @@ def cmd_mech(cfg):
         return seqs, [token_classes(tok, c) for _, c in seqs]
     fit_seqs, fit_cls = enc(mdata["anchorfit"])
     chk_seqs, chk_cls = enc(mdata["anchorcheck"])
-    h = anchor_direction(model, params, fit_seqs, tok.pad_token_id, Lmax, micro)
-    assert torch.equal(flat_params(params), theta0)
+    h = anchor_direction(meas, mparams, fit_seqs, tok.pad_token_id, Lmax, micro)
+    assert torch.equal(flat_params(params), theta0) and torch.equal(flat_params(mparams), theta0)
 
     # ---- stage 2: selection
     sel_path = run.path("selection.json")
@@ -512,6 +531,9 @@ def cmd_mech(cfg):
         ledger.flush(note="displacements")
     assert torch.equal(flat_params(params), theta0)
 
+    if calibrate2:
+        return calibrate_grid(cfg, run, model, meas, tok, params, mparams, theta0, h, disp, use_pairs, data, fmt,
+                              fit_seqs, fit_cls, sel, ledger, res_dir, enc)
     if calibrate:
         return calibrate_radius(cfg, run, model, tok, params, theta0, h, disp, use_pairs, data, fmt, fit_seqs,
                                 fit_cls, sel, ledger, res_dir)
@@ -526,6 +548,17 @@ def cmd_mech(cfg):
         write_jsonl_gz(kl_path, [{"prompt_ids": x["prompt_ids"], "completion_ids": x["completion_ids"]} for x in o])
     kl_seqs = [(r["prompt_ids"], r["completion_ids"]) for r in read_jsonl_gz(kl_path)]
     forks = [("base", None)] + [(f"p{p['pair']}-{arm}", disp[(p["pair"], arm)]) for p in use_pairs for arm in ("H", "L")]
+    validity = None
+    if me.get("validity_check"):
+        vpath = run.path("validity.json")
+        if not os.path.exists(vpath):
+            atomic_json(vpath, checkpoint_validity(me, meas, mparams, theta0, h, disp, fit_seqs, fit_cls,
+                                                   tok.pad_token_id, rho))
+            ledger.flush(note="validity")
+        validity = json.load(open(vpath))
+        print(f"[mech] validity at rho {rho}: {validity['checks']}", flush=True)
+        if not validity["checks"]["all_ok"]:
+            forks = []
     base_fit = None
     for tag, d in forks:
         fpath = run.path("forks", f"{tag}.json")
@@ -534,9 +567,13 @@ def cmd_mech(cfg):
                 base_fit = json.load(open(fpath))["anchorfit"]["mean_norm_ll"]
             continue
         set_flat(params, theta0 if d is None else theta0 + rho * d)
-        rec = {"tag": tag, "rho": rho}
-        rec["anchorfit"] = anchor_ll(model, fit_seqs, fit_cls, tok.pad_token_id, Lmax, micro)
-        rec["anchorcheck"] = anchor_ll(model, chk_seqs, chk_cls, tok.pad_token_id, Lmax, micro)
+        if meas is not model:
+            set_flat(mparams, theta0 if d is None else theta0 + rho * d)
+        rec = {"tag": tag, "rho": rho, "measure": "fp32" if meas is not model else "bf16"}
+        rec["anchorfit"] = anchor_ll(meas, fit_seqs, fit_cls, tok.pad_token_id, Lmax, micro)
+        rec["anchorcheck"] = anchor_ll(meas, chk_seqs, chk_cls, tok.pad_token_id, Lmax, micro)
+        if meas is not model:
+            set_flat(mparams, theta0)
         seed = me["eval_seed"] * 1000003 + stable_int(f"{run.id}:{tag}")
         recs, gen_s = run_attempts(model, tok, probe, fmt, variant, me["probe_attempts"], cap, seed,
                                    batch_seqs=me.get("batch_seqs", 480))
@@ -563,7 +600,8 @@ def cmd_mech(cfg):
         if stop.stop:
             raise SystemExit(143)
     summary = {"run_id": run.id, "config_hash": run.chash, "adapter_sha256": asha, "theta0_sha": theta0_sha,
-               "rho": rho, "rho_source": rho_src, "selection": sel, "pairs_used": use_pairs,
+               "rho": rho, "rho_source": rho_src, "selection": sel, "pairs_used": use_pairs, "validity": validity,
+               "measure": "fp32" if meas is not model else "bf16",
                "forks": {t: json.load(open(run.path("forks", f"{t}.json"))) for t, _ in forks},
                "anchor_manifest": mman["splits"], "gpu_s_total": ledger.total_gpu_s(), "wall_s": time.time() - t_start,
                "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"}
@@ -637,4 +675,135 @@ def calibrate_radius(cfg, run, model, tok, params, theta0, h, disp, pairs, data,
     atomic_json(run.path("DONE.json"), {"config_hash": run.chash, "artifacts": []})
     ledger.flush(note="calibration complete")
     print(f"[calib] chosen rho = {chosen}")
+    return 0
+
+
+# ----------------------------------------------------------------------------- A5 / X6 validity checks
+
+def fit_ab(rhos, actual):
+    """Least-squares actual = a*rho + b*rho^2 (no intercept)."""
+    x = np.asarray(rhos, float)
+    a, b = np.linalg.lstsq(np.stack([x, x ** 2], 1), np.asarray(actual, float), rcond=None)[0]
+    return float(a), float(b)
+
+
+def validity_at(rho, rows, pairs, noise, rand_rows=None, kl_stat=None, kl_target=0.01, n_disp=None):
+    """Checks V1-V5 (protocol A5 Section 4.2) at one radius.
+    rows: {disp: [{"rho", "pred", "actual"}...]} over the grid (anchor-fit); pairs: list of (H key, L key);
+    noise: fp32 repeat |difference|; rand_rows: same structure for random directions; kl_stat: max median KL at rho."""
+    at = {k: next(r for r in v if r["rho"] == rho) for k, v in rows.items()}
+    preds = [abs(r["pred"]) for r in at.values()]
+    out = {"rho": rho, "noise": noise}
+    out["V1"] = bool(noise <= 0.05 * float(np.median(preds)))
+    v2a = []
+    for hk, lk in pairs:
+        pc = at[hk]["pred"] - at[lk]["pred"]
+        ac = at[hk]["actual"] - at[lk]["actual"]
+        v2a.append({"pair": f"{hk}/{lk}", "pred_contrast": pc, "actual_contrast": ac,
+                    "abs_err_over_pred": abs(ac - pc) / abs(pc) if pc else None})
+    rel = [abs(r["actual"] - r["pred"]) / abs(r["pred"]) if r["pred"] else float("inf") for r in at.values()]
+    out["V2_pairs"] = v2a
+    out["V2_median_rel_err"] = float(np.median(rel))
+    out["V2"] = bool(all(x["abs_err_over_pred"] is not None and x["abs_err_over_pred"] <= 0.25 for x in v2a)
+                     and out["V2_median_rel_err"] <= 0.25)
+    curv = {}
+    for k, v in rows.items():
+        a, b = fit_ab([r["rho"] for r in v], [r["actual"] for r in v])
+        curv[k] = {"a": a, "b": b, "quad_over_lin": abs(b) * rho ** 2 / max(abs(a) * rho, 1e-30)}
+    out["V3_curvature"] = curv
+    n_ok = sum(c["quad_over_lin"] <= 0.2 for c in curv.values())
+    out["V3"] = bool(n_ok >= len(curv) - 1)
+    if rand_rows is not None:
+        rr = {k: next(r for r in v if r["rho"] == rho) for k, v in rand_rows.items()}
+        out["V4_ratios"] = {k: (r["actual"] / r["pred"] if r["pred"] else None) for k, r in rr.items()}
+        out["V4"] = bool(all(x is not None and 0.8 <= x <= 1.25 for x in out["V4_ratios"].values()))
+    if kl_stat is not None:
+        out["V5_kl_stat"] = kl_stat
+        out["V5"] = bool(kl_stat <= kl_target)
+    keys = [k for k in ("V1", "V2", "V3", "V4", "V5") if k in out]
+    out["all_ok"] = bool(all(out[k] for k in keys))
+    return out
+
+
+def ll_grid(meas, mparams, theta0, dirs, seqs, cls, pad_id, Lmax, micro, grid, hvec):
+    f0 = anchor_ll(meas, seqs, cls, pad_id, Lmax, micro)["mean_norm_ll"]
+    rows = {}
+    for k, d in dirs.items():
+        rows[k] = []
+        for rho in grid:
+            set_flat(mparams, theta0 + rho * d)
+            f1 = anchor_ll(meas, seqs, cls, pad_id, Lmax, micro)["mean_norm_ll"]
+            set_flat(mparams, theta0)
+            rows[k].append({"rho": rho, "pred": float(torch.dot(hvec, rho * d)), "actual": f1 - f0})
+    return f0, rows
+
+
+def checkpoint_validity(me, meas, mparams, theta0, h, disp, fit_seqs, fit_cls, pad_id, rho):
+    """Study-checkpoint re-check of V1-V3 on anchor-fit only, at the calibrated rho, over the calibration grid."""
+    grid = sorted(set(me["rho_grid"]) | {rho})
+    a = anchor_ll(meas, fit_seqs, fit_cls, pad_id, me["cap"], me["micro"])["mean_norm_ll"]
+    b = anchor_ll(meas, fit_seqs, fit_cls, pad_id, me["cap"], me["micro"])["mean_norm_ll"]
+    dirs = {f"p{k[0]}-{k[1]}": d for k, d in disp.items()}
+    _, rows = ll_grid(meas, mparams, theta0, dirs, fit_seqs, fit_cls, pad_id, me["cap"], me["micro"], grid, h)
+    pairs = sorted({(f"p{k[0]}-H", f"p{k[0]}-L") for k in disp})
+    checks = validity_at(rho, rows, pairs, abs(a - b))
+    assert torch.equal(flat_params(mparams), theta0)
+    return {"checks": checks, "grid": grid, "rows": rows}
+
+
+def calibrate_grid(cfg, run, model, meas, tok, params, mparams, theta0, h, disp, pairs, data, fmt, fit_seqs, fit_cls,
+                   sel, ledger, res_dir, enc):
+    """Development-only X6 calibration: V1-V5 at every rho of the grid (anchor-fit gates), plus the held-out
+    reference-trace diagnostic (no gate). The cross-checkpoint choice is made by scripts/x6_gate.py."""
+    me = cfg["mech"]
+    pad, cap, micro = tok.pad_token_id, me["cap"], me["micro"]
+    grid = sorted(me["rho_grid"])
+    held_seqs, held_cls = enc(data[me["heldout_split"]])
+    h_held = anchor_direction(meas, mparams, held_seqs, pad, cap, micro)
+    rep = {}
+    for nm, (sq, cl) in (("fit", (fit_seqs, fit_cls)), ("held", (held_seqs, held_cls))):
+        x = anchor_ll(meas, sq, cl, pad, cap, micro)["mean_norm_ll"]
+        y = anchor_ll(meas, sq, cl, pad, cap, micro)["mean_norm_ll"]
+        rep[nm] = abs(x - y)
+    noise = max(rep.values())
+    dirs = {f"p{k[0]}-{k[1]}": d for k, d in disp.items()}
+    norms = [float(d.norm()) for d in disp.values()]
+    g = torch.Generator().manual_seed(me.get("random_seed", 12345))
+    rand = {}
+    for i in range(me.get("n_random", 4)):
+        r = torch.sign(torch.randn(theta0.numel(), generator=g)).to(theta0.device)
+        rand[f"rand{i}"] = r * (float(np.median(norms)) / float(r.norm()))
+    _, fit_rows = ll_grid(meas, mparams, theta0, dirs, fit_seqs, fit_cls, pad, cap, micro, grid, h)
+    _, rand_rows = ll_grid(meas, mparams, theta0, rand, fit_seqs, fit_cls, pad, cap, micro, grid, h)
+    _, held_rows = ll_grid(meas, mparams, theta0, dirs, held_seqs, held_cls, pad, cap, micro, grid, h_held)
+    ledger.flush(note="calibrate2 likelihood grid")
+    probs = data[me["kl_split"]]
+    texts = [chat_prompt(tok, task.prompt_text(p, cfg["prompt_variant"], fmt)) for p in probs]
+    o = sample(model, tok, texts, 1, cap, seed=me["sample_seed"] + 4242, batch_seqs=512)
+    kseqs = [(x["prompt_ids"], x["completion_ids"]) for x in o]
+    kl = {}
+    for rho in grid:
+        kl[rho] = max(float(np.median(sampled_kl(model, params, theta0, rho * d, kseqs, pad, micro)))
+                      for d in disp.values())
+    ledger.flush(note="calibrate2 KL")
+    pk = sorted({(f"p{k[0]}-H", f"p{k[0]}-L") for k in disp})
+    per_rho = {str(rho): validity_at(rho, fit_rows, pk, noise, rand_rows, kl[rho], me["kl_target"]) for rho in grid}
+    diag = {}
+    for rho in grid:
+        at = {k: next(r for r in v if r["rho"] == rho) for k, v in held_rows.items()}
+        signs = [(at[hk]["actual"] - at[lk]["actual"]) * (at[hk]["pred"] - at[lk]["pred"]) > 0 for hk, lk in pk]
+        diag[str(rho)] = {"heldout_contrast_sign_agree": int(sum(signs)), "n_pairs": len(pk),
+                          "heldout_ratio": {k: (r["actual"] / r["pred"] if r["pred"] else None) for k, r in at.items()}}
+    out = {"run_id": run.id, "adapter": me["adapter"], "grid": grid, "noise_repeat": rep, "per_rho": per_rho,
+           "passing_rhos": [rho for rho in grid if per_rho[str(rho)]["all_ok"]], "heldout_diagnostic": diag,
+           "fit_rows": fit_rows, "rand_rows": rand_rows, "held_rows": held_rows, "pairs": pairs, "selection": sel,
+           "disp_norms": norms, "gpu_s_total": ledger.total_gpu_s()}
+    assert torch.equal(flat_params(params), theta0) and torch.equal(flat_params(mparams), theta0)
+    atomic_json(run.path("calibration.json"), out)
+    if res_dir:
+        atomic_json(os.path.join(res_dir, "calibration.json"), out)
+    atomic_json(run.path("DONE.json"), {"config_hash": run.chash, "artifacts": []})
+    ledger.flush(note="calibrate2 complete")
+    print(f"[calib2] passing rho: {out['passing_rhos']}; "
+          f"{ {r: {k: v[k] for k in ('V1', 'V2', 'V3', 'V4', 'V5')} for r, v in per_rho.items()} }", flush=True)
     return 0
