@@ -372,6 +372,12 @@ Planned deviations are in the amendment, Section 10. This table gives the outcom
   was defined after the test read and has no independent confirmation.
 - Laptop work under amendment A3 was CPU analysis and report writing only; no model runs used laptop hardware.
 
+**Proposed follow-up (not started).** The post hoc result of Section 8.2 is the main open question. A confirmatory
+test would pre-register it before any new data are seen: hypothesis "at the same initial success count, extended-BC
+adapters lose more partly solved 3-input problems than light-BC adapters"; fresh problems from the same generator
+with a new seed; the existing 12 E3 branches (no new training); per-seed estimates with a band that accounts for
+shared problems (problem-level bootstrap); the comparison and threshold fixed in advance. This study did not start it.
+
 ## 11. Reproduction
 
 ```
