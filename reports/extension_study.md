@@ -1,13 +1,15 @@
 # BC2RL extension study (amendment A5)
 
-**Status: update 2, 2026-10-26 11:10 EDT (15:10 UTC).** X5 is complete: its pre-registered primary result is
+**Status: update 3, 2026-10-26 16:20 EDT (20:20 UTC).** X5 is complete: its pre-registered primary result is
 **CONFIRMED** on fresh problems. X6 is complete: the repaired E2 assay **failed** its pre-registered gate, so the E2
-study run does not take place. X7 (training replication on new seeds) is pre-registered and submitted; it has no result
-yet. Updates follow at least every 8 hours. Update 0: 2026-10-25 23:49 EDT; update 1: 2026-10-26 08:20 EDT.
+study run does not take place. X7 (training replication on new seeds) is running: BC for the 3 new seeds is done, and
+11 of 12 online branches have finished training. X7 has no result yet; no X7 outcome was examined.
+Updates follow at least every 8 hours. Update 0: 2026-10-25 23:49 EDT; update 1: 2026-10-26 08:20 EDT;
+update 2: 2026-10-26 11:10 EDT.
 
 Protocol: `protocol/AMENDMENT-A5-2026-10-26.md` (X5 pre-registration `b2ad826`; X6 `eb19ea8`, Sections 9.1-9.2;
 X7 Section 9.3, `b65d9cd`). The initial study stays frozen (`reports/initial_study.md`; corrections in its Section 12).
-Audit of this update: `audits/extension-audit-20261026T1510Z.md` in the harness workspace.
+Audit of this update: `audits/extension-audit-20261026T2017Z.md` in the harness workspace.
 
 ## 0. Summary
 
@@ -16,7 +18,7 @@ Audit of this update: `audits/extension-audit-20261026T1510Z.md` in the harness 
 | X1 audit | 4 count/scope errors corrected in the frozen report; no number changed | Section 2 |
 | X5 confirmation (fresh problems, same adapters) | **CONFIRMED**: Delta = +0.203, 95% CI [0.171, 0.234], 6/6 pairs positive | Section 3 |
 | X6 E2 repair | **gate failed**: no radius passed V1-V5 on both dev checkpoints; X6 ends | Section 4 |
-| X7 training replication (seeds 44, 55, 66) | pre-registered, submitted; no result | Section 5 |
+| X7 training replication (seeds 44, 55, 66) | running: BC done; 11/12 branches trained; 7/12 branches and 0/3 initial adapters evaluated; no result | Section 5 |
 
 What X5 shows: at the same selected initial success range on fresh 3-input problems, the online branches started from
 extended BC lost more coverage (pass@16) than the branches started from light BC, for the 3 existing training seeds.
@@ -157,7 +159,7 @@ No check was relaxed.
 - **Hypothesis (not tested):** a ratio criterion is unstable for directions that are almost orthogonal to the anchor
   gradient. A redesigned V4 would need a new pre-registration and new development data; this extension does not do it.
 
-## 5. X7: training replication (pre-registered, protocol Section 9.3; submitted)
+## 5. X7: training replication (pre-registered, protocol Section 9.3; running)
 - **Why:** X5 covers 3 training seeds per initialization; new seeds can change the conclusion (Section 3.6).
 - **Design:** new seeds 44, 55, 66; frozen broad-BC path (light = step 16, extended = step 128); the 4 frozen online
   branches per seed, 256 rounds; evaluation on xc3 / xc5 with the X5 protocol. Configs differ from the seed-33 configs
@@ -166,6 +168,26 @@ No check was relaxed.
   seed mean Delta_s > 0 for all 3 new seeds; CONTRADICTED if the upper limit < 0; otherwise NOT REPLICATED.
   Secondary: a six-seed summary (11-66) with a Student-t interval (df = 5).
 - **Stop rule:** X7 is the last training stage of A5. A final report follows, whatever the outcome.
+
+### 5.1 Progress at 16:17 EDT (worker logs via `ae logs`; outcomes not examined)
+- **Tests:** 61/61 passed on `b65d9cd` (job 10938632) and on `d09a5b2` (job 10940400; `results/bc2rl-x7-tests-main-s0/`).
+- **BC** (job 10938634, 1,147 s for 3 seeds): validation loss and pass@1 at steps 16 and 128 are in the range of
+  seeds 11-33. Seed 66 at step 16 has pass@1 0.012 (seeds 11-33: 0.031-0.040); the validation set is small.
+- **Online and evaluation** (15 worklist tasks; every completed step exited 0):
+
+| state | tasks |
+|---|---|
+| trained and evaluated (done) | light-grpo-s44, light-grpo-s55, light-grpo-s66, light-filtered-s44, extended-grpo-s44, extended-grpo-s55, extended-filtered-s44 |
+| trained; evaluation running or waiting | light-filtered-s55, light-filtered-s66, extended-grpo-s66, extended-filtered-s55 |
+| training running | extended-filtered-s66 |
+| not started | init evaluations for seeds 44, 55, 66 |
+
+- **Run times:** online training took 2,316-4,646 s per branch without preemption; final evaluation took 1,101-1,382 s.
+- **Preemptions:** 5 worker preemptions so far (w1 twice, w3, w4, w5). light-filtered-s66 resumed from its round-203
+  checkpoint, as protocol 9.3 specifies. Worker w4 waits in the queue and holds the extended-filtered-s55 evaluation.
+- **Worker w5 restart:** job 10938999 stopped after 1 s at its precondition, because its commit `d09a5b2` (report
+  update 2 only) had no test marker. The tests ran on `d09a5b2` (job 10940400); w5 then ran as job 10940402.
+  No code changed.
 
 ## 6. Observations, interpretations, hypotheses
 | type | statement | source |
@@ -179,20 +201,23 @@ No check was relaxed.
 | hypothesis | V4 fails because of near-orthogonal random directions (not tested) | Section 4.4 |
 
 ## 7. Jobs (Slurm is the authority for state)
-| job | expid | resources | status at 10:57 EDT |
+| job | expid | resources | status at 16:17 EDT |
 |---|---|---|---|
 | 10932944/45/51/54/55 | bc2rl-x5-evalw1..w5 | 1 preempt GPU each | completed (w1 preempted twice) |
 | 10938317 | bc2rl-x5-an-main-s0 | CPU | completed |
 | 10937583, 10937713, 10937785 | bc2rl-x6-calib-dev-s7 | 1 preempt GPU | attempt 1 failed; 10937713 stopped at the test marker (0 s); attempt 2 completed |
-| 10938632 | bc2rl-x7-tests-main-s0 | CPU | running |
-| 10938634 | bc2rl-x7-bc-main-s0 (3 BC seeds) | 1 preempt GPU | waits for tests |
-| 10938645, 10938647, 10938656, 10938662 | bc2rl-x7-w1..w4 | 1 preempt GPU each | wait for BC |
-| not yet submitted | bc2rl-x7-w5 | 1 preempt GPU | after BC (the 5-slot cap counts pending jobs) |
+| 10938632, 10940400 | bc2rl-x7-tests-main-s0 | CPU | completed (61/61 each) |
+| 10938634 | bc2rl-x7-bc-main-s0 (3 BC seeds) | 1 preempt GPU | completed |
+| 10938645, 10938647, 10938656 | bc2rl-x7-w1..w3 | 1 preempt GPU each | running (w1 preempted twice, w3 once) |
+| 10938662 | bc2rl-x7-w4 | 1 preempt GPU | pending after preemption |
+| 10938999, 10940402 | bc2rl-x7-w5 | 1 preempt GPU | 10938999 stopped at the test marker; 10940402 running (preempted once) |
 | not yet submitted | bc2rl-x7-an-main-s0 | CPU | after all workers |
 
 ## 8. Resources and forecast
-**Use (sacct, 2026-10-26 10:57 EDT).** A5 so far: **7.71 GPU-h** (X5 evaluation 6.97, including w1's two preempted
-attempts; X6 0.74) and 1.74 CPU-h. Cumulative with A0-A4: 21.51 GPU-h. A5 has no GPU-hour cap.
+**Use (sacct, 2026-10-26 16:17 EDT; all attempts, including preempted ones and the elapsed time of running jobs).**
+A5 so far: **22.69 GPU-h** (X5 6.97; X6 0.74; X7 14.98) and 2.24 CPU core-h (X5 1.10; X6 0.51; X7 0.64).
+Cumulative with A0-A4: 36.49 GPU-h. A5 has no GPU-hour cap. Correction: update 2 gave 1.74 CPU-h for X5 + X6; a
+recomputation from sacct gives 1.61 core-h. The source of the difference is unknown; this update uses 1.61.
 
 | stage | forecast GPU-h | basis |
 |---|---:|---|
@@ -202,14 +227,24 @@ attempts; X6 0.74) and 1.74 CPU-h. Cumulative with A0-A4: 21.51 GPU-h. A5 has no
 | X7 analysis | 0 | CPU |
 | **X7 total** | **about 31** | |
 
-**Timeline (estimates, EDT).** BC job: start 11:00-17:00, 20-30 min run. Workers: 6-7 h after they start, plus
-preemption losses. X7 result: 2026-10-26 22:00 to 2026-10-27 12:00. Final report: within 2 h of the X7 result.
-Queue measured for X5: the workers started 7.4-8.6 h after their data dependency cleared (sacct).
+**Revised X7 forecast.** Measured online time is 0.6-1.3 GPU-h per branch, below the 1.9 GPU-h forecast. Remaining
+work: 1 online branch (part done), 5 final evaluations (about 0.35 GPU-h each) and 3 initial-adapter evaluations
+(about 1.1 GPU-h each): about 6-7 GPU-h, plus preemption losses. Revised X7 total: about 21-23 GPU-h.
+
+**Timeline (estimates, EDT).** Workers finish: 2026-10-26 19:00 if no further preemption; up to 2026-10-27 08:00
+with preemptions and queue waits (w4 waits now). X7 analysis: CPU job, under 30 min after the workers finish.
+Final report: within 2 h of the X7 result. Measured (sacct): the first attempts of the X7 workers started 0.0-2.0 h after they became eligible; requeued
+attempts started 0.1-1.7 h after preemption.
 
 ## 9. Blockers
-None. Queue wait is the main source of delay.
+None. Preemption and queue wait are the main sources of delay.
 
-## 10. Changes since update 1
+## 10. Changes since update 2
+- X7 tests, BC and 11 of 12 online branches completed; progress table added (Section 5.1).
+- Worker w5 stopped at the test-marker precondition and ran again after a test job on its commit; no code change.
+- Resource use, X7 forecast and timeline revised (Section 8); CPU-h for X5 + X6 corrected from 1.74 to 1.61.
+
+## 11. Changes from update 1 to update 2
 - X5 evaluation and analysis completed; X5 result added (Section 3).
 - X6 attempts 1 and 2 completed; X6 gate failed (Section 4); code change for insufficient pairs (`76f5150`) and
   a test-fixture fix (`0a916a3`).
