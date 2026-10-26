@@ -130,7 +130,7 @@ def test_mech_end_to_end_tiny(tmp_path):
         assert sum(f["probe"]["n"]) == 6 * 2
     cli("mech", dict(base, run_id="iv", mech=dict(me, mode="intervene", rho=2)))     # resume: already complete
     # A5 / X6: fp32 measurement, sub-step grid with V1-V5, gate, and per-checkpoint validity before forks
-    me2 = dict(me, fp32_measure=True, heldout_split="dev", kl_split="dev", kl_target=10.0, rho_grid=[0.25, 0.5, 1],
+    me2 = dict(me, fp32_measure=True, heldout_split="dev", kl_split="dev", kl_target=10.0, rho_grid=[0.25, 0.5, 1], min_pairs=1,
                n_random=2)
     cli("mech", dict(base, run_id="cal2", mech=dict(me2, mode="calibrate2")))
     c2 = json.load(open(pd / "runs" / "cal2" / "calibration.json"))
