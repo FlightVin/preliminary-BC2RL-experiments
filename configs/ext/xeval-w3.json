@@ -1,0 +1,70 @@
+{
+ "prompt_variant": "format",
+ "model": {
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0
+  }
+ },
+ "data": {
+  "version": "v1",
+  "main_seed": 20261024,
+  "dev_seed": 1024,
+  "min_value": 2,
+  "max_value": 20,
+  "max_target": 1000,
+  "max_abs_intermediate": 10000,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "format_example_inputs": 4
+ },
+ "run_id": "bc2rl-x5-eval-w3",
+ "seed": 0,
+ "xeval": {
+  "data_name": "x5",
+  "panels": [
+   "xc3",
+   "xc5"
+  ],
+  "variant": "format",
+  "cap": 256,
+  "seed": 5,
+  "batch_seqs": 768,
+  "checkpoints": [
+   {
+    "tag": "light-s22",
+    "adapter": "runs/bc2rl-s1-bc-broad-s22/adapters/step0016.safetensors",
+    "sha256": "7d022a02f2c0871f7d450e5b4d403885d2e18ddf0e0348ea62cddfbc0c61ed5e",
+    "attempts": 48,
+    "split": 24
+   },
+   {
+    "tag": "light-filtered-s11-r256",
+    "adapter": "runs/bc2rl-s2-light-filtered-s11/adapters/round0256.safetensors",
+    "sha256": "8f2e6be1c3bb5c6e57bfb938165e6e20d1f4848d33e10f29a50205b56765c401",
+    "attempts": 32
+   },
+   {
+    "tag": "light-filtered-s22-r256",
+    "adapter": "runs/bc2rl-s2-light-filtered-s22/adapters/round0256.safetensors",
+    "sha256": "689336569541b1640a0daec296ecc46c6d63519542c173af3eac5de9b8d2aea0",
+    "attempts": 32
+   },
+   {
+    "tag": "extended-grpo-s33-r256",
+    "adapter": "runs/bc2rl-s2-extended-grpo-s33/adapters/round0256.safetensors",
+    "sha256": "543191fe01b24e70418bdcde7e4ba9b2741962f9639118af5e7e7d556018e0cd",
+    "attempts": 32
+   }
+  ]
+ }
+}

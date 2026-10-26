@@ -1,0 +1,65 @@
+{
+ "prompt_variant": "format",
+ "model": {
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0
+  }
+ },
+ "data": {
+  "version": "v1",
+  "main_seed": 20261024,
+  "dev_seed": 1024,
+  "min_value": 2,
+  "max_value": 20,
+  "max_target": 1000,
+  "max_abs_intermediate": 10000,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "format_example_inputs": 4
+ },
+ "run_id": "bc2rl-x5-eval-w1",
+ "seed": 0,
+ "xeval": {
+  "data_name": "x5",
+  "panels": [
+   "xc3",
+   "xc5"
+  ],
+  "variant": "format",
+  "cap": 256,
+  "seed": 5,
+  "batch_seqs": 768,
+  "checkpoints": [
+   {
+    "tag": "light-s11",
+    "adapter": "runs/bc2rl-s1-bc-broad-s11/adapters/step0016.safetensors",
+    "sha256": "0a58d82fd9cd90c4d51a6cce818131a0b5bacbd501785a17cb789556f81742fd",
+    "attempts": 48,
+    "split": 24
+   },
+   {
+    "tag": "extended-s33",
+    "adapter": "runs/bc2rl-s1-bc-broad-s33/adapters/step0128.safetensors",
+    "sha256": "eb166fb1abeb0b20d2d714dd3c32b13cdbe8720acd60e419b1eab1e6dea6e6d3",
+    "attempts": 48,
+    "split": 24
+   },
+   {
+    "tag": "light-grpo-s33-r256",
+    "adapter": "runs/bc2rl-s2-light-grpo-s33/adapters/round0256.safetensors",
+    "sha256": "e22e25ed2ee8b8b03b3e55e4765928915955c35a1901a18308aa1c461c5efcbe",
+    "attempts": 32
+   }
+  ]
+ }
+}

@@ -1,0 +1,46 @@
+{
+ "prompt_variant": "format",
+ "model": {
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0
+  }
+ },
+ "data": {
+  "version": "v1",
+  "main_seed": 20261024,
+  "dev_seed": 1024,
+  "min_value": 2,
+  "max_value": 20,
+  "max_target": 1000,
+  "max_abs_intermediate": 10000,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "format_example_inputs": 4
+ },
+ "run_id": "bc2rl-x5-data",
+ "seed": 0,
+ "xdata": {
+  "name": "x5",
+  "seed": 20261026,
+  "panels": {
+   "xc3": {
+    "n_inputs": 3,
+    "count": 768
+   },
+   "xc5": {
+    "n_inputs": 5,
+    "count": 192
+   }
+  }
+ }
+}
