@@ -1,0 +1,68 @@
+{
+ "prompt_variant": "format",
+ "model": {
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0
+  }
+ },
+ "data": {
+  "version": "v1",
+  "main_seed": 20261024,
+  "dev_seed": 1024,
+  "min_value": 2,
+  "max_value": 20,
+  "max_target": 1000,
+  "max_abs_intermediate": 10000,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "format_example_inputs": 4
+ },
+ "run_id": "bc2rl-s2-extended-filtered-s44",
+ "seed": 44,
+ "online": {
+  "method": "filtered",
+  "lr": 1e-05,
+  "rounds": 256,
+  "prompts_per_round": 32,
+  "group": 4,
+  "cap": 256,
+  "micro": 8,
+  "clip": 0.2,
+  "prompt_split": "online",
+  "stream_seed": 44,
+  "init": {
+   "adapter": "runs/bc2rl-s1-bc-broad-s44/adapters/step0128.safetensors",
+   "tag": "extended-s44"
+  },
+  "save_rounds": [
+   64,
+   128,
+   256
+  ],
+  "val_rounds": [
+   0,
+   64,
+   128,
+   256
+  ],
+  "endpoints": {
+   "online": 256,
+   "total": 128
+  }
+ },
+ "val": {
+  "split": "val",
+  "attempts": 4,
+  "cap": 256
+ }
+}

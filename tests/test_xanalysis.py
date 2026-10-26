@@ -106,3 +106,48 @@ def test_draw_fresh_excludes_seen_and_is_deterministic():
     assert [p.key for p in rep["xa"]] == keys
     for p in again["xa"]:
         assert task.verify(p.inputs, p.target, task.completion_text(p))["reward"] == 1
+
+
+def test_x7_replication_rule(monkeypatch):
+    """X7 uses the X5 estimator with the new seeds; REPLICATED needs the lower limit > 0 and every seed Delta_s > 0."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("x7", "scripts/x7_replicate.py")
+    x7 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(x7)
+    monkeypatch.setattr(X, "SEEDS", x7.NEW_SEEDS)
+
+    def change(i, m, p):
+        return np.where((i == "extended") & (p < 0.5), p * 0.4, p)
+
+    prim, ds = x7.analyse(synth_panel(np.random.default_rng(4), change=change), 400, x7.NEW_SEEDS)
+    assert set(ds) == set(x7.NEW_SEEDS)
+    assert x7.decide_x7(prim["ci95"][0], prim["ci95"][1], ds) == "REPLICATED"
+    prim0, ds0 = x7.analyse(synth_panel(np.random.default_rng(5)), 400, x7.NEW_SEEDS)
+    assert x7.decide_x7(prim0["ci95"][0], prim0["ci95"][1], ds0) in ("NOT REPLICATED", "CONTRADICTED")
+    assert x7.decide_x7(0.1, 0.3, {44: 0.2, 55: -0.01, 66: 0.3}) == "NOT REPLICATED"
+    assert x7.decide_x7(0.1, 0.3, {44: 0.2, 55: float("nan"), 66: 0.3}) == "NOT REPLICATED"
+
+
+def test_x7_configs_match_frozen_protocol():
+    """Real X7 configs: same settings as the seed-33 frozen configs except seed, run_id, stream seed and init path."""
+    import json
+    wl = json.load(open("configs/worklists/x7.json"))
+    assert wl["name"] == "x7" and len(wl["tasks"]) == 15
+    for s in (44, 55, 66):
+        b, b0 = json.load(open(f"configs/ext/x7/bc-broad-s{s}.json")), json.load(open("configs/main/bc-broad-s33.yaml"))
+        assert {k: v for k, v in b.items() if k not in ("run_id", "seed")} == \
+            {k: v for k, v in b0.items() if k not in ("run_id", "seed")} and b["seed"] == s
+        for i, st in (("light", 16), ("extended", 128)):
+            for m in ("grpo", "filtered"):
+                o, o0 = json.load(open(f"configs/ext/x7/on-{i}-{m}-s{s}.json")), json.load(open(f"configs/main/on-{i}-{m}-s33.yaml"))
+                strip = lambda c: {**{k: v for k, v in c.items() if k not in ("run_id", "seed", "online")},
+                                   "online": {k: v for k, v in c["online"].items() if k not in ("stream_seed", "init")}}
+                assert strip(o) == strip(o0) and o["seed"] == s and o["online"]["stream_seed"] == s
+                assert o["online"]["init"]["adapter"] == f"runs/bc2rl-s1-bc-broad-s{s}/adapters/step{st:04d}.safetensors"
+                ev = json.load(open(f"configs/ext/x7/xeval-{i}-{m}-s{s}.json"))
+                assert ev["xeval"]["checkpoints"][0]["tag"] == X.final_tag(i, m, s)
+                assert ev["xeval"]["checkpoints"][0]["adapter"] == f"runs/{o['run_id']}/adapters/round0256.safetensors"
+                assert {k: v for k, v in ev["xeval"].items() if k != "checkpoints"} == \
+                    {k: v for k, v in json.load(open("configs/ext/xeval-w2.json"))["xeval"].items() if k != "checkpoints"}
+        ev = json.load(open(f"configs/ext/x7/xeval-init-s{s}.json"))
+        assert [c["tag"] for c in ev["xeval"]["checkpoints"]] == [X.init_tag("light", s), X.init_tag("extended", s)]

@@ -1,0 +1,50 @@
+{
+ "prompt_variant": "format",
+ "model": {
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0
+  }
+ },
+ "data": {
+  "version": "v1",
+  "main_seed": 20261024,
+  "dev_seed": 1024,
+  "min_value": 2,
+  "max_value": 20,
+  "max_target": 1000,
+  "max_abs_intermediate": 10000,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "format_example_inputs": 4
+ },
+ "run_id": "bc2rl-x7-eval-extended-filtered-s66",
+ "seed": 0,
+ "xeval": {
+  "data_name": "x5",
+  "panels": [
+   "xc3",
+   "xc5"
+  ],
+  "variant": "format",
+  "cap": 256,
+  "seed": 5,
+  "batch_seqs": 768,
+  "checkpoints": [
+   {
+    "tag": "extended-filtered-s66-r256",
+    "adapter": "runs/bc2rl-s2-extended-filtered-s66/adapters/round0256.safetensors",
+    "attempts": 32
+   }
+  ]
+ }
+}

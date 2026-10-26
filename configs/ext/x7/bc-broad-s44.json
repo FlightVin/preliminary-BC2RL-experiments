@@ -1,0 +1,51 @@
+{
+ "prompt_variant": "format",
+ "model": {
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0
+  }
+ },
+ "data": {
+  "version": "v1",
+  "main_seed": 20261024,
+  "dev_seed": 1024,
+  "min_value": 2,
+  "max_value": 20,
+  "max_target": 1000,
+  "max_abs_intermediate": 10000,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "format_example_inputs": 4
+ },
+ "run_id": "bc2rl-s1-bc-broad-s44",
+ "seed": 44,
+ "bc": {
+  "split": "bc",
+  "steps": 256,
+  "batch": 32,
+  "micro": 8,
+  "lr": 0.0001,
+  "save_steps": [
+   16,
+   64,
+   128,
+   192,
+   256
+  ]
+ },
+ "val": {
+  "split": "val",
+  "attempts": 4,
+  "cap": 256
+ }
+}

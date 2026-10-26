@@ -179,3 +179,42 @@ review (evidence; clarity), recorded in the harness `audits/` directory.
 - Code: a checkpoint with fewer than `min_pairs` = 2 feasible pairs now writes a failure record (`status`
   `insufficient_pairs`, every rho fails) instead of an exception. The gate then fails. Tests: `tests/test_mech.py`
   (`test_insufficient_pairs_record_fails_gate`, `test_x6_calibration_configs`).
+
+### 9.3 (2026-10-26 ~11:30 EDT, after the X5 result, before any X7 job) Stage X7 pre-registration: training replication
+**Why X7 runs (Section 5 stop rule).** X5 confirmed the effect on fresh problems, but for the same 3 training seeds per
+initialization. The per-pair Delta ranged from 0.090 to 0.338, and E_light from 0.030 to 0.276. X5 cannot show whether the
+effect holds over new training runs. New seeds can change that conclusion, so the stop rule does not apply.
+
+**Design.** New seeds 44, 55, 66. For each seed: the frozen broad-BC path (`configs/main/bc-broad-s33.yaml` with only
+`seed`/`run_id` changed; checkpoints at 16 = light, 128 = extended), then the 4 frozen online branches
+({light, extended} x {GRPO, filtered}; the seed-33 configs with only `seed`, `run_id`, `stream_seed` and the init path
+changed; 256 rounds). Endpoint: round 256 (as X5). Configs: `configs/ext/x7/`, worklist `configs/worklists/x7.json`;
+`tests/test_xanalysis.py::test_x7_configs_match_frozen_protocol` checks them against the frozen configs.
+
+**Evaluation.** The X5 fresh panels xc3 (primary) and xc5, with the X5 protocol unchanged (`bc2rl xeval`, initial
+adapters 48 attempts with selection 0-23 / baseline 24-47, finals 32 attempts, seed 5, cap 256). The panels are
+fresh for the new adapters: no training or selection step used them.
+
+**Primary statistic and decision (one look).** The X5 primary statistic (Section 3.4) over the 6 new (method, seed)
+pairs, with weights pooled over the 6 new initial adapters; 10,000 paired problem-bootstrap resamples. Seed-level
+Delta_s = mean of Delta(GRPO, s) and Delta(filtered, s); a seed without a usable pair counts as not positive.
+- **REPLICATED** if the 95% lower limit > 0 **and** Delta_s > 0 for all 3 new seeds.
+- **CONTRADICTED** if the 95% upper limit < 0.
+- **NOT REPLICATED** otherwise.
+The seed condition is the training-replication test; the bootstrap interval covers problem sampling only.
+
+**Secondary (descriptive).** Per-pair and per-method Delta; swap roles; K = 4, 8, 24; consistency p^16 change; per-bin
+table; whole-panel final - initial contrasts on xc3 and xc5. Six-seed summary: Delta_s for seeds 11, 22, 33 (X5
+adapters) and 44, 55, 66, their mean and a Student-t 95% interval (df = 5), and the count of positive seeds.
+
+**Exclusions and integrity.** No problem is excluded. Truncation counts as failure. A branch that fails deterministically
+is reported and its pairs count as not positive; it is not re-run with changed settings. A preemption resumes from
+the last checkpoint (frozen online code). The analysis (`scripts/x7_replicate.py`) refuses an incomplete adapter set.
+
+**Stop rule.** X7 is the last training stage of A5. After X7 the extension ends with a final report, whatever the
+outcome. No further seeds are added to change a decision.
+
+**Forecast (measured).** BC: 5.5 min per seed on A100 (jobs 10916268/70). Online: about 1.9 GPU-h per branch (frozen
+study). Evaluation at 21.5-66.8 completions/s (X5): about 0.35 GPU-h per final, 1.1 GPU-h per seed for the two initial
+adapters. Total about 31 GPU-h: BC 0.3, online 22.8, evaluation 7.5. Jobs: 1 BC job (3 seeds), then 5 workers
+(at most 5 GPU slots including pending). Wall time after the workers start: about 6-7 h, plus queue waits.

@@ -1,0 +1,215 @@
+{
+ "name": "x7",
+ "tasks": [
+  {
+   "id": "light-grpo-s44",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-light-grpo-s44.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-light-grpo-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "light-filtered-s44",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-light-filtered-s44.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-light-filtered-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "extended-grpo-s44",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-extended-grpo-s44.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-extended-grpo-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "extended-filtered-s44",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-extended-filtered-s44.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-extended-filtered-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "light-grpo-s55",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-light-grpo-s55.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-light-grpo-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "light-filtered-s55",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-light-filtered-s55.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-light-filtered-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "extended-grpo-s55",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-extended-grpo-s55.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-extended-grpo-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "extended-filtered-s55",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-extended-filtered-s55.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-extended-filtered-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "light-grpo-s66",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-light-grpo-s66.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-light-grpo-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "light-filtered-s66",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-light-filtered-s66.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-light-filtered-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "extended-grpo-s66",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-extended-grpo-s66.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-extended-grpo-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "extended-filtered-s66",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/ext/x7/on-extended-filtered-s66.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-extended-filtered-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "init-s44",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-init-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "init-s55",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-init-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "init-s66",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/ext/x7/xeval-init-s66.json"
+    }
+   ]
+  }
+ ]
+}
