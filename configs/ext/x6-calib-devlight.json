@@ -27,7 +27,7 @@
   ],
   "format_example_inputs": 4
  },
- "run_id": "bc2rl-x6-calib-devlight-s7",
+ "run_id": "bc2rl-x6-calib-devlight-s7-v2",
  "seed": 7,
  "mech": {
   "group": 4,
@@ -35,7 +35,7 @@
   "micro": 8,
   "lr": 1e-05,
   "groups_per_arm": 8,
-  "pool_prompts": 1024,
+  "pool_prompts": 2048,
   "pool_seed": 20261025,
   "max_mixed": 512,
   "max_pools": 8,
@@ -67,6 +67,7 @@
   "heldout_split": "dev",
   "fp32_measure": true,
   "n_random": 4,
-  "random_seed": 12345
+  "random_seed": 12345,
+  "min_pairs": 2
  }
 }

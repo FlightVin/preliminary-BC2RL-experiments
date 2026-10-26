@@ -163,3 +163,32 @@ def test_validity_checks_linear_pass_quadratic_fail():
     noisy = validity_at(0.25, lin, [("p0-H", "p0-L")], 1e-5, rnd, 0.001)
     assert not noisy["V1"]
     assert not validity_at(0.25, lin, [("p0-H", "p0-L")], 0.0, rnd, 0.02)["V5"]
+
+
+def test_insufficient_pairs_record_fails_gate():
+    from bc2rl import mech
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("x6_gate", "scripts/x6_gate.py")
+    g = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(g)
+    sel = {"pool_stats": {"mixed_groups": 3}, "n_pools": 1, "pairs": [{"pair": 0, "status": "infeasible composition"}]}
+    bad = mech.insufficient_pairs_record("a", "x", [0.5, 1.0], 0, 2, sel)
+    ok = {"run_id": "b", "grid": [0.5, 1.0], "per_rho": {"0.5": {"all_ok": True}, "1.0": {"all_ok": True}}}
+    r = g.gate([bad, ok])
+    assert r["chosen_rho"] is None and r["checks"]["all_ok"] is False
+    assert g.gate([ok])["chosen_rho"] == 1.0
+
+
+def test_x6_calibration_configs():
+    """The real X6 configs (A5 Sections 4.2, 9.1, 9.2): same protocol on both dev checkpoints, pool within the source."""
+    from bc2rl.task import SPLIT_SIZES
+    cs = {n: json.load(open(f"configs/ext/x6-calib-{n}.json")) for n in ("devlight", "devext")}
+    keys = ("mode", "fp32_measure", "rho_grid", "min_pairs", "n_pairs", "pool_prompts", "source_splits", "heldout_split",
+            "kl_split", "kl_target", "n_random", "random_seed", "sample_seed", "pool_seed")
+    assert {k: cs["devlight"]["mech"][k] for k in keys} == {k: cs["devext"]["mech"][k] for k in keys}
+    me = cs["devlight"]["mech"]
+    assert me["mode"] == "calibrate2" and me["fp32_measure"] is True and me["min_pairs"] == 2 and me["n_pairs"] == 4
+    assert me["rho_grid"] == [0.0625, 0.125, 0.25, 0.5, 1]
+    assert me["heldout_split"] not in me["source_splits"]
+    assert me["pool_prompts"] <= sum(SPLIT_SIZES[s] for s in me["source_splits"])
+    assert all(c["run_id"].endswith("-v2") and len(c["mech"]["adapter_sha256"]) == 64 for c in cs.values())

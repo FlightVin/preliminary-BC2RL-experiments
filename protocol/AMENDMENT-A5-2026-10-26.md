@@ -162,3 +162,20 @@ review (evidence; clarity), recorded in the harness `audits/` directory.
 - Random directions: 4 sign vectors scaled to the median norm of the equal-norm displacements (seed 12345).
 - Implementation: `bc2rl/mech.py` options `fp32_measure`, mode `calibrate2`, `validity_check`; gate `scripts/x6_gate.py`;
   configs `configs/ext/x6-calib-{devlight,devext}.json`; tests in `tests/test_mech.py`.
+
+### 9.2 (2026-10-26 ~10:15 EDT, after X6 attempt 1, before any V1-V5 value exists) Calibration attempt 1 failed on pair feasibility
+- Attempt 1 (job 10937583, commit `9325386`, run `bc2rl-x6-calib-devlight-s7`) stopped with an exception before any
+  validity check. Its selection record (job 10937679, `seldiag.json`) shows the cause. The dev light-BC adapter solved
+  8.1% of 3-input attempts, 0.3% of 5-input attempts and 0% of 10-input attempts. Therefore only 98 of 1,024 source
+  prompts had a mixed group. The pool rule made 6 pools of 16-17 groups. 5 pools had an infeasible composition, and the
+  6th failed the length tolerance (0.066 > 0.05). Feasible pairs: 0. The dev extended-BC calibration did not run.
+- Under Section 9.1 this counts as a **failed calibration of attempt 1** (fewer than 2 feasible pairs). It is reported.
+- Cause: an input-sizing error. More source prompts produced more pools, not larger pools. No V1-V5 threshold, rho
+  grid, gate rule, pair-matching rule or held-out set is involved.
+- Attempt 2 (pre-specified here): the source pool becomes 2,048 prompts (same splits, same pool seed; 4,608 available).
+  Expected: about 196 mixed groups, 8 pools of about 24. The new runs are `bc2rl-x6-calib-{devlight,devext}-s7-v2`; the
+  attempt-1 files stay on disk. All other settings are unchanged. Attempt 2 is the last pool-size change: if a checkpoint
+  again has fewer than 2 feasible pairs, X6 stops with a documented failure ("assay not constructible").
+- Code: a checkpoint with fewer than `min_pairs` = 2 feasible pairs now writes a failure record (`status`
+  `insufficient_pairs`, every rho fails) instead of an exception. The gate then fails. Tests: `tests/test_mech.py`
+  (`test_insufficient_pairs_record_fails_gate`, `test_x6_calibration_configs`).

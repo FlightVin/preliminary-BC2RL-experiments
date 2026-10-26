@@ -726,6 +726,16 @@ def validity_at(rho, rows, pairs, noise, rand_rows=None, kl_stat=None, kl_target
     return out
 
 
+def insufficient_pairs_record(run_id, adapter, grid, n_ok, min_pairs, sel):
+    """Calibration record for a checkpoint with fewer feasible pairs than required (A5 Section 9.1): every rho fails,
+    so the gate fails; selection statistics are kept for the audit."""
+    return {"run_id": run_id, "adapter": adapter, "grid": grid, "status": "insufficient_pairs",
+            "n_feasible_pairs": n_ok, "min_pairs": min_pairs, "passing_rhos": [],
+            "per_rho": {str(r): {"rho": r, "all_ok": False, "reason": "insufficient_pairs"} for r in grid},
+            "selection": {"pool_stats": sel["pool_stats"], "n_pools": sel["n_pools"],
+                          "pairs": [{k: v for k, v in q.items() if k not in ("H", "L")} for q in sel["pairs"]]}}
+
+
 def ll_grid(meas, mparams, theta0, dirs, seqs, cls, pad_id, Lmax, micro, grid, hvec):
     f0 = anchor_ll(meas, seqs, cls, pad_id, Lmax, micro)["mean_norm_ll"]
     rows = {}
@@ -759,6 +769,16 @@ def calibrate_grid(cfg, run, model, meas, tok, params, mparams, theta0, h, disp,
     me = cfg["mech"]
     pad, cap, micro = tok.pad_token_id, me["cap"], me["micro"]
     grid = sorted(me["rho_grid"])
+    n_ok = len({k[0] for k in disp})
+    if n_ok < me.get("min_pairs", 2):
+        out = insufficient_pairs_record(run.id, me["adapter"], grid, n_ok, me.get("min_pairs", 2), sel)
+        atomic_json(run.path("calibration.json"), out)
+        if res_dir:
+            atomic_json(os.path.join(res_dir, "calibration.json"), out)
+        atomic_json(run.path("DONE.json"), {"config_hash": run.chash, "artifacts": []})
+        ledger.flush(note="calibrate2 insufficient pairs")
+        print(f"[calib2] FAILED: {n_ok} feasible pairs < {me.get('min_pairs', 2)} (A5 Section 9.1)", flush=True)
+        return 0
     held_seqs, held_cls = enc(data[me["heldout_split"]])
     h_held = anchor_direction(meas, mparams, held_seqs, pad, cap, micro)
     rep = {}
