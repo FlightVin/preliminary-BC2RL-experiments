@@ -19,8 +19,9 @@ Amendment A5 / X6 (protocol/AMENDMENT-A5 Section 4), off by default so A2 config
   validity_check: true per-checkpoint V1-V3 on anchor-fit before the forks of a study run; a failing checkpoint is
                        recorded as invalid and gets no forks.
 """
-import copy
 from __future__ import annotations
+
+import copy
 
 import gzip
 import hashlib

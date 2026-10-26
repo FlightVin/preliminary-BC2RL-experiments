@@ -69,7 +69,8 @@ def usable_bins(b_light, b_ext, nbins, min_n=MIN_BIN_N):
 def standardized(vals, b, w, use, idx=None):
     """sum_{j in use} w_j mean(vals over problems in bin j) / sum_{j in use} w_j; idx = resampled problem indices
     (rows of a 2-D array give one bootstrap replicate each)."""
-    if idx is None:
+    scalar = idx is None
+    if scalar:
         idx = np.arange(len(vals))[None, :]
     v, bb = vals[idx], b[idx]
     num = np.zeros(idx.shape[0])
@@ -81,7 +82,8 @@ def standardized(vals, b, w, use, idx=None):
         mean = np.where(ok, (v * m).sum(1) / np.maximum(cnt, 1), 0.0)
         num += np.where(ok, w[j] * mean, 0.0)
         wsum += np.where(ok, w[j], 0.0)
-    return num / wsum
+    out = num / wsum
+    return float(out[0]) if scalar else out
 
 
 class Panel:
