@@ -1,29 +1,33 @@
 # BC2RL extension study (amendment A5)
 
-**Status: update 3, 2026-10-26 16:20 EDT (20:20 UTC).** X5 is complete: its pre-registered primary result is
-**CONFIRMED** on fresh problems. X6 is complete: the repaired E2 assay **failed** its pre-registered gate, so the E2
-study run does not take place. X7 (training replication on new seeds) is running: BC for the 3 new seeds is done, and
-11 of 12 online branches have finished training. X7 has no result yet; no X7 outcome was examined.
-Updates follow at least every 8 hours. Update 0: 2026-10-25 23:49 EDT; update 1: 2026-10-26 08:20 EDT;
-update 2: 2026-10-26 11:10 EDT.
+**Status: FINAL report, 2026-10-26 18:30 EDT (22:30 UTC).** All pre-registered stages are complete and the A5 stop
+rule applies (protocol Section 9.3): X7 was the last training stage. X5 is **CONFIRMED** on fresh problems. X6 (E2
+repair) **failed** its pre-registered gate. X7 is **REPLICATED** on 3 new training seeds. Earlier updates: 0 (2026-10-25
+23:49 EDT), 1 (2026-10-26 08:20), 2 (11:10), 3 (16:20).
 
 Protocol: `protocol/AMENDMENT-A5-2026-10-26.md` (X5 pre-registration `b2ad826`; X6 `eb19ea8`, Sections 9.1-9.2;
 X7 Section 9.3, `b65d9cd`). The initial study stays frozen (`reports/initial_study.md`; corrections in its Section 12).
-Audit of this update: `audits/extension-audit-20261026T2017Z.md` in the harness workspace.
+Audit of this report: `audits/extension-audit-20261026T2228Z.md` in the harness workspace.
 
 ## 0. Summary
 
 | stage | result | evidence |
 |---|---|---|
 | X1 audit | 4 count/scope errors corrected in the frozen report; no number changed | Section 2 |
-| X5 confirmation (fresh problems, same adapters) | **CONFIRMED**: Delta = +0.203, 95% CI [0.171, 0.234], 6/6 pairs positive | Section 3 |
+| X5 confirmation (fresh problems, seeds 11, 22, 33) | **CONFIRMED**: Delta = +0.203, 95% CI [0.171, 0.234], 6/6 pairs positive | Section 3 |
 | X6 E2 repair | **gate failed**: no radius passed V1-V5 on both dev checkpoints; X6 ends | Section 4 |
-| X7 training replication (seeds 44, 55, 66) | running: BC done; 11/12 branches trained; 7/12 branches and 0/3 initial adapters evaluated; no result | Section 5 |
+| X7 training replication (new seeds 44, 55, 66) | **REPLICATED**: Delta = +0.200, 95% CI [0.168, 0.231], 6/6 pairs positive; Delta_s > 0 for 3/3 seeds | Section 5 |
+| six-seed summary (11-66, secondary) | mean seed Delta +0.202, t95 [0.141, 0.262], 6/6 seeds positive | Section 5.3 |
 
-What X5 shows: at the same selected initial success range on fresh 3-input problems, the online branches started from
-extended BC lost more coverage (pass@16) than the branches started from light BC, for the 3 existing training seeds.
-What X5 does not show: that the effect holds for new training runs (X7 tests this), why it happens, or that it holds
-for other models, tasks or lengths of training.
+**What the extension shows.** On fresh 3-input problems that the initial adapter solved intermittently (1-11 of 24
+selection attempts), online training removed more coverage (pass@16) when it started from extended BC (128 steps)
+than when it started from light BC (16 steps). This holds for the 3 original training seeds (X5) and for 3 new
+training seeds (X7). It holds for both online methods (GRPO and filtered) and in all 12 (method, seed) pairs.
+
+**What it does not show.** A mechanism. That the BC length itself causes the effect, and not another difference
+between the step-16 and step-128 checkpoints (for example, the different distribution of initial success; Section 6).
+Generality to other models, tasks, BC lengths or online training lengths. Six training seeds describe training
+variability for this setup only. E2 (retention under small updates) has no valid assay (X6).
 
 ## 1. Question
 
@@ -115,7 +119,7 @@ and the same six Deltas.
   show larger coverage loss for extended BC; the problem-level interval excludes 0 by a wide margin.
 - **Interpretation:** the post hoc observation of the initial study generalizes to new problems **for these 3
   training seeds**. The interval covers problem sampling only. Seed-to-seed variation is large (Delta 0.090-0.338;
-  E_light 0.030-0.276), so the result for new training runs is open. X7 tests it.
+  E_light 0.030-0.276), so the result for new training runs was open at that point. X7 tested it (Section 5).
 - **Not shown:** a mechanism; that the effect depends on the BC length itself and not on another difference between
   the 16-step and 128-step checkpoints (for example, the different distribution of initial success: extended adapters
   have more problems in the higher bins); generality to other models, tasks or training lengths.
@@ -150,7 +154,7 @@ No radius passes on both checkpoints. **Gate: failed (`chosen_rho` = None). The 
 No check was relaxed.
 
 ### 4.4 Observations about the failure (no change to the decision)
-- V4 failed on one random direction at a time. The failing directions had a very small predicted change: devext `rand1`
+- V4 failed on one random direction at a time. The failing directions had a small predicted change: devext `rand1`
   had |predicted| <= 1.5e-7 (ratios -5.68 at 1/16 and 0.498 at 1/2). The pair displacements changed the
   log-likelihood by about 1e-5 to 3e-3 (largest observed: 2.56e-3).
 - V1 did not test anything: the fp32 repeat noise was exactly 0 on both checkpoints.
@@ -159,92 +163,147 @@ No check was relaxed.
 - **Hypothesis (not tested):** a ratio criterion is unstable for directions that are almost orthogonal to the anchor
   gradient. A redesigned V4 would need a new pre-registration and new development data; this extension does not do it.
 
-## 5. X7: training replication (pre-registered, protocol Section 9.3; running)
-- **Why:** X5 covers 3 training seeds per initialization; new seeds can change the conclusion (Section 3.6).
+## 5. X7 result: training replication on new seeds
+
+### 5.1 Design (pre-registered, protocol Section 9.3)
+- **Why:** X5 covers 3 training seeds per initialization; new seeds could change the conclusion (Section 3.6).
 - **Design:** new seeds 44, 55, 66; frozen broad-BC path (light = step 16, extended = step 128); the 4 frozen online
-  branches per seed, 256 rounds; evaluation on xc3 / xc5 with the X5 protocol. Configs differ from the seed-33 configs
-  only in seed, run ID, stream seed and init path (`test_x7_configs_match_frozen_protocol`).
+  branches per seed, 256 rounds; evaluation on xc3 / xc5 with the X5 protocol (48 / 32 attempts, seed 5, cap 256).
+  Configs differ from the seed-33 configs only in seed, run ID, stream seed and init path
+  (`test_x7_configs_match_frozen_protocol`, 61/61 tests passed on `b65d9cd` and `d09a5b2`).
 - **Decision (one look):** REPLICATED if the X5 statistic over the 6 new pairs has a 95% lower limit > 0 **and** the
   seed mean Delta_s > 0 for all 3 new seeds; CONTRADICTED if the upper limit < 0; otherwise NOT REPLICATED.
-  Secondary: a six-seed summary (11-66) with a Student-t interval (df = 5).
-- **Stop rule:** X7 is the last training stage of A5. A final report follows, whatever the outcome.
 
-### 5.1 Progress at 16:17 EDT (worker logs via `ae logs`; outcomes not examined)
-- **Tests:** 61/61 passed on `b65d9cd` (job 10938632) and on `d09a5b2` (job 10940400; `results/bc2rl-x7-tests-main-s0/`).
-- **BC** (job 10938634, 1,147 s for 3 seeds): validation loss and pass@1 at steps 16 and 128 are in the range of
-  seeds 11-33. Seed 66 at step 16 has pass@1 0.012 (seeds 11-33: 0.031-0.040); the validation set is small.
-- **Online and evaluation** (15 worklist tasks; every completed step exited 0):
+### 5.2 Execution and acceptance
+- BC (job 10938634, 1,147 s): validation curves in the range of seeds 11-33, except light seed 66 (step-16 pass@1
+  0.012 against 0.031-0.040).
+- 5 workers ran 15 tasks; every training and evaluation step exited 0. 7 worker preemptions; each resumed from its
+  last checkpoint. One worker (job 10938999) stopped at the test-marker precondition and ran again after a test job.
+- Structural acceptance before the analysis (`audits/x7_structural_accept.py`): 36/36 (18 adapters x 2 panels) passed;
+  768 / 192 rows; n = 32 / 48; c_a + c_b = c; adapter path = config; 18 distinct sha256. No outcome was examined
+  before the analysis job.
 
-| state | tasks |
-|---|---|
-| trained and evaluated (done) | light-grpo-s44, light-grpo-s55, light-grpo-s66, light-filtered-s44, extended-grpo-s44, extended-grpo-s55, extended-filtered-s44 |
-| trained; evaluation running or waiting | light-filtered-s55, light-filtered-s66, extended-grpo-s66, extended-filtered-s55 |
-| training running | extended-filtered-s66 |
-| not started | init evaluations for seeds 44, 55, 66 |
+### 5.3 Primary result (one look; job 10943976, `results/bc2rl-x7-an-main-s0/x7_primary.json`)
+**Delta = +0.200, 95% CI [0.168, 0.231]; 6 of 6 pairs positive; Delta_s > 0 for all 3 seeds. Decision: REPLICATED.**
 
-- **Run times:** online training took 2,316-4,646 s per branch without preemption; final evaluation took 1,101-1,382 s.
-- **Preemptions:** 5 worker preemptions so far (w1 twice, w3, w4, w5). light-filtered-s66 resumed from its round-203
-  checkpoint, as protocol 9.3 specifies. Worker w4 waits in the queue and holds the extended-filtered-s55 evaluation.
-- **Worker w5 restart:** job 10938999 stopped after 1 s at its precondition, because its commit `d09a5b2` (report
-  update 2 only) had no test marker. The tests ran on `d09a5b2` (job 10940400); w5 then ran as job 10940402.
-  No code changed.
+| pair (method, seed) | E_light | E_extended | Delta | 95% CI |
+|---|---:|---:|---:|---|
+| GRPO, 44 | 0.208 | 0.340 | +0.132 | [0.084, 0.179] |
+| GRPO, 55 | 0.115 | 0.295 | +0.181 | [0.134, 0.227] |
+| GRPO, 66 | 0.099 | 0.261 | +0.162 | [0.085, 0.240] |
+| filtered, 44 | 0.163 | 0.309 | +0.146 | [0.101, 0.191] |
+| filtered, 55 | 0.093 | 0.379 | +0.286 | [0.239, 0.334] |
+| filtered, 66 | 0.019 | 0.311 | +0.292 | [0.236, 0.359] |
+| mean, GRPO | | | +0.158 | [0.121, 0.195] |
+| mean, filtered | | | +0.242 | [0.210, 0.273] |
 
-## 6. Observations, interpretations, hypotheses
+Pooled bin weights: 0.390 / 0.350 / 0.260. An independent recomputation from the harvested counts (laptop script
+`audits/x7_independent_recompute.py`, not project code) gave the same six Deltas, mean (0.1999) and seed values; its own
+2,000-resample bootstrap gave [0.168, 0.234].
+
+**Seed level and six-seed summary (secondary, descriptive).**
+
+| seed | 11 | 22 | 33 | 44 | 55 | 66 |
+|---|---:|---:|---:|---:|---:|---:|
+| Delta_s (mean of GRPO and filtered) | +0.200 | +0.279 | +0.131 | +0.139 | +0.234 | +0.227 |
+
+Mean +0.202; Student-t 95% interval (df = 5) [0.141, 0.262]; 6 of 6 seeds positive. Seeds 11-33 use the X5 adapters
+and evaluations; the interval treats the 6 seeds as independent training runs of one fixed setup.
+
+### 5.4 Pre-registered sensitivity and secondary analyses
+| analysis | Delta | 95% CI |
+|---|---:|---|
+| selection and baseline roles swapped | +0.190 | [0.160, 0.220] |
+| K = 4 / 8 / 24 | +0.256 / +0.245 / +0.176 | lower limits 0.226 / 0.215 / 0.143 |
+| consistency, change in p^16 | -0.186 | [-0.220, -0.151] |
+
+- **Consistency:** a negative value means extended-BC branches gained *less* consistency than light-BC branches; this
+  is the same direction as the coverage result. The script's label "CONTRADICTED" for this row is mechanical (as X5).
+- **Per-bin table** (`x7_bins.csv`): in every bin and seed, the extended adapters had higher baseline success rates
+  than the light adapters (bin 6-11: 0.30-0.32 against 0.13-0.23). Light seed 66 had only 12 problems in bin 6-11.
+- **Whole panel** (`x7_contrasts.csv`, final minus initial): xc3 pass@1 rises and pass@16 falls in **12 of 12**
+  branches; the simultaneous bands exclude 0 in 12 of 12 for both. pass@16 change: light -0.04 to -0.22; extended
+  -0.20 to -0.26. xc5 pass@16 rises in 12 of 12 branches (bands exclude 0 in 10 of 12). Same pattern as X5.
+
+### 5.5 Checks for artifacts (post hoc; exploratory, not pre-registered)
+- **Baseline mismatch inside bins.** Exact (c_a, c_b)-cell matching (`audits/x7_posthoc_cellmatch.py`, the X5 method)
+  gives a final loss_16 difference (extended - light) of +0.148 to +0.326 (mean +0.221, 6/6 positive) and a final
+  success-rate difference of -0.19 to -0.30. As in X5, extended-BC branches end lower although their baselines are
+  higher.
+- **Truncation** (counted as failure; xc3 finals). Unlike X5, truncation is not one-sided: extended-grpo-s44 truncated
+  31.2% of attempts (other extended finals 0.0-6.9%); light finals 0.0-21.0%. grpo-s44 has the smallest pair Delta
+  (+0.132), so truncation in extended-grpo-s44 can contribute to that pair. The other 5 pairs use extended finals
+  with 0.0-6.9% truncation. Seed 44 stays positive on its filtered pair alone (+0.146). This report does not correct
+  for truncation, because the protocol does not.
+- **Output length.** Mean generated tokens on xc3: extended finals 21-112, light finals 44-99. Not interpreted.
+
+## 6. Interpretation and limits (all stages)
+- **Observation:** on fresh 3-input problems, at the same selected initial success range, extended-BC branches lost
+  more pass@16 than light-BC branches in 12 of 12 (method, seed) pairs over 6 training seeds. The problem-level
+  intervals (X5, X7) and the seed-level t-interval all exclude 0.
+- **Interpretation:** the scope is this model (Qwen2.5-0.5B-Instruct, LoRA r16), task, BC path and 256-round online
+  training. In this scope, online training from the step-128 BC checkpoint lowers pass@16 more on intermittently
+  solved problems than online training from the step-16 checkpoint. The result holds over training seeds, not only over problems.
+- **Confound not removed:** the two initializations differ in more than BC length as such. Within each bin the
+  extended adapters have higher baseline success (Sections 3.3, 5.4). The post hoc cell-matched checks (Sections 3.5,
+  5.5) keep the sign, but they are exploratory. The comparison is between two checkpoints of one BC path; it does not
+  separate "more BC steps" from other properties of those checkpoints.
+- **Not shown:** a mechanism; generality to other models, tasks, BC lengths or online lengths; any retention claim
+  (E2 has no valid assay).
+
+## 7. Observations, interpretations, hypotheses
 | type | statement | source |
 |---|---|---|
 | observation | X5 primary Delta +0.203 [0.171, 0.234], 6/6 positive | `x5_primary.json` |
-| observation | xc3 pass@16 falls in 12/12 branches; xc5 pass@16 rises in 12/12 (10/12 bands exclude 0) | `x5_contrasts.csv` |
+| observation | X7 primary Delta +0.200 [0.168, 0.231], 6/6 positive, Delta_s > 0 for seeds 44, 55, 66 | `x7_primary.json` |
+| observation | six-seed mean Delta_s +0.202, t95 [0.141, 0.262], 6/6 positive | `x7_primary.json` (`six_seed`) |
+| observation | xc3 pass@16 falls in 12/12 branches in X5 and in X7; xc5 pass@16 rises in 12/12 in both | `x5_contrasts.csv`, `x7_contrasts.csv` |
 | observation | X6 gate failed (no common radius) | `x6-gate.json` |
-| interpretation | the post hoc pattern of the initial study holds on new problems for the 3 existing seeds | Section 3.6 |
+| observation | extended baselines exceed light baselines in every bin (X5, X7) | `x5_bins.csv`, `x7_bins.csv` |
+| interpretation | the step-128 initialization loses more coverage on intermittently solved problems than the step-16 initialization, over problems and training seeds, in this setup | Section 6 |
 | interpretation | under the pre-registered checks, the fp32 sub-step E2 assay has no radius that is valid on both dev checkpoints | Section 4 |
-| hypothesis | the effect holds for new training seeds (X7 tests it) | Section 5 |
+| hypothesis | the effect depends on BC length as such, not on other checkpoint differences (not tested) | Section 6 |
 | hypothesis | V4 fails because of near-orthogonal random directions (not tested) | Section 4.4 |
 
-## 7. Jobs (Slurm is the authority for state)
-| job | expid | resources | status at 16:17 EDT |
+## 8. Jobs (Slurm is the authority; all A5 jobs ended)
+| job | expid | resources | outcome |
 |---|---|---|---|
+| 10932942, 10933044 | bc2rl-x5-data-main-s0 | CPU | first failed; second completed |
 | 10932944/45/51/54/55 | bc2rl-x5-evalw1..w5 | 1 preempt GPU each | completed (w1 preempted twice) |
 | 10938317 | bc2rl-x5-an-main-s0 | CPU | completed |
 | 10937583, 10937713, 10937785 | bc2rl-x6-calib-dev-s7 | 1 preempt GPU | attempt 1 failed; 10937713 stopped at the test marker (0 s); attempt 2 completed |
 | 10938632, 10940400 | bc2rl-x7-tests-main-s0 | CPU | completed (61/61 each) |
-| 10938634 | bc2rl-x7-bc-main-s0 (3 BC seeds) | 1 preempt GPU | completed |
-| 10938645, 10938647, 10938656 | bc2rl-x7-w1..w3 | 1 preempt GPU each | running (w1 preempted twice, w3 once) |
-| 10938662 | bc2rl-x7-w4 | 1 preempt GPU | pending after preemption |
-| 10938999, 10940402 | bc2rl-x7-w5 | 1 preempt GPU | 10938999 stopped at the test marker; 10940402 running (preempted once) |
-| not yet submitted | bc2rl-x7-an-main-s0 | CPU | after all workers |
+| 10938634 | bc2rl-x7-bc-main-s0 | 1 preempt GPU | completed |
+| 10938645, 10938647, 10938656, 10938662 | bc2rl-x7-w1..w4 | 1 preempt GPU each | completed (preemptions: w1 3, w3 1, w4 2) |
+| 10938999, 10940402 | bc2rl-x7-w5 | 1 preempt GPU | 10938999 stopped at the test marker (1 s); 10940402 completed (preempted once) |
+| 10943976 | bc2rl-x7-an-main-s0 | CPU | completed (28 s) |
 
-## 8. Resources and forecast
-**Use (sacct, 2026-10-26 16:17 EDT; all attempts, including preempted ones and the elapsed time of running jobs).**
-A5 so far: **22.69 GPU-h** (X5 6.97; X6 0.74; X7 14.98) and 2.24 CPU core-h (X5 1.10; X6 0.51; X7 0.64).
-Cumulative with A0-A4: 36.49 GPU-h. A5 has no GPU-hour cap. Correction: update 2 gave 1.74 CPU-h for X5 + X6; a
-recomputation from sacct gives 1.61 core-h. The source of the difference is unknown; this update uses 1.61.
+## 9. Resources
+**Use (sacct, 2026-10-26 18:27 EDT; all attempts, including preempted ones).** A5: **26.85 GPU-h** (X5 6.97; X6 0.74;
+X7 19.14) and 2.27 CPU core-h (X5 1.10; X6 0.51; X7 0.67). Cumulative with A0-A4: 40.65 GPU-h. A5 had no GPU-hour
+cap. All GPU work ran on the preempt partition; BC2RL never held more than 5 GPU slots, counting pending jobs
+(`tools/bc2rl_guard.py`). X7 used 19.14 GPU-h against a forecast of 31: online training took 0.6-1.3 GPU-h per
+branch, not the forecast 1.9.
 
-| stage | forecast GPU-h | basis |
-|---|---:|---|
-| X7 BC (3 seeds) | 0.3 | 5.5 min per seed on A100 (jobs 10916268/70) |
-| X7 online (12 branches) | 22.8 | 1.9 GPU-h per branch (frozen study) |
-| X7 evaluation | 7.5 | X5 throughput 21.5-66.8 completions/s |
-| X7 analysis | 0 | CPU |
-| **X7 total** | **about 31** | |
+## 10. Blockers and next experiments
+No blockers. No further experiment runs under A5 (stop rule, protocol 9.3). Experiments that could change the
+interpretation need a new owner amendment and pre-registration:
+1. Separate BC length from checkpoint properties: initializations matched on initial success distribution (for
+   example, BC paths of different lengths that reach the same validation pass@1).
+2. Other BC lengths (for example, steps 32 and 64) to test a dose-response relation.
+3. A redesigned E2 assay (new V4 criterion, new development data).
 
-**Revised X7 forecast.** Measured online time is 0.6-1.3 GPU-h per branch, below the 1.9 GPU-h forecast. Remaining
-work: 1 online branch (part done), 5 final evaluations (about 0.35 GPU-h each) and 3 initial-adapter evaluations
-(about 1.1 GPU-h each): about 6-7 GPU-h, plus preemption losses. Revised X7 total: about 21-23 GPU-h.
+## 11. Changes since update 3
+- X7 completed: all 18 adapters evaluated and accepted; primary REPLICATED (Section 5); independent recomputation and
+  post hoc checks added.
+- Summary, interpretation (Section 6), observation table, jobs and resources made final.
 
-**Timeline (estimates, EDT).** Workers finish: 2026-10-26 19:00 if no further preemption; up to 2026-10-27 08:00
-with preemptions and queue waits (w4 waits now). X7 analysis: CPU job, under 30 min after the workers finish.
-Final report: within 2 h of the X7 result. Measured (sacct): the first attempts of the X7 workers started 0.0-2.0 h after they became eligible; requeued
-attempts started 0.1-1.7 h after preemption.
-
-## 9. Blockers
-None. Preemption and queue wait are the main sources of delay.
-
-## 10. Changes since update 2
-- X7 tests, BC and 11 of 12 online branches completed; progress table added (Section 5.1).
+## 12. Changes from update 2 to update 3
+- X7 tests, BC and 11 of 12 online branches completed; progress table added.
 - Worker w5 stopped at the test-marker precondition and ran again after a test job on its commit; no code change.
-- Resource use, X7 forecast and timeline revised (Section 8); CPU-h for X5 + X6 corrected from 1.74 to 1.61.
+- Resource use, X7 forecast and timeline revised; CPU-h for X5 + X6 corrected from 1.74 to 1.61.
 
-## 11. Changes from update 1 to update 2
+## 13. Changes from update 1 to update 2
 - X5 evaluation and analysis completed; X5 result added (Section 3).
 - X6 attempts 1 and 2 completed; X6 gate failed (Section 4); code change for insufficient pairs (`76f5150`) and
   a test-fixture fix (`0a916a3`).
