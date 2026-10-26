@@ -26,6 +26,9 @@ Facts established so far:
   while pass^15 rises: online training makes partly solved problems reliable and loses some others. The aggregate
   curve hides this loss (validation; test pending).
 - GRPO and filtered supervision do not differ consistently on validation (17/18 paired contrasts include zero).
+- Likelihood of the reference solutions on held-out problems falls in all 12 branches (-0.07 to -0.15), more for
+  filtered BC. At 3 inputs it falls less for extended-BC branches, which lose more problems: this drift does not
+  explain the coverage loss (Section 8.1; descriptive).
 
 ## 2. What changed (protocol amendment A2)
 
