@@ -3,6 +3,9 @@
 **Status: FINAL DRAFT (2026-10-25 23:14 EDT).** All runs are complete. The result set was frozen at commit `22e6816` (owner
 amendment A4, 2026-10-25 22:55 EDT); the test split was then read once (analysis job 10932504). Sections say which
 split each number comes from. One analysis after the test read is labelled **post hoc** (Section 8.2).
+**Audit correction 2026-10-26 (Section 12):** wording, counts of band checks and claim scope were corrected. No
+number was recomputed and no result or artifact changed. The follow-up of Section 10 is now a separate,
+pre-registered extension (`reports/extension_study.md`).
 
 ## 1. Summary
 
@@ -20,21 +23,25 @@ Main results (validation and test agree unless stated):
 - Behavior cloning (BC) creates distinct initial profiles at 3 and 5 inputs. 10 inputs stays at or near zero
   for every checkpoint measured. The study therefore cannot test long-horizon (9-operation) learning.
 - All 12 online branches (light/extended BC x GRPO/filtered x 3 seeds) raise pass@1 (test +0.07 to +0.13) and
-  pass^15 (test +0.06 to +0.12); simultaneous 95% bands over k exclude zero in 24/24 test checks. Overall pass@15
-  does not change (test: 11/12 bands include zero; extended-grpo-s22 -0.069).
-- The aggregate hides a redistribution. At 3 inputs pass@15 falls in 12/12 test branches (-0.06 to -0.27) while
-  pass^15 rises; at 5 inputs pass@15 rises in 12/12 (+0.04 to +0.21). Online training makes some problems reliable
-  and stops solving others.
-- On initially consistent problems (pre-registered retention test) there is no loss: where it is measurable
-  (extended-BC seed 33, test, n = 13), pass@1 rises by +0.19 (GRPO) and +0.21 (filtered). The loss is among
-  partly solved problems.
+  pass^15 (test +0.06 to +0.12). For each of the 12 branches, the 95% band that is simultaneous over k = 1..15
+  (within one branch and one metric family; not adjusted across branches) excludes zero for pass@1 and for pass^15
+  (24 of 24 branch-metric checks). Overall pass@15 does not change (test: 11/12 bands include zero; extended-grpo-s22 -0.069).
+- The aggregate hides a redistribution. At 3 inputs the pass@15 point estimate falls in 12/12 test branches (-0.06
+  to -0.27) while pass^15 rises; at 5 inputs pass@15 rises in 12/12 (+0.04 to +0.21). The per-input values have no
+  uncertainty band. After online training, more problems are solved in every attempt and fewer are solved at least once.
+- The pre-registered retention test is measurable for one initial adapter only (extended-BC seed 33, test, n = 13
+  problems, shared by its GRPO and filtered branches). There, pass@1 rises by +0.19 (GRPO) and +0.21 (filtered);
+  no loss is detected. The other 5 initial adapters have fewer than 12 consistent problems, so the data cannot show
+  whether consistent problems are lost in general. The coverage loss that is measurable is among partly solved problems.
 - Problems lost at 3 inputs: extended-BC branches exceed a no-change reference in 6/6 (test) and 5/6 (validation);
   light-BC in 3/6 and 1/6. **Post hoc**, at the same initial success count, extended-BC branches lose more problems
   than light-BC branches (test 132 vs 84 expected at light-BC rates; validation 55 vs 29), with both methods.
-- GRPO and filtered supervision do not differ consistently (test: 5 of 24 band checks exclude zero, in both directions).
+- GRPO and filtered supervision do not differ consistently. Test, 18 distinct checks (pass@1, pass@15, pass^15 x 6
+  pairs): 4 exclude zero (pass@15 3 of 6, all GRPO lower; pass^15 1 of 6, GRPO higher); pass@1 0 of 6 with the
+  pass@-family band (1 of 6 with the pass^-family band).
 - Likelihood of the reference solutions on held-out problems falls in all 12 branches (-0.07 to -0.15), more for
-  filtered BC. At 3 inputs it falls less for extended-BC branches, which lose more problems: this drift does not
-  explain the coverage loss (Section 8.1; descriptive).
+  filtered BC in the group means. At 3 inputs it falls less for extended-BC branches, which lose more problems: at the
+  group level this drift does not track the coverage loss (Section 8.1; descriptive, 3 seeds, no band).
 
 ## 2. What changed (protocol amendment A2)
 
@@ -182,7 +189,7 @@ mixed groups than extended-BC branches during most of training (figure, left).
 
 ### 7.1 Validation endpoint (val15: 144 problems x 15 attempts, initial and round-256 adapters)
 
-| branch | pass@1 gain [simultaneous 95%] | pass^15 gain | pass@15 gain | pass@15 gain at 3 inputs |
+| branch | pass@1 gain | pass^15 gain | pass@15 gain | pass@15 gain at 3 inputs |
 |---|---|---|---|---|
 | light-grpo s11 / s22 / s33 | +0.150 / +0.169 / +0.125 | +0.104 / +0.132 / +0.111 | -0.014 / +0.062 / +0.007 | -0.083 / -0.021 / -0.125 |
 | light-filtered s11 / s22 / s33 | +0.163 / +0.147 / +0.165 | +0.111 / +0.111 / +0.153 | +0.007 / +0.076 / +0.042 | -0.125 / +0.042 / +0.021 |
@@ -201,9 +208,10 @@ reliability; after either online method both curves flatten near 0.6-0.8. The nu
 all 15 attempts rose from 0-1 to 15-22 of 48 in every branch. 10 inputs stays at the floor (pass@1 <= 0.010 in all 36
 validation panels).
 
-GRPO minus filtered (same initial adapter and seed): 17 of 18 contrasts (pass@1, pass@15, pass^15 x 6 pairs) have
-simultaneous bands that include zero. The exceptions point in opposite directions: light-s33 pass^15 -0.042
-[-0.080, -0.004]; extended-s33 pass@15 +0.056 [0.000, +0.111]. The validation data show no consistent method effect.
+GRPO minus filtered (same initial adapter and seed): 17 of 18 checks (pass@1, pass@15, pass^15 x 6 pairs) have
+simultaneous bands that include zero. The exception is light-s33 pass^15 -0.042 [-0.080, -0.004]. Extended-s33 pass@15
++0.056 has a band whose lower limit is 0.000 (it does not exclude zero). Light-s33 pass@1 -0.040 excludes zero only
+with the narrower pass^-family band (pass^1 = pass@1). The validation data show no consistent method effect.
 
 ![GRPO minus filtered, validation](figures/contrast_val15_grpo_minus_filtered.png)
 
@@ -226,9 +234,10 @@ except extended-grpo-s22 (-0.069 [-0.122, -0.017]). The per-input columns are po
 The test curves repeat the validation pattern. After either method, the 3-input pass@k curves flatten after k = 4:
 the final policies solve some problems in almost every attempt and others in none. At 5 inputs coverage rises.
 
-GRPO minus filtered on test: 5 of 24 checks (pass@1, pass@15, pass^1, pass^15 x 6 pairs) exclude zero, in both
-directions: extended-s11 pass@15 -0.038, extended-s22 pass@15 -0.076 but pass^15 +0.049, light-s33 pass@15 -0.042
-and pass@1 -0.035. There is no consistent method effect.
+GRPO minus filtered on test: 4 of 18 distinct checks (pass@1, pass@15, pass^15 x 6 pairs) exclude zero:
+extended-s11 pass@15 -0.038, extended-s22 pass@15 -0.076 and pass^15 +0.049, light-s33 pass@15 -0.042. Light-s33
+pass@1 -0.035 excludes zero only with the pass^-family band (pass^1 = pass@1; the pass@-family band is
+[-0.074, +0.003]). pass@15 is lower under GRPO in 3 of 6 pairs; no metric favours one method in most pairs.
 
 ![GRPO minus filtered, test](figures/contrast_test_grpo_minus_filtered.png)
 
@@ -248,13 +257,15 @@ no power to detect it.
 **Test result (288 x 15).** The subgroup has 0 problems for every light-BC branch and 5 / 2 / 13 problems (all at 3
 inputs) for extended-BC seeds 11 / 22 / 33. Only extended-BC seed 33 reaches 12, for both methods:
 
-| branch (n = 13) | pass@1 baseline -> final | difference [95%] | pass^8 baseline -> final |
+| branch (n = 13) | pass@1 baseline -> final | difference [pointwise 95%, problem bootstrap] | pass^8 baseline -> final |
 |---|---|---|---|
 | extended-grpo-s33 | 0.788 -> 0.979 | +0.191 [+0.079, +0.302] | 0.308 -> 0.888 |
 | extended-filtered-s33 | 0.788 -> 1.000 | +0.212 [+0.115, +0.308] | 0.308 -> 1.000 |
 
-Where the pre-registered test is measurable, consistent competence is not lost; it becomes more reliable. Most points
-lie above the diagonal; the largest fall is one problem to 0.13 (filtered, baseline 0.75). The other branches stay measurement-limited.
+For these 13 problems of one initial adapter, no loss is detected and success rises. The two rows share the same
+problems and initial adapter, so they are not independent replications. Most points lie above the diagonal; the
+largest fall is one problem to 0.13 (filtered, baseline 0.75). The other 10 branches stay measurement-limited; the
+data do not show whether consistent problems are retained in general.
 
 ![Initially consistent problems, test](figures/retention_test.png)
 
@@ -294,25 +305,7 @@ gain counts are close to the reference, so the reference is roughly calibrated t
 gains, as on validation). As a share of initially solvable problems, the two inits lose a similar fraction
 (extended 0.23-0.36, light 0.24-0.43), because the reference expects fewer losses from extended-BC adapters, which
 solve more problems often. Section 8.2 removes the reference.
-
-### 8.2 Post hoc: loss at the same initial success count
-
-This analysis was defined after the test read (DECISIONS 2026-10-25 23:08 EDT). It compares the loss rate of
-light-BC and extended-BC branches among 3-input problems with the same initial success count c (of 15), with seeds
-pooled. It needs no prior. Script `scripts/x1_by_initial_c.py` (job 10932586).
-
-| split | method | extended-BC lost (shared c) | expected at light-BC per-c rates |
-|---|---|---:|---:|
-| test | GRPO | 68 | 39.8 |
-| test | filtered | 64 | 44.3 |
-| validation | GRPO | 25 | 17.8 |
-| validation | filtered | 30 | 11.5 |
-
-Test loss rate by c, extended vs light (pooled methods): c = 1: 0.63 vs 0.44; c = 2: 0.56 vs 0.35; c = 3: 0.31 vs
-0.26; c = 4: 0.29 vs 0.11; c = 5: 0.24 vs 0.14. The direction is the same in all 5 shared bins on test and on
-validation. At the same initial success count, problems are lost more often after extended BC, with both online
-methods. Limits: post hoc; no uncertainty band (the same problems appear in all seeds, so pooled counts are not
-independent); light-BC adapters have almost no problems above c = 5; observational, so the cause is not identified.
+Bands in this section are per branch (no adjustment across the 12 branches).
 
 ### 8.1 Anchor-trace likelihood along the E3 trajectories (pre-registered secondary diagnostic; descriptive)
 
@@ -332,8 +325,27 @@ held-out anchor-check problems (16 per input count; mechanism split, no validati
 All 12 branches move away from the reference traces. The fall is mostly on numeric tokens, grows with input count,
 and is larger for filtered BC than for GRPO in the group means (4 of 6 seed pairs). It does not follow the coverage
 loss of X1: at 3 inputs the extended-BC branches lose less reference-trace likelihood than the light-BC branches, but
-they lose more 3-input problems. Reference-trace drift therefore does not explain the coverage loss. Three seeds, no
-uncertainty band; descriptive only.
+they lose more 3-input problems. At the group level, reference-trace drift therefore does not track the coverage
+loss. This does not exclude a problem-level relation. Three seeds, no uncertainty band; descriptive only.
+
+### 8.2 Post hoc: loss at the same initial success count
+
+This analysis was defined after the test read (DECISIONS 2026-10-25 23:08 EDT). It compares the loss rate of
+light-BC and extended-BC branches among 3-input problems with the same initial success count c (of 15), with seeds
+pooled. It needs no prior. Script `scripts/x1_by_initial_c.py` (job 10932586).
+
+| split | method | extended-BC lost (shared c) | expected at light-BC per-c rates |
+|---|---|---:|---:|
+| test | GRPO | 68 | 39.8 |
+| test | filtered | 64 | 44.3 |
+| validation | GRPO | 25 | 17.8 |
+| validation | filtered | 30 | 11.5 |
+
+Test loss rate by c, extended vs light (pooled methods): c = 1: 0.63 vs 0.44; c = 2: 0.56 vs 0.35; c = 3: 0.31 vs
+0.26; c = 4: 0.29 vs 0.11; c = 5: 0.24 vs 0.14. The direction is the same in all 5 shared bins on test and on
+validation. In these data, at the same observed initial success count, 3-input problems were lost more often after
+extended BC, with both online methods. This is a post hoc observation, not a confirmed effect. Limits: post hoc; no uncertainty band (the same problems appear in all seeds, so pooled counts are not
+independent); light-BC adapters have almost no problems above c = 5; observational, so the cause is not identified.
 
 ## 9. Compute
 
@@ -367,6 +379,9 @@ Planned deviations are in the amendment, Section 10. This table gives the outcom
 - One model (Qwen2.5-0.5B-Instruct, LoRA r16) and one synthetic task family. No claim of generality.
 - The 10-input stratum stays at floor in every panel. The study makes no long-horizon claim.
 - Three seeds per cell. Seed-level differences between GRPO and filtered BC are mostly inside their bands.
+- Band scope: bootstrap bands resample problems with the trained adapters fixed. They are simultaneous over k within
+  one branch (or pair) and one metric family; they are not adjusted across branches, pairs or input counts, and they
+  do not include training-seed variability. Per-input-count columns are point estimates.
 - All mechanism evidence is observational (E2 and E4 did not run). No causal mechanism is claimed.
 - X1 and Section 8.1 were defined after the validation results were seen; X1 was then tested once on test. Section 8.2
   was defined after the test read and has no independent confirmation.
@@ -377,6 +392,7 @@ test would pre-register it before any new data are seen: hypothesis "at the same
 adapters lose more partly solved 3-input problems than light-BC adapters"; fresh problems from the same generator
 with a new seed; the existing 12 E3 branches (no new training); per-seed estimates with a band that accounts for
 shared problems (problem-level bootstrap); the comparison and threshold fixed in advance. This study did not start it.
+(2026-10-26: the owner authorized it as a separate extension, amendment A5; see `reports/extension_study.md`.)
 
 ## 11. Reproduction
 
@@ -393,6 +409,23 @@ python scripts/e3_anchor_audit.py --config configs/mech/calib.yaml --out <dir>
 python scripts/plot_anchor_audit.py --audit <dir>/anchor_audit.json --out <dir>
 python scripts/x1_by_initial_c.py --config configs/analysis/final.yaml --out <dir>   # post hoc
 ```
+
+## 12. Audit corrections (2026-10-26, before any extension outcome)
+
+The owner asked for an audit of contrast counts, duplicated pass@1/pass^1 checks, retention statements and band
+scope. Source of every recount: `results/bc2rl-an-finalp1-main-s0/contrasts.csv` and `retention.csv` (frozen
+artifacts, commit `22e6816`), recounted by a script; record `audits/report-audit-20261026.md` in the harness workspace.
+
+| location | frozen text | correction | reason |
+|---|---|---|---|
+| Summary, 7.2 | "5 of 24 checks (pass@1, pass@15, pass^1, pass^15 x 6 pairs)" | 4 of 18 distinct checks | pass^1 = pass@1, so the old count included one quantity twice; light-s33 pass@1 excludes zero only with the pass^-family band |
+| 7.1 | "exceptions point in opposite directions" (2 of 18) | 1 of 18 excludes zero; extended-s33 pass@15 band touches zero | lower limit 0.000 does not exclude zero |
+| Summary, 8 | "consistent competence is not lost; it becomes more reliable" | no loss detected for 13 problems of one initial adapter | 1 of 6 initial adapters measurable; its 2 branches share problems |
+| Summary, 8.2 | "problems are lost more often after extended BC" | "in these data ... post hoc observation, not a confirmed effect" | no band, post hoc |
+| Summary, 8.1 | "this drift does not explain the coverage loss" | "does not track ... at the group level" | descriptive group means cannot exclude a problem-level relation |
+| Summary, 10 | band scope not stated | scope stated | bands are per branch and family, problems resampled, seeds fixed |
+| 7.1 table | header "[simultaneous 95%]" without intervals | header corrected | no interval was shown |
+| order | 8.2 printed before 8.1 | 8.1 first | numbering |
 
 ## References
 
