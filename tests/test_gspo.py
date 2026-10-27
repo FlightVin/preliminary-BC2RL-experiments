@@ -413,3 +413,18 @@ def test_g_dev_gate_fails_when_not_exercised(tmp_path):
     res = _run_g_dev(tmp_path, clip=0.001, med4=1e-5)
     g = res["gate_D"]
     assert g["D1_valid"] and not g["D2_L4"]["pass"] and not g["D2_S4"]["pass"] and not g["D2_T4"]["pass"]
+
+
+def test_g_validate_reads_the_real_configs_with_numeric_fields(monkeypatch):
+    """Job 10956589 failed: yaml.safe_load gave lr = '1e-05' (str). The script must use the project loader."""
+    import importlib.util
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    spec = importlib.util.spec_from_file_location("g_validate", os.path.join(root, "scripts", "g_validate.py"))
+    gv = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gv)
+    monkeypatch.setenv("PROJ_DATA", "/nonexistent")
+    for init in ("light", "extended"):
+        cfg = gv.read_config(os.path.join(root, "configs", "main", f"on-{init}-grpo-s11.yaml"))
+        assert isinstance(cfg["online"]["lr"], float) and cfg["online"]["lr"] == 1e-05
+        assert cfg["proj_data"] == "/nonexistent"

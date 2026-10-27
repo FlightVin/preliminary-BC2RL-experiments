@@ -30,6 +30,7 @@ from bc2rl.losses import ctpo_loss_sum, grpo_advantages, grpo_len_loss_sum, gspo
 from bc2rl.modeling import (chat_prompt, gather_completion, load_adapter, load_policy, load_tokenizer, model_info,
                             sample, seq_logprobs)
 from bc2rl.online import prompt_stream, set_frozen_dtype
+from bc2rl.runtime import load_config
 
 
 def logp_rows(model, sub, pad, micro, cap, grad=False):
@@ -55,6 +56,13 @@ def grad_vec(model, params, sub, pad, micro, cap, adv, m, Q, fn):
     return torch.cat([p.grad.detach().flatten().double() for p in params])
 
 
+def read_config(path):
+    """The project loader (JSON first; PyYAML reads 1e-05 as a string) with PROJ_DATA of the job."""
+    cfg = load_config(path)
+    cfg["proj_data"] = os.environ["PROJ_DATA"]
+    return cfg
+
+
 def med(x):
     return float(torch.median(x.abs().float().cpu())) if x.numel() else float("nan")
 
@@ -70,8 +78,7 @@ def main():
     torch.backends.cudnn.allow_tf32 = False
     res = {"adapters": [], "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"}
     for cpath in a.configs:
-        cfg = json.load(open(cpath)) if cpath.endswith(".json") else __import__("yaml").safe_load(open(cpath))
-        cfg["proj_data"] = os.environ["PROJ_DATA"]
+        cfg = read_config(cpath)
         on = cfg["online"]
         pd = cfg["proj_data"]
         data, _ = load_data(cfg, [on["prompt_split"]])
