@@ -1,6 +1,6 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 1, 2026-10-27 04:16 EDT.** Wave 1 is running. This update adds the exploratory results from the
+**Status: update 2, 2026-10-27 12:15 EDT.** Wave 1 training is complete; the yf evaluations are running. This update adds the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
 commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
@@ -8,12 +8,12 @@ is complete. A6 does not change it. Section 14 of that report records five corre
 
 ## 0. Summary
 
-| stage | question | state (2026-10-27 04:16) |
+| stage | question | state (2026-10-27 12:15) |
 |---|---|---|
 | Y1 interpretation audit | Is the A5 effect a larger change from a higher baseline, or a worse final state? Do matched counts hide different true probabilities? | done (exploratory, A5 records); Section 0.1 |
 | Y2 truncation and failure types | Are intermittent solutions hidden by length or format? Which failure types make the extended-light difference? | dev done (exploratory); yf at look 1 |
-| Y3 cross-difficulty | Do updates on 5- and 10-input problems cause the 3-input losses, or does 3-input training itself? | 5 of 24 branches complete (training and yf evaluation), more running; canary passed |
-| Y4 BC exposure | Does BC exposure predict loss beyond the initial success distribution? Shape over steps 16-128? | step-32 adapters made and evaluated on yd; 3 matched pairs frozen; training not started |
+| Y3 cross-difficulty | Do updates on 5- and 10-input problems cause the 3-input losses, or does 3-input training itself? | 24 of 24 branches trained; yf evaluation of finals running; canary passed |
+| Y4 BC exposure | Does BC exposure predict loss beyond the initial success distribution? Shape over steps 16-128? | 3 matched pairs frozen; all GRPO branches trained; yf evaluations running |
 | method interaction | Does the objective (GRPO vs filtered) change the init difference? | tested at look 1 |
 | Y5 E2 redesign | Can controlled single updates predict later losses? | decided after look 1 |
 
@@ -156,19 +156,22 @@ state the smallest effect that each interval excludes.
 - Resource rules: preempt GPUs only; at most 5 BC2RL GPU slots, counting pending jobs (`tools/bc2rl_guard.py`). GPU use
   before A6: 40.65 GPU-h.
 
-## 7. Accounting and updated forecast (2026-10-27 04:10)
+## 7. Accounting and updated forecast (2026-10-27 12:13)
 
 | item | value |
 |---|---|
-| A6 GPU-hours used (sacct, all attempts incl. 8 preempted attempts) | 20.3 |
-| worklist tasks complete | 24 of 73 (BC re-runs, 12 yd evaluations, 6 step-32 evaluations, 5 Y3 branches) |
-| Y3 branch cost (measured) | 0.45-1.1 GPU-h training + 0.1-0.25 GPU-h yf evaluation |
-| remaining (estimate) | 19 Y3 branches about 17 GPU-h; 12 Y4 branches about 13; 12 yf evaluations of existing adapters about 16; 6 reproduction yd evaluations about 4 |
-| wave-1 total (forecast) | about 70 GPU-h (pre-registered forecast 75-93) |
+| A6 GPU-hours used (sacct since job 10947200, all attempts incl. 11 preempted attempts; 25 GPU attempts, all `preempt`) | 59.9 |
+| worklist tasks complete | 59 of 73: all training tasks; yf evaluations: initial s11, s22, s44; finals s11 |
+| running (5 workers) | yf initial s33, s55; yf finals s22, s33, s44 |
+| not started | yf initial s66; yf finals s55, s66; 6 reproduction yd evaluations |
+| yf evaluation cost (measured) | initial set 0.7-1.2 GPU-h per seed; finals set about 1.4-2.5 GPU-h per seed (GPU type dominates) |
+| remaining (estimate) | about 12-18 GPU-h |
+| wave-1 total (forecast) | about 72-78 GPU-h (update-1 forecast 70; pre-registered 75-93) |
 
-- Wall time with 5 slots: about 10-12 h more, plus queue waits and preemptions. Look 1 runs after the last yf
-  evaluation: about 2026-10-27 16:00-20:00 EDT if the queue holds.
-- The worklist grew from 67 to 73 tasks (the reproduction yd evaluations, 10.1.3).
+- The total is above the update-1 forecast because the yf evaluations of the finals take longer on some GPU
+  types (5.6-60 completions/s measured) than the A5 rate used in that forecast.
+- Look 1 (one CPU job) runs after the last yf evaluation and a script check of all 96 yf record sets. Forecast:
+  2026-10-27 17:00-20:00 EDT if the queue holds; later if preemptions occur.
 - Slots: 5 BC2RL GPU slots, preempt only, counting pending jobs (`tools/bc2rl_guard.py`). No general GPU, no `ae-topup`.
 
 ## 8. Checks done in this update
@@ -189,3 +192,5 @@ state the smallest effect that each interval excludes.
   accounting and forecast. No yf outcome read.
 - 2026-10-27 04:17 (scheduled pass): no new result. Timestamps of update 1 and protocol 10.1.2-10.1.4 corrected
   to the git commit times (they had been written as estimates 15-45 min late).
+- Update 2 (2026-10-27 12:15): progress, accounting and forecast only. No new result; no yf outcome read; no
+  analysis code changed. Workers w6-w9 ended normally (no failed task).
