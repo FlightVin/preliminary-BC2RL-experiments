@@ -285,6 +285,25 @@ the 2 methods. A claim needs both the problem bootstrap and the seed-level t-int
   and the drop (initial - final) in the policy's preference for the problem's best solution form is > 0. The claim
   needs the seed-level t-interval only (the correlation has no problem-bootstrap interval here); it is made per step.
 
+**10.1.2 (2026-10-27 ~03:10 EDT; after the dev job 10947639 on yd only; before any yf outcome was read).**
+Matched pairs for Section 8.3 (from `y4_matching.json`, Section 8.2 rule, 24 initial adapters, 240 cross-step pairs):
+
+| lower step | higher step | d pass@1 yd3 | d pass@1 yd5 | TV | max d bin baseline |
+|---|---|---:|---:|---:|---:|
+| b16-s44 | b32-s11 | 0.0134 | 0.0028 | 0.086 | 0.020 |
+| b64-s33 | b128-s66 | 0.0109 | 0.0039 | 0.078 | 0.010 |
+| b64-s44 | b128-s66 | 0.0012 | 0.0028 | 0.089 | 0.027 |
+
+- No pair spans steps 16 and 128. The matched comparison therefore tests one-step-of-doubling contrasts (16 vs 32,
+  64 vs 128) only. It does not test the full 16 vs 128 contrast.
+- Two pairs share b128-s66. The problem bootstrap resamples yf3 problems jointly for all pairs; no seed-level interval
+  is computed (Section 8.3). The report states the residual mismatch above for each pair.
+- D uses the GRPO finals of each adapter (arm M for steps 16 and 128; Y4 branches for steps 32 and 64).
+- Y2 on yd (exploratory): no attempt truncated at 256 tokens succeeded after continuation to 1,024 tokens, in any of
+  the 48 yd adapters. Delta at cap 1,024 equals Delta at cap 256. The pre-registered Y2-a test on yf is unchanged.
+- Step-32 adapters (re-run path) had lower truncation on yd3 (<= 0.0002 per adapter) than steps 16 and 64. The
+  Section 3.2 reproduction check runs before look 1 (job `bc2rl-a6-repro-main-s0`); the report gives its result.
+
 ## 11. Forecast (from A5 measurements)
 Throughput: evaluation 25.7 completions/s averaged over X5 (645,120 completions in 6.97 GPU-h); online GRPO
 0.6-1.3 GPU-h per branch (X7); BC about 6 min per seed for 128 steps (A100).
