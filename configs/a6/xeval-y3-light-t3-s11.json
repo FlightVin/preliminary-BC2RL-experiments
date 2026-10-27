@@ -1,0 +1,57 @@
+{
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-a6-yf-y3-light-t3-s11",
+ "xeval": {
+  "batch_seqs": 768,
+  "cap": 256,
+  "cap_ext": 1024,
+  "checkpoints": [
+   {
+    "adapter": "runs/bc2rl-y3-light-grpo-t3-s11/adapters/round0256.safetensors",
+    "attempts": 32,
+    "tag": "b16-grpo-T3-s11"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-light-grpo-t3-s11/adapters/round0085.safetensors",
+    "attempts": 32,
+    "tag": "b16-grpo-T3E-s11"
+   }
+  ],
+  "data_name": "a6",
+  "emit_counts": false,
+  "ext_batch_seqs": 256,
+  "panels": [
+   "yf3",
+   "yf5"
+  ],
+  "seed": 6,
+  "variant": "format"
+ }
+}

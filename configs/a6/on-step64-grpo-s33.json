@@ -1,0 +1,69 @@
+{
+ "a6_source": "configs/main/on-light-grpo-s33.yaml",
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "online": {
+  "cap": 256,
+  "clip": 0.2,
+  "endpoints": {
+   "online": 256
+  },
+  "group": 4,
+  "init": {
+   "adapter": "runs/bc2rl-s1-bc-broad-s33/adapters/step0064.safetensors",
+   "sha256": "d4190a99b822716ec1dfbae8510749b639b2d583b03fbdf15592c6c9351eae52",
+   "tag": "step64-s33"
+  },
+  "lr": 1e-05,
+  "method": "grpo",
+  "micro": 8,
+  "prompt_split": "online",
+  "prompts_per_round": 32,
+  "rounds": 256,
+  "save_rounds": [
+   64,
+   128,
+   256
+  ],
+  "stream_seed": 33,
+  "val_rounds": [
+   0,
+   64,
+   128,
+   256
+  ]
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-y4-step64-grpo-s33",
+ "seed": 33,
+ "val": {
+  "attempts": 4,
+  "cap": 256,
+  "split": "val"
+ }
+}

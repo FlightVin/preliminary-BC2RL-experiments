@@ -148,6 +148,40 @@ def sample(model, tok, prompt_texts, n_per_prompt, max_new_tokens, seed, batch_s
     return out
 
 
+@torch.no_grad()
+def continue_sampling(model, tok, items, extra_tokens, seed, batch_seqs=256):
+    """Continue truncated completions from their own prefix with the same decoding settings (A6 cap extension).
+
+    items: list of (prompt_ids, completion_ids). Returns, per item, (new_ids, finish): new_ids are the continuation
+    tokens up to and including the first stop token; finish is "stop" or "length".
+    """
+    model.eval()
+    gen_cfg = decoding_config(tok, extra_tokens)
+    stops = set(eos_ids(tok))
+    out = []
+    for chunk_i, start in enumerate(range(0, len(items), batch_seqs)):
+        chunk = items[start:start + batch_seqs]
+        seqs = [list(p) + list(c) for p, c in chunk]
+        L = max(len(s) for s in seqs)
+        ids = torch.full((len(seqs), L), tok.pad_token_id, dtype=torch.long)
+        att = torch.zeros((len(seqs), L), dtype=torch.long)
+        for r, s in enumerate(seqs):                       # left padding, as in `sample`
+            ids[r, L - len(s):] = torch.tensor(s)
+            att[r, L - len(s):] = 1
+        torch.manual_seed(seed * 100003 + chunk_i)
+        gen = model.generate(input_ids=ids.to(model.device), attention_mask=att.to(model.device),
+                             generation_config=gen_cfg)
+        for r in range(len(seqs)):
+            c = gen[r, L:].tolist()
+            finish, cut = "length", len(c)
+            for t, tid in enumerate(c):
+                if tid in stops:
+                    finish, cut = "stop", t + 1
+                    break
+            out.append((c[:cut], finish))
+    return out
+
+
 def build_batch(seqs, pad_id, device):
     """seqs: list of (prompt_ids, completion_ids). Right-padded input_ids, attention mask, and a
     completion mask aligned with the shifted targets (input_ids[:, 1:])."""

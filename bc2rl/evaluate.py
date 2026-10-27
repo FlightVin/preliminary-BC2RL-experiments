@@ -24,7 +24,8 @@ def stable_int(s: str) -> int:
     return int(hashlib.sha256(s.encode()).hexdigest()[:8], 16)
 
 
-def run_attempts(model, tok, problems, fmt, variant, n, cap, seed, batch_seqs=512, adapter_off=False):
+def run_attempts(model, tok, problems, fmt, variant, n, cap, seed, batch_seqs=512, adapter_off=False, keep_ids=False):
+    """keep_ids: also return the token ids as `_prompt_ids` / `_completion_ids` (callers pop them before writing)."""
     texts = [chat_prompt(tok, task.prompt_text(p, variant, fmt)) for p in problems]
     t0 = time.time()
     outs = sample(model, tok, texts, n, cap, seed, batch_seqs=batch_seqs, adapter_off=adapter_off)
@@ -36,6 +37,8 @@ def run_attempts(model, tok, problems, fmt, variant, n, cap, seed, batch_seqs=51
         recs.append({"pid": p.pid, "n_inputs": p.n_inputs, "attempt": o["attempt"], "text": o["text"],
                      "finish": o["finish"], "n_tokens": o["n_tokens"], "prompt_tokens": len(o["prompt_ids"]),
                      **v})
+        if keep_ids:
+            recs[-1].update(_prompt_ids=o["prompt_ids"], _completion_ids=o["completion_ids"])
     return recs, gen_s
 
 

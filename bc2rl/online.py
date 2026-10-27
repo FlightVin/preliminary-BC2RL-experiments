@@ -2,6 +2,11 @@
 
 One rollout round = P prompts x G samples (128 completions). At most one optimizer step per round.
 Rounds are counted even when the step is skipped (no mixed group / no success).
+
+A6 options (protocol/AMENDMENT-A6 Section 6; absent = frozen behaviour):
+  online.pool_inputs  = [3]  -> the prompt pool keeps only problems with these input counts (arm T3);
+  online.train_inputs = [3]  -> only completions of these input counts carry gradient (arm MASK); every prompt
+                                is still sampled, and the loss normalization is unchanged.
 """
 from __future__ import annotations
 
@@ -45,6 +50,9 @@ def cmd_online(cfg):
     device = cfg.get("device", "cuda")
     data, man = load_data(cfg, [on["prompt_split"], val["split"]])
     pool, vprobs, fmt = data[on["prompt_split"]], data[val["split"]], data["format"][0]
+    if on.get("pool_inputs"):
+        pool = [p for p in pool if p.n_inputs in on["pool_inputs"]]
+    train_inputs = set(on["train_inputs"]) if on.get("train_inputs") else None
     info = model_info(pd)
     tok = load_tokenizer(info["path"])
     model = load_policy(cfg.get("model_path_override") or info["path"], cfg["model"]["lora"], seed=cfg["seed"], device=device)
@@ -129,6 +137,9 @@ def cmd_online(cfg):
             use = (rewards > 0).nonzero().squeeze(-1).tolist()
         else:
             raise SystemExit(f"unknown method {on['method']}")
+        if train_inputs is not None:
+            use = [k for k in use if probs[outs[k]["prompt_index"]].n_inputs in train_inputs]
+        used_by_inputs = {str(h): sum(probs[outs[k]["prompt_index"]].n_inputs == h for k in use) for h in (3, 5, 10)}
         skipped = len(use) == 0
         gn, ratio_dev, loss_total = None, 0.0, 0.0
         tp_max, tp_sum, tp_n, tp_out = 0.0, 0.0, 0.0, 0.0     # two-pass (no-grad vs grad) log-prob diagnostic
@@ -179,7 +190,7 @@ def cmd_online(cfg):
                      "truncated": int(sum(o["finish"] == "length" for o in outs)),
                      "format_valid": float(np.mean([v["format_valid"] for v in ver])),
                      "valid_prefix": float(np.mean([v["valid_prefix"] for v in ver])), "errors": errs,
-                     "gen_tokens": gen_tok, "opt_steps": counters["opt_steps"],
+                     "gen_tokens": gen_tok, "opt_steps": counters["opt_steps"], "used_by_inputs": used_by_inputs,
                      "by_inputs": {str(h): float(np.mean([v["reward"] for v, p in
                                                           zip(ver, [probs[o["prompt_index"]] for o in outs])
                                                           if p.n_inputs == h] or [float("nan")]))

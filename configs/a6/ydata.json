@@ -1,0 +1,56 @@
+{
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-a6-data",
+ "xdata": {
+  "exclude_ext": [
+   "x5"
+  ],
+  "name": "a6",
+  "panels": {
+   "yd3": {
+    "count": 384,
+    "n_inputs": 3
+   },
+   "yd5": {
+    "count": 96,
+    "n_inputs": 5
+   },
+   "yf3": {
+    "count": 768,
+    "n_inputs": 3
+   },
+   "yf5": {
+    "count": 128,
+    "n_inputs": 5
+   }
+  },
+  "seed": 20261027
+ }
+}

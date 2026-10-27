@@ -14,6 +14,10 @@ commands own those). This script only orders the tasks and prevents duplicate ex
 * A signal exit (status > 128, e.g. preemption) stops the worker with that status so Slurm requeues
   it. A deterministic failure marks the task FAILED, and the worker continues with the next task;
   the job then exits 1 so the orchestrator sees the failure.
+* A6: a task may list `requires` (paths under PROJ_DATA). The worker does not claim it while one is missing; it
+  returns to such tasks after the others (waiting at most --requires-wait-s). With --stop-claiming-after-s the
+  worker claims no new task after that many seconds, so a task does not start too close to the wall limit; the
+  remaining tasks stay unclaimed for the next worker job.
 """
 from __future__ import annotations
 
@@ -34,7 +38,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--worklist", required=True)
     ap.add_argument("--results-dir", required=True)
+    ap.add_argument("--stop-claiming-after-s", type=float, default=None)
+    ap.add_argument("--requires-wait-s", type=float, default=1800)
     a = ap.parse_args()
+    t_start = time.time()
     wl = json.load(open(a.worklist))
     pd = os.environ["PROJ_DATA"]
     py = os.environ.get("PY", sys.executable)
@@ -47,9 +54,32 @@ def main():
     signal.signal(signal.SIGUSR1, lambda s, f: None)
     status = {"worklist": wl["name"], "job": job, "tasks": {}}
     failed = False
-    for t in wl["tasks"]:
+    pending = list(wl["tasks"])
+    waited = 0.0
+    while pending:
+        ready = [t for t in pending if all(os.path.exists(os.path.join(pd, r)) for r in t.get("requires", []))]
+        if not ready:
+            if waited >= a.requires_wait_s:
+                for t in pending:
+                    status["tasks"][t["id"]] = "requires-missing"
+                print(f"[worker] {len(pending)} tasks still miss their inputs; leaving them unclaimed", flush=True)
+                break
+            time.sleep(60)
+            waited += 60
+            continue
+        t = ready[0]
+        pending.remove(t)
         tid = t["id"]
         cdir = os.path.join(croot, tid)
+        if a.stop_claiming_after_s is not None and time.time() - t_start > a.stop_claiming_after_s \
+                and not os.path.exists(os.path.join(cdir, "owner")):
+            print(f"[worker] {now()} stop-claiming time reached; {tid} and later tasks stay for the next worker",
+                  flush=True)
+            status["tasks"][tid] = "left-for-next-worker"
+            status["stopped_claiming"] = True
+            for t2 in pending:
+                status["tasks"].setdefault(t2["id"], "left-for-next-worker")
+            break
         if os.path.exists(os.path.join(cdir, "DONE")):
             status["tasks"][tid] = "done-before"
             continue

@@ -1,0 +1,946 @@
+{
+ "name": "a6",
+ "tasks": [
+  {
+   "id": "bc-path",
+   "steps": [
+    {
+     "name": "bc-s11",
+     "cmd": "bc",
+     "config": "configs/a6/bc-path-s11.json"
+    },
+    {
+     "name": "bc-s22",
+     "cmd": "bc",
+     "config": "configs/a6/bc-path-s22.json"
+    },
+    {
+     "name": "bc-s33",
+     "cmd": "bc",
+     "config": "configs/a6/bc-path-s33.json"
+    },
+    {
+     "name": "bc-s44",
+     "cmd": "bc",
+     "config": "configs/a6/bc-path-s44.json"
+    },
+    {
+     "name": "bc-s55",
+     "cmd": "bc",
+     "config": "configs/a6/bc-path-s55.json"
+    },
+    {
+     "name": "bc-s66",
+     "cmd": "bc",
+     "config": "configs/a6/bc-path-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-init-s11",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-fin-s11",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-fin-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-init-s22",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-fin-s22",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-fin-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-init-s33",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-fin-s33",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-fin-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-init-s44",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-fin-s44",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-fin-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-init-s55",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-fin-s55",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-fin-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-init-s66",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "yd-fin-s66",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-fin-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "init32-s11",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s11/adapters/step0032.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init32-s11.json"
+    },
+    {
+     "name": "xeval-yf",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init32-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "init32-s22",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s22/adapters/step0032.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init32-s22.json"
+    },
+    {
+     "name": "xeval-yf",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init32-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "init32-s33",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s33/adapters/step0032.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init32-s33.json"
+    },
+    {
+     "name": "xeval-yf",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init32-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "init32-s44",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s44/adapters/step0032.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init32-s44.json"
+    },
+    {
+     "name": "xeval-yf",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init32-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "init32-s55",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s55/adapters/step0032.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init32-s55.json"
+    },
+    {
+     "name": "xeval-yf",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init32-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "init32-s66",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s66/adapters/step0032.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-init32-s66.json"
+    },
+    {
+     "name": "xeval-yf",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init32-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-mask-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-mask-s11.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-mask-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-t3-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-t3-s11.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-t3-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-mask-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-mask-s11.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-mask-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-t3-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-t3-s11.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-t3-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-mask-s22",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-mask-s22.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-mask-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-t3-s22",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-t3-s22.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-t3-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-mask-s22",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-mask-s22.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-mask-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-t3-s22",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-t3-s22.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-t3-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-mask-s33",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-mask-s33.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-mask-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-t3-s33",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-t3-s33.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-t3-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-mask-s33",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-mask-s33.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-mask-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-t3-s33",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-t3-s33.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-t3-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-mask-s44",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-mask-s44.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-mask-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-t3-s44",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-t3-s44.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-t3-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-mask-s44",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-mask-s44.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-mask-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-t3-s44",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-t3-s44.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-t3-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-mask-s55",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-mask-s55.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-mask-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-t3-s55",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-t3-s55.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-t3-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-mask-s55",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-mask-s55.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-mask-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-t3-s55",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-t3-s55.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-t3-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-mask-s66",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-mask-s66.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-mask-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-light-t3-s66",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-light-grpo-t3-s66.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-light-t3-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-mask-s66",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-mask-s66.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-mask-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "y3-extended-t3-s66",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-extended-grpo-t3-s66.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y3-extended-t3-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "y4-step64-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step64-grpo-s11.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step64-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "y4-step64-s22",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step64-grpo-s22.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step64-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "y4-step64-s33",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step64-grpo-s33.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step64-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "y4-step64-s44",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step64-grpo-s44.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step64-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "y4-step64-s55",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step64-grpo-s55.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step64-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "y4-step64-s66",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step64-grpo-s66.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step64-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "y4-step32-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step32-grpo-s11.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step32-s11.json"
+    }
+   ],
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s11/adapters/step0032.safetensors"
+   ]
+  },
+  {
+   "id": "y4-step32-s22",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step32-grpo-s22.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step32-s22.json"
+    }
+   ],
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s22/adapters/step0032.safetensors"
+   ]
+  },
+  {
+   "id": "y4-step32-s33",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step32-grpo-s33.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step32-s33.json"
+    }
+   ],
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s33/adapters/step0032.safetensors"
+   ]
+  },
+  {
+   "id": "y4-step32-s44",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step32-grpo-s44.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step32-s44.json"
+    }
+   ],
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s44/adapters/step0032.safetensors"
+   ]
+  },
+  {
+   "id": "y4-step32-s55",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step32-grpo-s55.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step32-s55.json"
+    }
+   ],
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s55/adapters/step0032.safetensors"
+   ]
+  },
+  {
+   "id": "y4-step32-s66",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/a6/on-step32-grpo-s66.json"
+    },
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-y4-step32-s66.json"
+    }
+   ],
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s66/adapters/step0032.safetensors"
+   ]
+  },
+  {
+   "id": "yf-init-s11",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "yf-fin-s11",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-fin-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "yf-init-s22",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "yf-fin-s22",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-fin-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "yf-init-s33",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "yf-fin-s33",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-fin-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "yf-init-s44",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "yf-fin-s44",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-fin-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "yf-init-s55",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "yf-fin-s55",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-fin-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "yf-init-s66",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-init-s66.json"
+    }
+   ]
+  },
+  {
+   "id": "yf-fin-s66",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yf-fin-s66.json"
+    }
+   ]
+  }
+ ]
+}

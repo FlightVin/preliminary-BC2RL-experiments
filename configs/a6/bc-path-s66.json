@@ -1,0 +1,51 @@
+{
+ "a6_source": "configs/ext/x7/bc-broad-s66.json",
+ "bc": {
+  "batch": 32,
+  "lr": 0.0001,
+  "micro": 8,
+  "save_steps": [
+   16,
+   32,
+   64,
+   128
+  ],
+  "split": "bc",
+  "steps": 128
+ },
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-y4-bc-path-s66",
+ "seed": 66,
+ "val": {
+  "attempts": 4,
+  "cap": 256,
+  "split": "val"
+ }
+}

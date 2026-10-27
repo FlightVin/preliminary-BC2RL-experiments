@@ -1,0 +1,68 @@
+{
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-a6-yf-init-s66",
+ "xeval": {
+  "batch_seqs": 768,
+  "cap": 256,
+  "cap_ext": 1024,
+  "checkpoints": [
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s66/adapters/step0016.safetensors",
+    "attempts": 48,
+    "sha256": "3962d5a0327d97762b697aeb0b13b993996f72ec3307d96b8a197201e6495488",
+    "split": 24,
+    "tag": "b16-s66"
+   },
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s66/adapters/step0064.safetensors",
+    "attempts": 48,
+    "sha256": "f01cd63a242123979b5d96c41b453ae8f45c563e7a4a7e3eb255c0d7fdbd2192",
+    "split": 24,
+    "tag": "b64-s66"
+   },
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s66/adapters/step0128.safetensors",
+    "attempts": 48,
+    "sha256": "ade7673406743ff935b5c41974a8cd78a1dcfb2cd65ed3c72861908309a9b27b",
+    "split": 24,
+    "tag": "b128-s66"
+   }
+  ],
+  "data_name": "a6",
+  "emit_counts": false,
+  "ext_batch_seqs": 256,
+  "panels": [
+   "yf3",
+   "yf5"
+  ],
+  "seed": 6,
+  "variant": "format"
+ }
+}

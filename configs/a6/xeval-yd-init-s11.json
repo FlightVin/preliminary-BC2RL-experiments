@@ -1,0 +1,68 @@
+{
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-a6-yd-init-s11",
+ "xeval": {
+  "batch_seqs": 768,
+  "cap": 256,
+  "cap_ext": 1024,
+  "checkpoints": [
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s11/adapters/step0016.safetensors",
+    "attempts": 48,
+    "sha256": "0a58d82fd9cd90c4d51a6cce818131a0b5bacbd501785a17cb789556f81742fd",
+    "split": 24,
+    "tag": "b16-s11"
+   },
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s11/adapters/step0064.safetensors",
+    "attempts": 48,
+    "sha256": "b17a109233b631d91262d131f357bbc31226b751aba7419c5d0cd0bfb14ae95b",
+    "split": 24,
+    "tag": "b64-s11"
+   },
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s11/adapters/step0128.safetensors",
+    "attempts": 48,
+    "sha256": "78d0932498eef67e15a498ea072a05207fa6c6da5dff3675739ae5a59c5a52d6",
+    "split": 24,
+    "tag": "b128-s11"
+   }
+  ],
+  "data_name": "a6",
+  "emit_counts": false,
+  "ext_batch_seqs": 256,
+  "panels": [
+   "yd3",
+   "yd5"
+  ],
+  "seed": 6,
+  "variant": "format"
+ }
+}
