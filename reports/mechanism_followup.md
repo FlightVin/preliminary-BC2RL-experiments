@@ -1,6 +1,6 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 1, 2026-10-27 ~04:45 EDT.** Wave 1 is running. This update adds the exploratory results from the
+**Status: update 1, 2026-10-27 04:16 EDT.** Wave 1 is running. This update adds the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
 commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
@@ -8,7 +8,7 @@ is complete. A6 does not change it. Section 14 of that report records five corre
 
 ## 0. Summary
 
-| stage | question | state (2026-10-27 ~04:45) |
+| stage | question | state (2026-10-27 04:16) |
 |---|---|---|
 | Y1 interpretation audit | Is the A5 effect a larger change from a higher baseline, or a worse final state? Do matched counts hide different true probabilities? | done (exploratory, A5 records); Section 0.1 |
 | Y2 truncation and failure types | Are intermittent solutions hidden by length or format? Which failure types make the extended-light difference? | dev done (exploratory); yf at look 1 |
@@ -156,7 +156,7 @@ state the smallest effect that each interval excludes.
 - Resource rules: preempt GPUs only; at most 5 BC2RL GPU slots, counting pending jobs (`tools/bc2rl_guard.py`). GPU use
   before A6: 40.65 GPU-h.
 
-## 7. Accounting and updated forecast (2026-10-27 ~04:40)
+## 7. Accounting and updated forecast (2026-10-27 04:10)
 
 | item | value |
 |---|---|
@@ -185,5 +185,7 @@ state the smallest effect that each interval excludes.
 
 ## 9. Changes
 - Update 0 (2026-10-26 ~19:45): design, matrix and forecast. No results.
-- Update 1 (2026-10-27 ~04:45): Y1 and dev results (exploratory); matched pairs; reproduction check; canary;
+- Update 1 (2026-10-27 04:16): Y1 and dev results (exploratory); matched pairs; reproduction check; canary;
   accounting and forecast. No yf outcome read.
+- 2026-10-27 04:17 (scheduled pass): no new result. Timestamps of update 1 and protocol 10.1.2-10.1.4 corrected
+  to the git commit times (they had been written as estimates 15-45 min late).

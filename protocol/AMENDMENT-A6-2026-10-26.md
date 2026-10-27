@@ -285,7 +285,7 @@ the 2 methods. A claim needs both the problem bootstrap and the seed-level t-int
   and the drop (initial - final) in the policy's preference for the problem's best solution form is > 0. The claim
   needs the seed-level t-interval only (the correlation has no problem-bootstrap interval here); it is made per step.
 
-**10.1.2 (2026-10-27 ~03:10 EDT; after the dev job 10947639 on yd only; before any yf outcome was read).**
+**10.1.2 (2026-10-27 02:55 EDT, commit c3a4311; after the dev job 10947639 on yd only; before any yf outcome was read).**
 Matched pairs for Section 8.3 (from `y4_matching.json`, Section 8.2 rule, 24 initial adapters, 216 cross-step pairs):
 
 | lower step | higher step | d pass@1 yd3 | d pass@1 yd5 | TV | max d bin baseline |
@@ -304,14 +304,14 @@ Matched pairs for Section 8.3 (from `y4_matching.json`, Section 8.2 rule, 24 ini
 - Step-32 adapters (re-run path) had lower truncation on yd3 (<= 0.0002 per adapter) than steps 16 and 64. The
   Section 3.2 reproduction check runs before look 1 (job `bc2rl-a6-repro-main-s0`); the report gives its result.
 
-**10.1.3 (2026-10-27 ~04:20 EDT; Section 3.2 reproduction result, job 10949310).** The re-run BC adapters are not
+**10.1.3 (2026-10-27 04:11 EDT, commit d1795e0; Section 3.2 reproduction result, job 10949310).** The re-run BC adapters are not
 bit-identical to the originals (0/18 sha256 equal). Relative L2 distance re-run vs original: step 16 0.003-0.006,
 step 64 0.011-0.017, step 128 0.018-0.028. The re-run step-32 adapter is at 0.032-0.033 from the original step 16 and
 0.041-0.042 from the original step 64. As Section 3.2 requires, the re-run step-16/64/128 adapters get yd evaluations
 (tags `rr<step>-s<seed>`, 6 tasks appended to the worklist). They enter the report only as the reproduction check, not
 in any test. The analysis plan is unchanged: step 32 comes from the re-run; steps 16, 64, 128 from the originals.
 
-**10.1.4 (2026-10-27 ~05:00 EDT; after an independent statistical review of `scripts/y_look1.py`; before any yf
+**10.1.4 (2026-10-27 04:16 EDT, commit b76839f; after an independent statistical review of `scripts/y_look1.py`; before any yf
 outcome was read).** Readings and handling rules fixed for look 1:
 - **H-S3 claim** = the seed-level t-interval lower limit > 0 (10.1.1 says "t-interval only"; the earlier code could
   never set the claim). A branch whose correlation is undefined (a constant vector) is dropped; the count of branches
