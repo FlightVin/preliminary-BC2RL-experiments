@@ -178,6 +178,8 @@ state the smallest effect that each interval excludes.
 - Dev outputs recomputed outside the project code (laptop, from the harvested CSV/JSON): pass@1 profiles agree with
   the per-adapter table (48/48); the matching rule applied again to the 216 pairs gives the same 3 pairs; code counts
   sum to the attempt count.
+- An independent statistical review of `scripts/y_look1.py` found 10 items (for example, the H-S3 claim could never be
+  set). All were fixed or given a fixed reading before any yf outcome (protocol 10.1.4, commit b76839f).
 - `scripts/y_look1.py` now has a synthetic end-to-end test (planted cross-difficulty effect; refusal of an incomplete
   set). The test job runs before look 1. Audit file: `slurm-agentic-engineering/audits/a6-update1-audit-20261027.md`.
 
