@@ -310,11 +310,20 @@ def test_ctpo_masking_positions_and_stability():
     assert torch.isfinite(l4) and torch.all(torch.isfinite(lp4.grad)) and st4["clipped"] == 0
 
 
-def test_ctpo_gradcheck_fp64():
-    logp, mask, adv, _ = batch()
+def test_ctpo_gradient_is_the_defined_surrogate_gradient_not_the_value_derivative():
+    # The stop-gradient makes CTPO's training gradient differ from the derivative of its loss VALUE (the value of
+    # rho_t depends on prefix tokens through sg[C_t]); a finite-difference gradcheck therefore must fail. The defined
+    # gradient is dL/dlogp_t = -A rho_t / |y| for tokens inside the band (fp64, random batch).
+    logp, mask, adv, lens = batch()
     beh = logp.detach() + 0.03 * torch.randn_like(logp)
-    f = lambda x: ctpo_loss_sum(x, beh, adv, mask, 0.025, 0.05, 0.05, 0.5)[0]
-    assert torch.autograd.gradcheck(f, (logp.detach().clone().requires_grad_(True),), eps=1e-9, atol=1e-6)
+    lp = logp.detach().clone().requires_grad_(True)
+    ls, lr, _ = ctpo_loss_sum(lp, beh, adv, mask, 9.0, 9.0, 9.0, 0.5)
+    ls.backward()
+    exp = -(adv.unsqueeze(1) * torch.exp(lr) * mask) / lens.unsqueeze(1).to(mask.dtype)
+    assert torch.allclose(lp.grad, exp, atol=1e-14)
+    f = lambda x: ctpo_loss_sum(x, beh, adv, mask, 9.0, 9.0, 9.0, 0.5)[0]
+    assert not torch.autograd.gradcheck(f, (logp.detach().clone().requires_grad_(True),), eps=1e-7, atol=1e-6,
+                                        raise_exception=False)
 
 
 def _g_dev_fixture(tmp, n=120, clip=0.05, med4=1e-3):
