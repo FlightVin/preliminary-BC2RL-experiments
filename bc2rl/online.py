@@ -9,12 +9,14 @@ A6 options (protocol/AMENDMENT-A6 Section 6; absent = frozen behaviour):
                                 is still sampled, and the loss normalization is unchanged.
 
 A6 Section 12 (GSPO stage; absent = frozen behaviour):
-  online.objective = grpo_const (the GRPO above, K = 1 only) | grpo_len | gspo  (`losses.py`); setting it also turns
+  online.objective = grpo_const (the GRPO above, K = 1 only) | grpo_len | gspo | ctpo (`losses.py`); setting it also turns
                      on the per-round diagnostics (update norm, steps.csv).
   online.updates_per_batch = K -> K full-batch optimizer steps per rollout batch (same micro-batch layout each step).
                      Behaviour log-probs are the detached log-probs of the first gradient pass of the round, so the
                      ratio of step 1 is exactly 1; they stay fixed for steps 2..K.
   online.clip_low / clip_high -> asymmetric clip band (default `clip`; null = no clipping, calibration probes only).
+                     For ctpo they are log-space base values; online.clip_c (dual clip, default clip_high) and
+                     online.clip_power (position exponent p, default 0.5; 0 = fixed band) complete the CTPO-LA band.
   online.train_precision = fp32 -> the frozen base weights are cast to FP32 (exact) for every scoring and training
                      pass and back to BF16 for sampling; TF32 is off. Default bf16.
   online.kl_every = N -> every N rounds, KL(current || initial adapter) on the rollout batch (same pass precision).
@@ -35,7 +37,8 @@ import torch
 from . import task
 from .data import load_data
 from .evaluate import run_attempts, stable_int, summarize
-from .losses import filtered_loss_sum, grpo_advantages, grpo_len_loss_sum, grpo_loss_sum, gspo_loss_sum
+from .losses import (CTPO_BUCKETS, ctpo_loss_sum, filtered_loss_sum, grpo_advantages, grpo_len_loss_sum,
+                     grpo_loss_sum, gspo_loss_sum)
 from .modeling import (chat_prompt, completion_logprob_table, gather_completion, load_adapter, load_policy,
                        load_tokenizer, model_info, sample, save_adapter, seq_logprobs, trainable_summary)
 from .runtime import (CKPT_INTERVAL_S, CostLedger, Run, StopFlag, atomic_json, atomic_torch_save, rng_state,
@@ -95,12 +98,14 @@ def cmd_online(cfg):
     objective = on.get("objective", "grpo_const") if on["method"] == "grpo" else None
     diag = "objective" in on
     K = int(on.get("updates_per_batch", 1))
-    if objective not in (None, "grpo_const", "grpo_len", "gspo"):
+    if objective not in (None, "grpo_const", "grpo_len", "gspo", "ctpo"):
         raise SystemExit(f"unknown objective {objective}")
     if K != 1 and objective in (None, "grpo_const"):
-        raise SystemExit("updates_per_batch > 1 needs objective grpo_len or gspo")
+        raise SystemExit("updates_per_batch > 1 needs objective grpo_len, gspo or ctpo")
     _b = lambda k: math.inf if on.get(k, on.get("clip")) is None else float(on.get(k, on.get("clip")))
     e_lo, e_hi = _b("clip_low"), _b("clip_high")
+    e_c = e_hi if on.get("clip_c", on.get("clip_high", on.get("clip"))) is None else float(on.get("clip_c", e_hi))
+    c_pow = float(on.get("clip_power", 0.5))
     train_fp32 = on.get("train_precision", "bf16") == "fp32"
     if on.get("train_precision", "bf16") not in ("bf16", "fp32"):
         raise SystemExit(f"unknown train_precision {on['train_precision']}")
@@ -208,7 +213,7 @@ def cmd_online(cfg):
         skipped = len(use) == 0
         gn, ratio_dev, loss_total, steps, upd = None, 0.0, 0.0, [], None
         tp_max, tp_sum, tp_n, tp_out = 0.0, 0.0, 0.0, 0.0     # two-pass (no-grad vs grad) log-prob diagnostic
-        if not skipped and objective in ("grpo_len", "gspo"):
+        if not skipped and objective in ("grpo_len", "gspo", "ctpo"):
             model.train()
             sub = [seqs[i] for i in use]
             beh, dump = {}, {}
@@ -216,7 +221,8 @@ def cmd_online(cfg):
                 opt.zero_grad(set_to_none=True)
                 p0 = [p.detach().clone() for p in params]
                 st = {"units": 0.0, "outside": 0.0, "clipped": 0.0, "clipped_tokens": 0.0, "unit_tokens": 0.0}
-                tok_lr, seq_lr, lsum = [], [], 0.0
+                st.update({f"{x}{b0}": 0.0 for b0, _ in CTPO_BUCKETS for x in "uoc"})
+                tok_lr, seq_lr, cum_lr, cum_pos, lsum = [], [], [], [], 0.0
                 for j, (sl, lp, cm, _) in enumerate(seq_logprobs(model, sub, tok.pad_token_id, on["micro"], grad=True)):
                     rows_i = use[sl.start:sl.stop]
                     lp_g = gather_completion(lp, cm, cap)
@@ -229,8 +235,11 @@ def cmd_online(cfg):
                         tp_n += float(m.sum())
                         tp_out += float((((dev.exp() > 1 + on["clip"]) | ((-dev).exp() < 1 - on["clip"])).float() * m).sum())
                     a_i = adv[rows_i].to(lp_g.device)
-                    fn = gspo_loss_sum if objective == "gspo" else grpo_len_loss_sum
-                    ls, _, sts = fn(lp_g, beh[j], a_i, m, e_lo, e_hi)
+                    if objective == "ctpo":
+                        ls, _, sts = ctpo_loss_sum(lp_g, beh[j], a_i, m, e_lo, e_hi, e_c, c_pow)
+                    else:
+                        fn = gspo_loss_sum if objective == "gspo" else grpo_len_loss_sum
+                        ls, _, sts = fn(lp_g, beh[j], a_i, m, e_lo, e_hi)
                     loss = ls / Q
                     loss.backward()
                     lsum += float(loss)
@@ -240,22 +249,36 @@ def cmd_online(cfg):
                     nz = a_i != 0
                     tok_lr.append(d[(m > 0) & nz.unsqueeze(1)])
                     seq_lr.append(((d * m).sum(1) / m.sum(1).clamp(min=1.0))[nz & (m.sum(1) > 0)])
+                    sel = (m > 0) & nz.unsqueeze(1)
+                    cum_lr.append(torch.cumsum(d * m, dim=1)[sel])
+                    cum_pos.append(torch.cumsum(m, dim=1)[sel])
                 g_k = float(torch.nn.utils.clip_grad_norm_(params, 1.0))
                 opt.step()
                 counters["opt_steps"] += 1
                 counters["trained_tokens"] += int(sum(len(p) + len(c) for p, c in sub))
                 u_k = float(sum(((p.detach() - q) ** 2).sum() for p, q in zip(params, p0))) ** 0.5
                 tl, sq = torch.cat(tok_lr).abs(), torch.cat(seq_lr)
+                cl, cp = torch.cat(cum_lr), torch.cat(cum_pos)
                 if on.get("dump_ratios"):
                     dump[f"tok{k + 1}"] = torch.cat(tok_lr).float().cpu().numpy()
                     dump[f"seq{k + 1}"] = sq.float().cpu().numpy()
+                    dump[f"cum{k + 1}"] = cl.float().cpu().numpy()
+                    dump[f"pos{k + 1}"] = cp.to(torch.int16).cpu().numpy()
+                by_pos = {}
+                for b0, b1 in CTPO_BUCKETS:
+                    v = cl[(cp >= b0) & (cp <= b1)].abs()
+                    by_pos[str(b0)] = {"n": int(v.numel()), "cum_abs": _q(v, (0.5, 0.9))}
+                    if objective == "ctpo":
+                        by_pos[str(b0)].update(frac_outside=st[f"o{b0}"] / max(st[f"u{b0}"], 1.0),
+                                               frac_clipped=st[f"c{b0}"] / max(st[f"u{b0}"], 1.0))
                 steps.append({"step": k + 1, "loss": lsum, "grad_norm": g_k, "update_norm": u_k,
                               "tok_abslogr": _q(tl), "seq_abslogs": _q(sq.abs()),
                               "seq_logs_mean": float(sq.mean()) if sq.numel() else float("nan"),
                               "units": st["units"], "frac_outside": st["outside"] / max(st["units"], 1.0),
                               "frac_clipped": st["clipped"] / max(st["units"], 1.0),
                               "frac_tokens_clipped": (st["clipped_tokens"] / max(st["unit_tokens"], 1.0)
-                                                      if objective == "gspo" else st["clipped"] / max(st["units"], 1.0))})
+                                                      if objective == "gspo" else st["clipped"] / max(st["units"], 1.0)),
+                              "by_pos": by_pos})
                 ratio_dev = max(ratio_dev, float(torch.expm1(tl.max()).abs()) if tl.numel() else 0.0)
             gn, loss_total = steps[0]["grad_norm"], steps[0]["loss"]
             if dump:
@@ -395,4 +418,27 @@ def cmd_online(cfg):
                                          (s_.get("seq_abslogs") or [None] * 4)) + "," +
                                 ",".join(f4(r.get(k)) for k in ("dist_from_init", "kl_k1_tok", "kl_k3_tok",
                                                                  "kl_seq")) + "\n")
+            # position buckets: per 32-round block, step and bucket, the mean of the per-round values
+            agg = {}
+            for r in rows:
+                for s_ in r.get("steps") or []:
+                    for b0, v in (s_.get("by_pos") or {}).items():
+                        key = ((r["round"] - 1) // 32 + 1, s_["step"], int(b0))
+                        a_ = agg.setdefault(key, {"n": 0, "rounds": 0, "cum_p50": 0.0, "cum_p90": 0.0,
+                                                  "frac_outside": 0.0, "frac_clipped": 0.0})
+                        if v["n"] == 0:
+                            continue
+                        a_["rounds"] += 1
+                        a_["n"] += v["n"]
+                        a_["cum_p50"] += v["cum_abs"][0]
+                        a_["cum_p90"] += v["cum_abs"][1]
+                        a_["frac_outside"] += v.get("frac_outside", float("nan"))
+                        a_["frac_clipped"] += v.get("frac_clipped", float("nan"))
+            if agg:
+                with open(os.path.join(res, "pos.csv"), "w") as f:
+                    f.write("block32,step,pos_from,rounds,tokens,cum_abs_p50,cum_abs_p90,frac_outside,frac_clipped\n")
+                    for (blk, stp, b0), v in sorted(agg.items()):
+                        n = max(v["rounds"], 1)
+                        f.write(f"{blk},{stp},{b0},{v['rounds']},{v['n']}," + ",".join(
+                            f"{v[k] / n:.4g}" for k in ("cum_p50", "cum_p90", "frac_outside", "frac_clipped")) + "\n")
     return 0

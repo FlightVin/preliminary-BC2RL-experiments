@@ -451,3 +451,73 @@ The existing A5 / A6 M-arm GRPO runs stay as a separate historical reference (C1
 - Forecast (from A6 measurements; K = 4 runs assumed 1.5-3x a K = 1 run): validation 0.3 GPU-h; probes 0.5-1;
   dev 8 runs 9-15 + yd evaluation 1-2; confirmation 40 runs 50-80 + gf evaluation (10 x 48 x 896 + 40 x 32 x 896 =
   1,576,448 completions) 17-22. Total 80-120 GPU-h. Stage-level forecasts are updated in the 8-hourly report.
+
+### 12.8 CTPO addition (owner, 2026-10-27; pre-registered before any stage-G job output was read)
+**Question (owner, verbatim).** Does cumulative-prefix correction change coverage loss and its dependence on BC
+initialization, compared with token-level GRPO and sequence-level GSPO?
+
+**Formulation (paper arXiv 2605.07331 Sec. 3.3; reference `cum-token-cumprod-la` in horizon-llm/CTPO
+`verl/trainer/ppo/core_algos.py`).**
+- d_t = clamp(log p(y_t) - log b(y_t), -20, 20); C_t = sum over t' <= t of d_t' (log space, masked).
+  log rho_t = sg[C_t] + log p(y_t) - sg[log p(y_t)], clamped at <= 10. The value is the cumulative ratio. The gradient
+  flows only through the current token: dL/d log p(y_t) = -A rho_t / abs(y) for an unclipped token. A plain
+  derivative of the cumulative product would add prefix-gradient terms; the reference does not do this, and our
+  implementation follows the reference (test: `tests/test_gspo.py`, small exact example).
+- Position-adaptive band in log space: [-e_lo t^p, e_hi t^p], t = 1-based completion position; reference defaults
+  e_lo 0.025, e_hi 0.05, p 0.5. Dual clip for A < 0 at exp(e_c t^p), reference e_c 0.05. Per-token surrogate
+  max(-A rho, -A rho_clip), then min with -A exp(e_c t^p) for A < 0 (reference semantics).
+- **Theory scope.** Proposition 1 (unbiased policy gradient) assumes a token-level advantage that depends only on the
+  prefix (x, y_1..t), deterministic transitions, no clipping and an exact importance weight. Our training uses a
+  group-normalized outcome advantage (it depends on tokens after t, sampled from b), clipping and a dual clip. So
+  Proposition 1 does not cover our estimator. **We make no unbiasedness claim** for the implemented CTPO; it is a
+  practical clipped estimator. Proposition 2 (variance) is a statement about ratios, not about our coverage outcomes.
+- **Identity at K = 1:** rho_t = 1 at the first update and the band contains 1, so CTPO has the same gradient as
+  `grpo_len` (and GSPO). Arm L1 represents CTPO at K = 1. No CTPO K = 1 run is made (no duplicated run).
+
+**Controlled differences (method-specific; documented).** Same reward, advantages, sampling, prompts, rounds,
+optimizer, K and per-sequence length normalization (-(1/Q) sum_i (1/abs(y_i)) sum_t) as L4 / S4. Kept from the
+reference because they define CTPO-LA: the log-space position-adaptive band, the asymmetric shape e_hi = 2 e_lo, the
+dual clip with e_c = e_hi, and the clamps (+-20, <= 10). Not used: the reference's global token-mean aggregation (the
+paper's formula is the per-sequence mean, which also matches L4 / S4), its 16 mini-batch updates per rollout batch
+(owner design: K = 1 vs 4 full-batch steps), and its rollout-to-trainer importance correction (our behaviour log-probs
+come from the training pass, so there is no sampler mismatch term).
+
+**Arms (added to 12.2).** T4 = `ctpo`, K = 4, position-adaptive band (p = 0.5). T4F = `ctpo`, K = 4, fixed band
+(p = 0; ablation of the clipping schedule).
+- Contrasts: T4 - L4 (cumulative vs token ratio, both with per-token clipping), T4 - S4 (cumulative vs sequence
+  ratio), each with its extended - light interaction. T4 - T4F isolates the clipping schedule from the ratio.
+
+**Calibration (added to 12.4; dev seed 11 only).** Two more unclipped K = 4 probes ({light, extended} x `ctpo`,
+32 rounds) dump C_t and t. e_lo is solved so that 15% of the probe tokens (rows with A != 0, steps 2-4, both inits)
+fall outside the band with the reference shape (e_hi = 2 e_lo, e_c = e_hi): for p = 0.5 on C_t / sqrt(t) (T4) and for
+p = 0 on C_t (T4F). Same unit share as the GRPO and GSPO bands. The report also gives the probe fraction outside
+the reference band (0.025 / 0.05, p = 0.5).
+
+**Validation (added to 12.3).** CPU tests: reference transcription parity (values and gradients, p = 0.5 and 0),
+first-update closed form, small exact example (clipped tokens, no prefix gradient, naive cumulative-product gradient
+differs), dual and lower clip for A < 0, masking and positions, clamps (finite at log-ratio 100), infinite band, fp64
+gradcheck; tiny-model online runs (CTPO K = 1 equals `grpo_len`; K = 4 probe dumps; fixed band). GPU job V3: CTPO and
+`grpo_len` gradients agree at the first update (same threshold). V4: the precision rule also requires
+median abs(noise) <= 0.1 x median abs(FP32 value) for the cumulative log-ratio C_t.
+
+**Development (added to 12.5).** Dev runs: C1, L1, L4, S4, T4, T4F x {light, extended} = 12 runs + yd finals. Gate D
+for CTPO: D1 as 12.5; D2 for T4: median over trained rounds of the step-4 median abs(C_t) >= 3e-4 and >= 3 x the V4
+noise floor of C_t, and mean clipped token fraction (steps 2-4) >= 0.01. If T4 fails D2, CTPO is reported as "not
+exercised" and is not confirmed; GSPO confirmation is not affected (and vice versa).
+- Diagnostics by token position (buckets 1-8, 9-32, 33-64, 65-128, 129-256): abs(C_t) quantiles for every K = 4 arm;
+  CTPO fractions outside and clipped (`pos.csv`).
+
+**Confirmation (added to 12.6).** T4 joins the 40 runs (50 runs: 5 arms x 2 inits x 5 seeds, seeds 22-66, gf panels).
+T4F joins only if the dev data show an apparent CTPO benefit: dev point estimate of mean-over-inits
+E(T4) - E(L4) < 0 or E(T4) - E(S4) < 0 on yd3 (lower coverage loss). This trigger is fixed now; it uses dev data only.
+- Primary tests for the CTPO question (look G, same intervals and claim rule as 12.6): H-G3 T4 - L4 main effect;
+  H-G4 its interaction; H-G5 T4 - S4 main effect; H-G6 its interaction. With H-G1 and H-G2 there are 6 primary tests at
+  95% each; the familywise error is not controlled and the report says so. If T4F is run: T4 - T4F (main and
+  interaction) is secondary and interprets a CTPO benefit (schedule vs ratio). A benefit of T4 is attributed to the
+  cumulative ratio only if T4F shows it too.
+- Null and untested results: if the K = 4 ratios stay near 1 (D2 values near the thresholds), the report states that
+  the importance-weighting differences between GRPO, GSPO and CTPO are largely untested, whatever the coverage outcome.
+
+**Forecast (added to 12.7).** Probes +2 (0.3-0.5 GPU-h); dev +4 runs (5-8) + yd evaluation of 4 more finals (0.5);
+confirmation +10 T4 runs (13-20) + 10 x 32 x 896 gf completions (3-4); T4F conditional +10 runs (13-20) + 3-4.
+Stage G total with CTPO: about 105-155 GPU-h without T4F, 120-180 with T4F.

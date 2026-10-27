@@ -3,13 +3,14 @@
 For each initial adapter (light, extended of the dev seed) and each of `--batches` real rollout batches (the online
 stream of the frozen M-arm configuration, rounds 0, 1, ...):
   V7 determinism: two BF16 no-grad passes with the same layout give identical log-probs (max |diff|).
-  V3 first update: the accumulated gradients of grpo_len and gspo at behaviour = current (ratio 1), in FP32 and in
-     BF16 (relative L2 difference and cosine).
+  V3 first update: the accumulated gradients of grpo_len, gspo and ctpo (reference bands) at behaviour = current
+     (ratio 1), in FP32 and in BF16 (relative L2 difference and cosine against grpo_len).
   V4 precision: from FP32 behaviour log-probs, 3 full-batch GSPO steps (lr of the config, no clipping, FP32 passes).
      After each step the token and sequence log-ratios are computed with the same layout in FP32 and in BF16 (BF16
      behaviour log-probs from the BF16 pass before the first step). noise = BF16 log-ratio - FP32 log-ratio.
-     Decision (Section 12.3): BF16 if, for every adapter and batch, after step 1
-       median |noise_seq| <= 0.1 * median |logs_seq (FP32)|  and  median |noise_tok| <= 0.1 * median |logr_tok (FP32)|;
+     Also the cumulative (prefix-sum) log-ratio used by CTPO.
+     Decision (Section 12.3 / 12.8): BF16 if, for every adapter and batch, after step 1
+       median |noise| <= 0.1 * median |FP32 log-ratio| at the sequence, token and cumulative level;
      otherwise FP32 for every arm of the stage.
   Timing: seconds per full-batch gradient pass in BF16 and FP32 (forecast input).
 Writes g_validate.json to --out.
@@ -25,7 +26,7 @@ import torch
 from bc2rl import task
 from bc2rl.data import load_data
 from bc2rl.evaluate import stable_int
-from bc2rl.losses import grpo_advantages, grpo_len_loss_sum, gspo_loss_sum
+from bc2rl.losses import ctpo_loss_sum, grpo_advantages, grpo_len_loss_sum, gspo_loss_sum
 from bc2rl.modeling import (chat_prompt, gather_completion, load_adapter, load_policy, load_tokenizer, model_info,
                             sample, seq_logprobs)
 from bc2rl.online import prompt_stream, set_frozen_dtype
@@ -45,7 +46,10 @@ def grad_vec(model, params, sub, pad, micro, cap, adv, m, Q, fn):
     for sl, lp, cm, _ in seq_logprobs(model, sub, pad, micro, grad=True):
         lp_g = gather_completion(lp, cm, cap)
         rows = slice(sl.start, sl.stop)
-        ls, _, _ = fn(lp_g, lp_g.detach(), adv[rows], m[rows], float("inf"), float("inf"))
+        if fn is ctpo_loss_sum:
+            ls, _, _ = fn(lp_g, lp_g.detach(), adv[rows], m[rows], 0.025, 0.05, 0.05, 0.5)
+        else:
+            ls, _, _ = fn(lp_g, lp_g.detach(), adv[rows], m[rows], float("inf"), float("inf"))
         (ls / Q).backward()
         k += 1
     return torch.cat([p.grad.detach().flatten().double() for p in params])
@@ -118,9 +122,10 @@ def main():
                 gl = grad_vec(model, params, sub, tok.pad_token_id, micro, cap, adv, m, Q, grpo_len_loss_sum)
                 torch.cuda.synchronize()
                 row[f"pass_s_{name}"] = time.time() - t0
-                gs = grad_vec(model, params, sub, tok.pad_token_id, micro, cap, adv, m, Q, gspo_loss_sum)
-                row[f"V3_{name}_rel_l2"] = float((gl - gs).norm() / gl.norm())
-                row[f"V3_{name}_cos"] = float(torch.dot(gl, gs) / (gl.norm() * gs.norm()))
+                for tag, fn in (("", gspo_loss_sum), ("ctpo_", ctpo_loss_sum)):
+                    gs = grad_vec(model, params, sub, tok.pad_token_id, micro, cap, adv, m, Q, fn)
+                    row[f"V3_{tag}{name}_rel_l2"] = float((gl - gs).norm() / gl.norm())
+                    row[f"V3_{tag}{name}_cos"] = float(torch.dot(gl, gs) / (gl.norm() * gs.norm()))
             # V4 precision
             set_frozen_dtype(model, torch.bfloat16)
             b16 = [x.detach() for x in logp_rows(model, sub, tok.pad_token_id, micro, cap)]
@@ -146,14 +151,18 @@ def main():
                 n = m.sum(1)
                 s32, s16 = (r32 * m).sum(1) / n, (r16 * m).sum(1) / n
                 tok32, tokn = r32[m > 0], (r16 - r32)[m > 0]
+                c32, c16 = torch.cumsum(r32 * m, 1), torch.cumsum(r16 * m, 1)
+                cum32, cumn = c32[m > 0], (c16 - c32)[m > 0]
                 steps.append({"step": k + 1, "med_abs_logr_tok_fp32": med(tok32), "med_abs_noise_tok": med(tokn),
                               "med_abs_logs_seq_fp32": med(s32), "med_abs_noise_seq": med(s16 - s32),
                               "p90_abs_logs_seq_fp32": float(torch.quantile(s32.abs().float().cpu(), 0.9)),
-                              "p90_abs_noise_seq": float(torch.quantile((s16 - s32).abs().float().cpu(), 0.9))})
+                              "p90_abs_noise_seq": float(torch.quantile((s16 - s32).abs().float().cpu(), 0.9)),
+                              "med_abs_cum_fp32": med(cum32), "med_abs_noise_cum": med(cumn)})
             row["V4_steps"] = steps
             s1 = steps[0]
             row["V4_bf16_ok"] = bool(s1["med_abs_noise_seq"] <= 0.1 * s1["med_abs_logs_seq_fp32"] and
-                                     s1["med_abs_noise_tok"] <= 0.1 * s1["med_abs_logr_tok_fp32"])
+                                     s1["med_abs_noise_tok"] <= 0.1 * s1["med_abs_logr_tok_fp32"] and
+                                     s1["med_abs_noise_cum"] <= 0.1 * s1["med_abs_cum_fp32"])
             entry["batches"].append(row)
             print(f"[g-validate] {init.get('tag')} batch {b}: " + json.dumps({k: v for k, v in row.items()
                                                                              if k != "V4_steps"}), flush=True)
@@ -162,7 +171,8 @@ def main():
         del model
         torch.cuda.empty_cache()
     rows = [r for e in res["adapters"] for r in e["batches"] if "V4_bf16_ok" in r]
-    res["V3_pass"] = bool(rows) and all(r["V3_fp32_rel_l2"] <= 1e-4 and r["V3_fp32_cos"] >= 0.99999 for r in rows)
+    res["V3_pass"] = bool(rows) and all(r[f"V3_{t}fp32_rel_l2"] <= 1e-4 and r[f"V3_{t}fp32_cos"] >= 0.99999
+                                        for r in rows for t in ("", "ctpo_"))
     res["V7_bf16_deterministic"] = bool(rows) and all(r["V7_bf16_repeat_maxabs"] == 0.0 for r in rows)
     res["precision_decision"] = "bf16" if rows and all(r["V4_bf16_ok"] for r in rows) else "fp32"
     os.makedirs(a.out, exist_ok=True)

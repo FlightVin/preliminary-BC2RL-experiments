@@ -159,3 +159,159 @@ def test_legacy_grpo_unchanged():
     logp = torch.tensor([[-1.0, -2.0], [-0.5, -0.1]], requires_grad=True)
     ls, ratio = grpo_loss_sum(logp, logp.detach(), torch.tensor([1.0, -1.0]), torch.ones(2, 2), 0.2)
     assert torch.equal(ratio, torch.ones(2, 2)) and float(ls) == 0.0
+
+
+def test_calibration_quantile_and_rounding(tmp_path):
+    import subprocess
+    import sys
+    import json as _j
+    import os
+    import numpy as np
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    rng = np.random.default_rng(0)
+    for init in ("light", "extended"):
+        for obj, unit, scale in (("grpolen", "tok", 0.05), ("gspo", "seq", 0.001)):
+            d = tmp_path / f"bc2rl-gp-{init}-{obj}-s11" / "ratios"
+            d.mkdir(parents=True)
+            for r in (1, 2):
+                z = {f"{unit}1": np.zeros(50, np.float32)}            # step 1 is excluded (ratio exactly 1)
+                for k in (2, 3, 4):
+                    z[f"{unit}{k}"] = rng.uniform(-scale, scale, 1000).astype(np.float32)
+                np.savez(d / f"round{r:04d}.npz", **z)
+        d = tmp_path / f"bc2rl-gp-{init}-ctpo-s11" / "ratios"
+        d.mkdir(parents=True)
+        for r in (1, 2):
+            z = {"cum1": np.zeros(50, np.float32), "pos1": np.ones(50, np.int16)}
+            for k in (2, 3, 4):
+                z[f"cum{k}"] = rng.uniform(-0.1, 0.1, 4000).astype(np.float32)
+                z[f"pos{k}"] = np.ones(4000, np.int16)                  # t = 1: adaptive and fixed bands coincide
+            np.savez(d / f"round{r:04d}.npz", **z)
+    subprocess.run([sys.executable, "scripts/g_calibrate.py", "--runs", str(tmp_path), "--out", str(tmp_path / "o")],
+                   cwd=root, check=True, env=dict(os.environ, PYTHONPATH=root))
+    res = _j.load(open(tmp_path / "o" / "g_calibration.json"))
+    # |expm1(U(-a, a))| ~ U(0, a) -> 85th percentile ~ 0.85 a
+    assert abs(res["eps_tok_raw"] - 0.85 * 0.05) < 0.003 and abs(res["eps_seq_raw"] - 0.85 * 0.001) < 6e-5
+    assert res["n_tok"] == 2 * 2 * 3 * 1000 and res["eps_seq"] == float(f"{res['eps_seq_raw']:.2g}")
+    # U(-0.1, 0.1) with band (-e, 2e): P(x < -e) = 0.15 and 2e > 0.1 -> e = 0.07
+    for name in ("ctpo", "ctpo_fixed"):
+        assert abs(res[name]["clip_low"] - 0.07) <= 0.003 and res[name]["clip_c"] == res[name]["clip_high"]
+
+
+# ----------------------------------------------------------------------------- CTPO (A6 Section 12.8)
+from bc2rl.losses import ctpo_loss_sum  # noqa: E402
+
+
+def ref_ctpo_pg(old_log_prob, log_prob, advantages, response_mask, lo, hi, c, p):
+    """Transcription of horizon-llm/CTPO `_compute_policy_loss_cum_token_la_impl` (ratio_mode cumprod) up to the
+    per-token loss matrix; advantages are per token (B, T) as in verl."""
+    nk = torch.clamp(log_prob - old_log_prob, min=-20.0, max=20.0)
+    mask = response_mask.to(dtype=nk.dtype)
+    cs = torch.cumsum(nk * mask, dim=-1)
+    kl_values = torch.where(mask > 0, cs, torch.zeros_like(cs))
+    lir = torch.clamp(kl_values.detach() + log_prob - log_prob.detach(), max=10.0)
+    ratio = torch.where(mask > 0, torch.exp(lir), torch.zeros_like(lir))
+    pos_t = torch.cumsum(mask, dim=-1)
+    scale = pos_t.clamp(min=1.0).pow(p)
+    alo, ahi, ac = lo * scale, hi * scale, c * scale
+    lrc = torch.clamp(lir, -alo, ahi)
+    cr = torch.where(mask > 0, torch.exp(lrc), torch.zeros_like(lrc))
+    dct = torch.where(mask > 0, torch.exp(ac), torch.ones_like(ac))
+    l1, l2 = -advantages * ratio, -advantages * cr
+    c1 = torch.maximum(l1, l2)
+    c2 = torch.min(-advantages * dct, c1)
+    return torch.where(advantages < 0, c2, c1)
+
+
+def test_ctpo_matches_reference_values_and_gradients():
+    torch.manual_seed(1)
+    logp, mask, adv, lens = batch()
+    beh = logp.detach() + 0.08 * torch.randn_like(logp)          # many tokens clipped at these bounds
+    for p in (0.5, 0.0):
+        lp1 = logp.detach().clone().requires_grad_(True)
+        ls, _, _ = ctpo_loss_sum(lp1, beh, adv, mask, 0.025, 0.05, 0.05, p)
+        ls.backward()
+        lp2 = logp.detach().clone().requires_grad_(True)
+        pg = ref_ctpo_pg(beh, lp2, adv.unsqueeze(1).expand_as(lp2), mask, 0.025, 0.05, 0.05, p)
+        ref = ((pg * mask).sum(1) / mask.sum(1)).sum()
+        ref.backward()
+        assert torch.allclose(ls, ref, atol=1e-12) and torch.allclose(lp1.grad, lp2.grad, atol=1e-12)
+
+
+def test_ctpo_first_update_equals_length_normalized_grpo():
+    logp, mask, adv, lens = batch()
+    lp = logp.detach().clone().requires_grad_(True)
+    ls, lr, st = ctpo_loss_sum(lp, lp.detach(), adv, mask, 0.025, 0.05, 0.05, 0.5)
+    assert torch.all(lr == 0) and st["outside"] == 0 and st["clipped"] == 0
+    (ls / 8).backward()
+    closed = -(adv.unsqueeze(1) * mask / lens.unsqueeze(1).to(mask.dtype)) / 8
+    assert torch.allclose(lp.grad, closed, atol=1e-15)
+
+
+def test_ctpo_small_exact_example_and_no_prefix_gradient():
+    # one row, 3 tokens, A = 1, d = (0.1, -0.05, 0.2) -> C = (0.1, 0.05, 0.25); hi_t = 0.05 sqrt(t)
+    beh = torch.zeros(1, 3, dtype=torch.float64)
+    lp = torch.tensor([[0.1, -0.05, 0.2]], dtype=torch.float64, requires_grad=True)
+    mask = torch.ones(1, 3, dtype=torch.float64)
+    ls, lr, st = ctpo_loss_sum(lp, beh, torch.tensor([1.0], dtype=torch.float64), mask, 0.025, 0.05, 0.05, 0.5)
+    assert torch.allclose(lr, torch.tensor([[0.1, 0.05, 0.25]], dtype=torch.float64))
+    exp = -(math.exp(0.05) + math.exp(0.05) + math.exp(0.05 * math.sqrt(3))) / 3
+    assert abs(float(ls) - exp) < 1e-12
+    ls.backward()
+    # tokens 1 and 3 are clipped (zero gradient); token 2 gets -A rho_2 / 3 and nothing from later tokens
+    assert lp.grad[0, 0] == 0 and lp.grad[0, 2] == 0
+    assert abs(float(lp.grad[0, 1]) + math.exp(0.05) / 3) < 1e-12
+    assert st["clipped"] == 2 and st["outside"] == 2
+    # naive differentiation of the cumulative product (no stop-gradient) adds prefix terms: it differs
+    lp2 = lp.detach().clone().requires_grad_(True)
+    naive = -(torch.exp(torch.cumsum(lp2 - beh, dim=1))).mean()
+    naive.backward()
+    assert abs(float(lp2.grad[0, 0]) - float(-(torch.exp(torch.cumsum(lp.detach(), 1))).sum() / 3)) < 1e-12
+    unclipped = lp.detach().clone().requires_grad_(True)
+    l_u, _, _ = ctpo_loss_sum(unclipped, beh, torch.tensor([1.0], dtype=torch.float64), mask, 9.0, 9.0, 9.0, 0.5)
+    l_u.backward()
+    assert not torch.allclose(unclipped.grad, lp2.grad)
+    assert torch.allclose(unclipped.grad, -torch.exp(torch.cumsum(lp.detach(), 1)) / 3)
+
+
+def test_ctpo_dual_clip_and_lower_clip_for_negative_advantage():
+    beh = torch.zeros(2, 1, dtype=torch.float64)
+    lp = torch.tensor([[0.3], [-0.1]], dtype=torch.float64, requires_grad=True)
+    mask = torch.ones(2, 1, dtype=torch.float64)
+    adv = torch.tensor([-1.0, -1.0], dtype=torch.float64)
+    ls, _, st = ctpo_loss_sum(lp, beh, adv, mask, 0.025, 0.05, 0.05, 0.5)
+    ls.backward()
+    # row 0: rho = e^0.3 above the dual threshold e^0.05 -> loss capped at e^0.05, zero gradient
+    # row 1: rho = e^-0.1 below e^-0.025 -> clipped at e^-0.025, zero gradient
+    assert abs(float(ls) - (math.exp(0.05) + math.exp(-0.025))) < 1e-12
+    assert torch.all(lp.grad == 0) and st["clipped"] == 2
+
+
+def test_ctpo_masking_positions_and_stability():
+    logp, mask, adv, lens = batch()
+    beh = logp.detach() + 0.01 * torch.randn_like(logp)
+    lp1 = logp.detach().clone().requires_grad_(True)
+    l1, lr1, _ = ctpo_loss_sum(lp1, beh, adv, mask, 0.025, 0.05, 0.05, 0.5)
+    l1.backward()
+    lp2 = (logp.detach() + (1 - mask) * 50.0).requires_grad_(True)
+    l2, lr2, _ = ctpo_loss_sum(lp2, beh, adv, mask, 0.025, 0.05, 0.05, 0.5)
+    l2.backward()
+    assert torch.allclose(l1, l2) and torch.allclose(lp1.grad, lp2.grad) and torch.all(lp1.grad * (1 - mask) == 0)
+    assert torch.all(lr1 * (1 - mask) == 0)
+    # huge per-token log-ratios: clamp at +-20 and log rho <= 10 keep everything finite
+    lp3 = (beh + 100.0 * mask).requires_grad_(True)
+    l3, lr3, _ = ctpo_loss_sum(lp3, beh, adv, mask, 0.025, 0.05, 0.05, 0.5)
+    l3.backward()
+    assert torch.isfinite(l3) and torch.all(torch.isfinite(lp3.grad)) and float(lr3.max()) <= 10.0
+    # unclipped probe settings (infinite band) stay finite, including rows with A = 0
+    lp4 = logp.detach().clone().requires_grad_(True)
+    inf = float("inf")
+    l4, _, st4 = ctpo_loss_sum(lp4, beh, adv, mask, inf, inf, inf, 0.5)
+    l4.backward()
+    assert torch.isfinite(l4) and torch.all(torch.isfinite(lp4.grad)) and st4["clipped"] == 0
+
+
+def test_ctpo_gradcheck_fp64():
+    logp, mask, adv, _ = batch()
+    beh = logp.detach() + 0.03 * torch.randn_like(logp)
+    f = lambda x: ctpo_loss_sum(x, beh, adv, mask, 0.025, 0.05, 0.05, 0.5)[0]
+    assert torch.autograd.gradcheck(f, (logp.detach().clone().requires_grad_(True),), eps=1e-9, atol=1e-6)

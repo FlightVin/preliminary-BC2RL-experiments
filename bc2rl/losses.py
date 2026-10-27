@@ -10,7 +10,13 @@ grpo_len:  loss = -(1 / Q) * sum_i (1 / |y_i|) * sum_t min(r_it A_i, clip(r_it, 
 gspo:      loss = -(1 / Q) * sum_i min(s_i A_i, clip(s_i, 1-e_lo, 1+e_hi) A_i),
            s_i = exp((1 / |y_i|) * sum_t (log p(y_it) - log b(y_it)))      (GSPO, arXiv 2507.18071, Eq. 5-7)
 |y_i| = completion tokens including the stop token (truncated rows: the cap). b = frozen behaviour log-probs.
-With b = logp.detach() (first update of a batch) both give the gradient -(1/Q) sum_i A_i / |y_i| sum_t grad log p.
+ctpo:      CTPO (arXiv 2605.07331; reference `cum-token-cumprod-la`, horizon-llm/CTPO verl/trainer/ppo/core_algos.py):
+           d_t = clamp(log p - log b, -20, 20); C_t = sum_{t' <= t} d_t'; log rho_t = sg[C_t] + log p_t - sg[log p_t]
+           (value C_t, gradient only through the current token: no prefix-gradient terms), clamped at <= 10;
+           band in log space [-e_lo t^pw, e_hi t^pw], t = 1-based completion position; dual clip for A < 0 at
+           exp(e_c t^pw). Per-token surrogate as the reference; aggregation here is per-sequence mean then / Q
+           (the paper's formula; the reference code defaults to a global token mean).
+With b = logp.detach() (first update of a batch) all three give the gradient -(1/Q) sum_i A_i / |y_i| sum_t grad log p.
 """
 from __future__ import annotations
 
@@ -78,6 +84,46 @@ def gspo_loss_sum(logp, beh_logp, adv, mask, e_lo: float, e_hi: float):
     act = (((a > 0) & (s.detach() > 1.0 + e_hi)) | ((a < 0) & (s.detach() < 1.0 - e_lo))).to(mask.dtype) * unit
     return -obj.sum(), s, {"units": float(unit.sum()), "outside": o, "clipped": c,
                            "clipped_tokens": float((act * mask.sum(1)).sum()), "unit_tokens": float((unit * mask.sum(1)).sum())}
+
+
+CTPO_BUCKETS = ((1, 8), (9, 32), (33, 64), (65, 128), (129, 256))
+
+
+def ctpo_loss_sum(logp, beh_logp, adv, mask, e_lo: float, e_hi: float, e_c: float, power: float):
+    """CTPO-LA surrogate loss (reference semantics), per-sequence mean, summed over rows. Divide by Q outside.
+
+    Returns (loss_sum, log_rho (B, T) detached, stats). stats: token units (rows with adv != 0), tokens outside the
+    band, tokens clipped (zero gradient, incl. the dual clip), and per-position-bucket outside / clipped counts.
+    """
+    m = mask.to(logp.dtype)
+    d = torch.clamp(logp - beh_logp, min=-20.0, max=20.0)
+    cum = torch.where(m > 0, torch.cumsum(d * m, dim=-1), torch.zeros_like(d))
+    log_rho = torch.clamp(cum.detach() + logp - logp.detach(), max=10.0)
+    rho = torch.where(m > 0, torch.exp(log_rho), torch.zeros_like(log_rho))
+    pos = torch.cumsum(m, dim=-1)
+    scale = pos.clamp(min=1.0).pow(power) if power != 0 else torch.ones_like(pos)
+    lo, hi, c = e_lo * scale, e_hi * scale, e_c * scale
+    lr_clip = torch.minimum(torch.maximum(log_rho, -lo), hi)
+    rho_clip = torch.where(m > 0, torch.exp(lr_clip), torch.zeros_like(lr_clip))
+    dual = torch.where(m > 0, torch.exp(c), torch.ones_like(c))
+    a = adv.unsqueeze(1).to(logp.dtype).expand_as(logp)
+    l1, l2 = -a * rho, -a * rho_clip
+    cl1 = torch.maximum(l1, l2)
+    cl2 = torch.minimum(-a * dual, cl1)
+    pg = torch.where(a < 0, cl2, cl1)
+    n = m.sum(1).clamp(min=1.0)
+    loss = ((pg * m).sum(1) / n).sum()
+    with torch.no_grad():
+        lr = log_rho.detach()
+        unit = m * (adv != 0).unsqueeze(1).to(m.dtype)
+        outside = ((lr < -lo) | (lr > hi)).to(m.dtype) * unit
+        clipped = ((((a > 0) & (lr > hi)) | ((a < 0) & (lr < -lo)) | ((a < 0) & (cl1 > -a * dual)))
+                   .to(m.dtype) * unit)
+        st = {"units": float(unit.sum()), "outside": float(outside.sum()), "clipped": float(clipped.sum())}
+        for b0, b1 in CTPO_BUCKETS:
+            inb = ((pos >= b0) & (pos <= b1)).to(m.dtype) * unit
+            st[f"u{b0}"], st[f"o{b0}"], st[f"c{b0}"] = float(inb.sum()), float((outside * inb).sum()), float((clipped * inb).sum())
+    return loss, lr, st          # pg terms are already losses (-A rho), as in the reference
 
 
 def filtered_loss_sum(logp, mask):

@@ -451,12 +451,15 @@ def test_gspo_stage_online_options(env):
     r_c1 = rows("g-c1")
     assert r_c1[0]["kl_seq"] == 0.0 and all("dist_from_init" in r for r in r_c1)
     # 2. at K = 1 GSPO and length-normalized GRPO give the same update (ratio exactly 1)
-    for rid, obj in (("g-l1", "grpo_len"), ("g-s1", "gspo")):
-        run_cli("online", write(tmp, rid, online_cfg(base, rid, objective=obj, rounds=1, save_rounds=[1])))
-    a, b = load_file(ad("g-l1", 1)), load_file(ad("g-s1", 1))
-    num = sum(float(((a[k] - b[k]) ** 2).sum()) for k in a)
-    den = sum(float(((a[k]) ** 2).sum()) for k in a)
-    assert (num / den) ** 0.5 < 1e-3
+    for rid, obj, kw in (("g-l1", "grpo_len", {}), ("g-s1", "gspo", {}),
+                         ("g-t1", "ctpo", {"clip_low": 0.025, "clip_high": 0.05, "clip_c": 0.05})):
+        run_cli("online", write(tmp, rid, online_cfg(base, rid, objective=obj, rounds=1, save_rounds=[1], **kw)))
+    a = load_file(ad("g-l1", 1))
+    for other in ("g-s1", "g-t1"):
+        b = load_file(ad(other, 1))
+        num = sum(float(((a[k] - b[k]) ** 2).sum()) for k in a)
+        den = sum(float(((a[k]) ** 2).sum()) for k in a)
+        assert (num / den) ** 0.5 < 1e-3, other
     # 3. GSPO, K = 4, no clipping (probe settings): 4 steps per trained round, step 1 ratio exactly 1, ratio dump
     run_cli("online", write(tmp, "g-s4", online_cfg(base, "g-s4", objective="gspo", updates_per_batch=4,
                                                     clip_low=None, clip_high=None, kl_every=1, dump_ratios=True)))
@@ -484,6 +487,18 @@ def test_gspo_stage_online_options(env):
     cfg_r.pop("_debug_kill_after_round")
     run_cli("online", write(tmp, "g-res", cfg_r))
     assert file_sha256(ad("g-ref", 3)) == file_sha256(ad("g-res", 3))
+    # 5b. CTPO, K = 4: unclipped probe (cumulative ratio dump with positions) and the fixed-band variant (p = 0)
+    run_cli("online", write(tmp, "g-t4p", online_cfg(base, "g-t4p", objective="ctpo", updates_per_batch=4,
+                                                     clip_low=None, clip_high=None, dump_ratios=True)))
+    rt = [r for r in rows("g-t4p") if not r["skipped"]]
+    assert rt and all(len(r["steps"]) == 4 and r["steps"][0]["frac_outside"] == 0.0 for r in rt)
+    assert all(r["steps"][k]["frac_clipped"] == 0.0 for r in rt for k in range(4))
+    assert all("frac_clipped" in r["steps"][1]["by_pos"]["1"] for r in rt)
+    z = np.load(os.path.join(rd("g-t4p"), "ratios", f"round{rt[0]['round']:04d}.npz"))
+    assert np.all(z["cum1"] == 0) and z["pos2"].min() >= 1 and z["cum2"].shape == z["pos2"].shape
+    run_cli("online", write(tmp, "g-t4f", online_cfg(base, "g-t4f", objective="ctpo", updates_per_batch=4,
+                                                     clip_low=0.01, clip_high=0.02, clip_c=0.02, clip_power=0.0)))
+    assert all(len(r["steps"]) == 4 for r in rows("g-t4f") if not r["skipped"])
     # 6. K > 1 is refused for the constant-normalization reference
     run_cli("online", write(tmp, "g-bad", online_cfg(base, "g-bad", objective="grpo_const", updates_per_batch=4)),
             expect=1)
