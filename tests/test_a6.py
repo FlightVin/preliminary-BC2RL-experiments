@@ -550,3 +550,42 @@ def test_first_update_gradients_agree_on_tiny_model(tmp_path):
     assert ref.norm() > 0
     for k, v in out.items():
         assert float((v - ref).norm() / ref.norm()) < 1e-5, k
+
+
+def test_yf_structural_acceptance(tmp_path):
+    """scripts/a6_yf_accept.py passes a complete synthetic yf set and names each planted defect."""
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    from a6_yf_accept import check
+    from y_look1 import required
+    inits, fins = required()
+    rows = {"yf3": 4, "yf5": 2}
+    sha_map = {"runs/x/b16-s11.safetensors": "aa"}
+
+    def emit(t, panel, n_att, adapter, sha, nrows=None, c=1):
+        nr = rows[panel] if nrows is None else nrows
+        s = {"tag": t, "panel": panel, "adapter": adapter, "adapter_sha256": sha, "completions": nr * n_att,
+             "protocol": {"attempts": n_att, "panel_sha256": f"p-{panel}", "cap_ext": 1024},
+             "counts": [{"pid": f"q{i}", "n": n_att, "c": c} for i in range(nr)]}
+        json.dump(s, open(tmp_path / f"{t}.{panel}.summary.json", "w"))
+        open(tmp_path / f"{t}.{panel}.jsonl.gz", "w").close()
+
+    for t in inits + fins:
+        ad = "runs/x/b16-s11.safetensors" if t == "b16-s11" else f"runs/{t}.safetensors"
+        for panel in rows:
+            emit(t, panel, 48 if t in inits else 32, ad, "aa" if t == "b16-s11" else f"h-{t}")
+    out = check(str(tmp_path), sha_map, rows)
+    assert len(out) == 2 * (24 + 72) and not [r for r in out if r["problems"]]
+    assert sum(bool(r.get("registered")) for r in out) == 2
+    emit("b16-s11", "yf3", 48, "runs/x/b16-s11.safetensors", "bb")              # wrong registered sha
+    emit("b16-grpo-M-s11", "yf5", 32, "runs/b16-grpo-M-s11.safetensors", "h-b16-grpo-M-s11", nrows=1)
+    emit("b128-grpo-T3-s66", "yf3", 32, "runs/b128-grpo-T3-s66.safetensors", "h-b128-grpo-T3-s66", c=33)
+    os.remove(tmp_path / "b64-s33.yf5.jsonl.gz")
+    os.remove(tmp_path / "b32-grpo-M-s22.yf3.summary.json")
+    bad = {(r["tag"], r["panel"]): r["problems"] for r in check(str(tmp_path), sha_map, rows) if r["problems"]}
+    assert bad[("b16-s11", "yf3")] == ["adapter sha != registered"]
+    assert ("b16-s11", "both") in bad
+    assert any(p.startswith("rows 1") for p in bad[("b16-grpo-M-s11", "yf5")])
+    assert bad[("b128-grpo-T3-s66", "yf3")] == ["row n or c out of range"]
+    assert bad[("b64-s33", "yf5")] == ["records missing"]
+    assert bad[("b32-grpo-M-s22", "yf3")] == ["summary missing"]
+    assert len(bad) == 6
