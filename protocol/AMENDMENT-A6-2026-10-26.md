@@ -344,3 +344,110 @@ Throughput: evaluation 25.7 completions/s averaged over X5 (645,120 completions 
 | total wave 1 | | 75-93 |
 With 5 slots and about 10% preemption rework: about 17-21 h of wall time after the workers start, plus queue waits.
 Wave 2 (conditional): filtered Y3 about 35 GPU-h.
+
+## 12. Stage G — sequence-level weighting and clipping (GSPO); owner addition 2026-10-27
+
+Pre-registered 2026-10-27, before any stage-G job. Owner instruction: add a bounded GSPO experiment without displacing
+the mechanism work (A6 wave 1 and look 1 keep priority on the 5 BC2RL GPU slots).
+
+**Question (owner, verbatim).** Does sequence-level weighting and clipping change coverage loss or its dependence on BC
+initialization, beyond effects from response-length normalization and rollout reuse?
+
+### 12.1 Objectives (`bc2rl/losses.py`; config key `online.objective`)
+Advantages as GRPO: A_i = (r_i - mean_g) / (std_g + 1e-6), population std, G = 4. Q = 128 completions per round.
+| id | objective | loss |
+|---|---|---|
+| `grpo_const` | reference (the A5 / A6 GRPO; unchanged code path) | -(1 / (Q Lmax)) sum_i sum_t min(r_it A_i, clip(r_it, 1-e, 1+e) A_i), Lmax = 256 |
+| `grpo_len` | token ratio, response-length normalization | -(1 / Q) sum_i (1 / abs(y_i)) sum_t min(r_it A_i, clip(r_it, 1-e_tok, 1+e_tok) A_i) |
+| `gspo` | sequence ratio (GSPO, arXiv 2507.18071, Eq. 5-7) | -(1 / Q) sum_i min(s_i A_i, clip(s_i, 1-e_seq, 1+e_seq) A_i), s_i = exp((1 / abs(y_i)) sum_t log(p(y_it) / b(y_it))) |
+- abs(y_i) = completion tokens including the stop token; a truncated attempt has abs(y_i) = 256. Padding after the stop
+  token has no loss and no gradient. Rows with A_i = 0 contribute 0; the denominator stays Q.
+- **Behaviour log-probs b** are the detached log-probs of the first gradient pass of the round. They stay fixed for
+  all K steps of the round. The ratio of step 1 is therefore exactly 1.
+- **K full-batch optimizer steps per rollout batch** (`online.updates_per_batch`): each step accumulates the gradient
+  over the whole batch (same micro-batch layout each step), clips the gradient norm at 1.0, and makes one AdamW step.
+- **Identity at K = 1.** With ratio 1, `grpo_len` and `gspo` have the same gradient,
+  -(1/Q) sum_i (A_i / abs(y_i)) sum_t grad log p(y_it). So at K = 1 they are the same algorithm. Arm L1 represents both.
+  The difference between `gspo` and `grpo_len` can act only at steps 2..K.
+
+### 12.2 Arms (per seed and initial adapter: light = BC step 16, extended = BC step 128)
+| arm | objective | K | clip band |
+|---|---|---:|---|
+| C1 | `grpo_const` | 1 | 0.2 (inactive: ratio 1) |
+| L1 | `grpo_len` | 1 | e_tok (inactive: ratio 1) |
+| L4 | `grpo_len` | 4 | e_tok (12.4) |
+| S4 | `gspo` | 4 | e_seq (12.4) |
+Everything else is the frozen M-arm configuration (`configs/main/on-<init>-grpo-s<seed>.yaml`,
+`configs/ext/x7/...` for seeds 44-66): mixed 3/5/10-input prompt stream, 32 prompts x 4 samples, 256 rounds, cap 256,
+temperature 1, verifier v1 reward, LoRA r 16, AdamW lr 1e-5, weight decay 0, fresh optimizer state, same stream seed and
+sampling seeds for all four arms (round 1 rollouts are identical across arms). Training-pass precision: 12.3 (V4),
+the same for all four arms. KL to the initial adapter every 8 rounds (`online.kl_every`).
+**Contrasts.** Normalization: L1 - C1. Rollout reuse: L4 - L1. **Sequence-level weighting and clipping: S4 - L4**
+(same normalization, same reuse). BC dependence: each contrast for extended minus light (interaction).
+A difference between L1 and C1 is a normalization effect. It is never attributed to sequence-level clipping.
+The existing A5 / A6 M-arm GRPO runs stay as a separate historical reference (C1 re-runs them with the diagnostics).
+
+### 12.3 Validation (before any probe or dev run)
+- V1 masks and stop tokens; V2 clipping branches (A > 0 / A < 0, inside / outside, asymmetric bounds); V3-unit
+  first-update agreement and closed form; V5 fp64 gradient checks (finite differences; GSPO Eq. 10); V6 the reference
+  path is bit-identical with the diagnostics on. CPU tests `tests/test_gspo.py`, `tests/test_a6.py` (tiny model:
+  K = 4 runs, step-1 ratio exactly 1, resume inside a K = 4 run bit-identical, K > 1 refused for `grpo_const`).
+- GPU job `scripts/g_validate.py` (dev seed 11, both initial adapters, 2 real rollout batches each):
+  - V3: accumulated gradients of `grpo_len` and `gspo` at the first update agree (FP32: relative L2 <= 1e-4 and
+    cosine >= 0.99999).
+  - V7: two BF16 passes with the same layout give identical log-probs (reported).
+  - V4 precision: after 1-3 GSPO steps, the token and sequence log-ratios in BF16 and FP32 (same layout).
+    noise = BF16 - FP32. **Rule:** use BF16 training passes if, for every adapter and batch after step 1,
+    median abs(noise) <= 0.1 x median abs(FP32 log-ratio), at both the sequence and the token level. Otherwise use
+    FP32 training passes (frozen base weights cast to FP32, TF32 off; sampling stays BF16) for all four arms.
+- A failed V1-V3, V5 or V6 stops stage G until the defect is fixed and the validation is run again.
+
+### 12.4 Clip calibration (dev seed 11 only; before the dev arms)
+- Four probe runs: {light, extended} x {`grpo_len`, `gspo`}, K = 4, **no clipping**, 32 rounds, ratio dumps.
+- e_tok = 85th percentile of abs(r_it - 1) over the tokens of rows with A_i != 0, steps 2-4, all probe rounds, both
+  initial adapters (`grpo_len` probes). e_seq = 85th percentile of abs(s_i - 1) over those rows (`gspo` probes).
+  Symmetric band, 2 significant digits. Reason: each band leaves 15% of its own units outside in the unclipped probe,
+  so the two constraints are comparable by unit share; equal numbers would not be (owner instruction). This rule is a
+  choice. The report also gives the probe fractions outside the paper values (token 0.2 / 0.27; sequence 3e-4 / 4e-4).
+
+### 12.5 Development (seed 11; exploratory)
+- 8 runs: {C1, L1, L4, S4} x {light, extended}. Final adapters (round 256) on yd3 / yd5, 32 attempts, cap 256 with
+  continuation to 1,024 (Section 3.3). Initial-adapter counts: the existing yd-init-s11 evaluation.
+- **Gate D (validity and information; decided on training diagnostics only, never on a coverage outcome):**
+  - D1 validity: V1-V7 as above; all 8 runs complete 256 rounds with finite loss; step-1 ratio exactly 1 in L4 and S4.
+  - D2 exercise: in S4 the median over trained rounds of the step-4 median abs(log s_i) >= 3e-4 (the paper's lower
+    GSPO clip range) and >= 3 x the V4 noise floor of the chosen precision; in L4 the same for the token median
+    abs(log r_it); and in both S4 and L4 the mean clipped fraction (steps 2-4) >= 0.01.
+  - If D1 or D2 fails, stage G stops. The report states that the experiment does not exercise the distinction (D2) or
+    is invalid (D1), with the measured values. No setting is changed to pass the gate.
+- If gate D passes, the configuration (precision, e_tok, e_seq) is frozen in a dated addition before confirmation.
+
+### 12.6 Confirmation (seeds 22, 33, 44, 55, 66; prespecified)
+- 40 runs: {C1, L1, L4, S4} x {light, extended} x 5 seeds, frozen configuration.
+- **Independent panels** (`bc2rl xdata`, data name `g1`, seed 20261028, generator v1; keys in any v1 split, the
+  mechanism splits, X5 and A6 panels are rejected): `gf3` = 768 problems with 3 inputs (primary), `gf5` = 128 with
+  5 inputs (description). No stage-G decision uses gf. Initial adapters: 48 attempts (24 selection c_a, 24 baseline
+  c_b); finals: 32 attempts; caps 256 and 1,024 as Section 3.3.
+- Estimator as Section 3.4 on gf3 (K = 16; bins on c_a 1-2 / 3-5 / 6-11; usable-bin rule; weights = pooled bin shares
+  of the 10 initial adapters on gf3). E(arm, init, seed) = weighted mean excess loss.
+- **Primary tests (look G, one CPU job after all 40 finals and 10 initial adapters have gf evaluations):**
+  - H-G1 main effect: mean over the two inits of E(S4) - E(L4).
+  - H-G2 interaction: [E(S4, ext) - E(S4, light)] - [E(L4, ext) - E(L4, light)].
+  - Intervals: paired problem bootstrap (10,000 resamples of gf3) and seed-level Student-t 95% (df = 4). A claim of a
+    nonzero contrast requires both intervals to exclude 0. No multiplicity correction; two primary tests.
+- Secondary (same intervals; labelled secondary): L4 - L1 and L1 - C1 (main effects and interactions), the per-init
+  contrasts, and E(C1, ext) - E(C1, light) (the A5 effect in this stage).
+- Reported for every arm: pass@k and pass^k (k = 1, 4, 16; unbiased from 32 attempts; caps 256 and 1,024), E at
+  K = 1, 4, 16, output length, truncation at 256 and outcome after continuation, KL to the initial adapter, token and
+  sequence ratio distributions (quantiles per step), clipped fractions (units and tokens), gradient and update norms,
+  distance from the initial adapter. Equal-rollout endpoint: round 256 (32,768 completions per run). Optimizer steps
+  (K x trained rounds) and measured GPU-seconds are reported separately.
+- Interpretation: S4 - L4 is the only contrast that answers the question. If neither H-G1 nor H-G2 is claimed, the
+  result is "no detectable effect at this scale", bounded by the intervals. If clipping is rare or ratios stay near 1,
+  the report states that the experiment barely exercises the distinction, whatever the coverage outcome.
+
+### 12.7 Resources and forecast
+- Preempt only; at most 5 BC2RL GPU slots across all stages, pending jobs included; no general GPUs, no `ae-topup`.
+- Forecast (from A6 measurements; K = 4 runs assumed 1.5-3x a K = 1 run): validation 0.3 GPU-h; probes 0.5-1;
+  dev 8 runs 9-15 + yd evaluation 1-2; confirmation 40 runs 50-80 + gf evaluation (10 x 48 x 896 + 40 x 32 x 896 =
+  1,576,448 completions) 17-22. Total 80-120 GPU-h. Stage-level forecasts are updated in the 8-hourly report.

@@ -430,3 +430,60 @@ def test_look1_end_to_end_synthetic(tmp_path):
     os.remove(ev_dir / "b64-grpo-M-s66.yf5.summary.json")             # an incomplete set is refused
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     assert r.returncode != 0 and "look 1 refused" in r.stderr
+
+
+# ----------------------------------------------------------------------------- A6 Section 12 (GSPO stage), tiny model
+
+@needs_tok
+def test_gspo_stage_online_options(env):
+    tmp, base = env
+    from bc2rl.modeling import file_sha256
+    from bc2rl.runtime import read_jsonl_gz  # noqa: F401  (same import path as the stage code)
+    import torch
+    from safetensors.torch import load_file
+    rd = lambda rid: os.path.join(base["proj_data"], "runs", rid)
+    ad = lambda rid, r: os.path.join(rd(rid), "adapters", f"round{r:04d}.safetensors")
+    rows = lambda rid: [json.loads(l) for l in open(os.path.join(rd(rid), "metrics.jsonl"))]
+    # 1. objective grpo_const with diagnostics trains bit-identically to the frozen default
+    run_cli("online", write(tmp, "g-def", online_cfg(base, "g-def")))
+    run_cli("online", write(tmp, "g-c1", online_cfg(base, "g-c1", objective="grpo_const", kl_every=1)))
+    assert file_sha256(ad("g-def", 3)) == file_sha256(ad("g-c1", 3))
+    r_c1 = rows("g-c1")
+    assert r_c1[0]["kl_seq"] == 0.0 and all("dist_from_init" in r for r in r_c1)
+    # 2. at K = 1 GSPO and length-normalized GRPO give the same update (ratio exactly 1)
+    for rid, obj in (("g-l1", "grpo_len"), ("g-s1", "gspo")):
+        run_cli("online", write(tmp, rid, online_cfg(base, rid, objective=obj, rounds=1, save_rounds=[1])))
+    a, b = load_file(ad("g-l1", 1)), load_file(ad("g-s1", 1))
+    num = sum(float(((a[k] - b[k]) ** 2).sum()) for k in a)
+    den = sum(float(((a[k]) ** 2).sum()) for k in a)
+    assert (num / den) ** 0.5 < 1e-3
+    # 3. GSPO, K = 4, no clipping (probe settings): 4 steps per trained round, step 1 ratio exactly 1, ratio dump
+    run_cli("online", write(tmp, "g-s4", online_cfg(base, "g-s4", objective="gspo", updates_per_batch=4,
+                                                    clip_low=None, clip_high=None, kl_every=1, dump_ratios=True)))
+    rs = rows("g-s4")
+    trained = [r for r in rs if not r["skipped"]]
+    assert trained and all(len(r["steps"]) == 4 for r in trained)
+    assert all(r["steps"][0]["seq_abslogs"][-1] == 0.0 and r["steps"][0]["frac_outside"] == 0.0 for r in trained)
+    assert all(r["steps"][k]["frac_clipped"] == 0.0 for r in trained for k in range(4))       # no band
+    assert rs[-1]["opt_steps"] == 4 * len(trained)
+    npz = np.load(os.path.join(rd("g-s4"), "ratios", f"round{trained[0]['round']:04d}.npz"))
+    assert set(npz.files) == {f"{u}{k}" for u in ("tok", "seq") for k in (1, 2, 3, 4)}
+    assert np.all(npz["seq1"] == 0) and np.all(npz["tok1"] == 0)
+    assert rs[0]["kl_seq"] == 0.0
+    # 4. length-normalized GRPO, K = 4, clipped, FP32 training passes
+    run_cli("online", write(tmp, "g-l4", online_cfg(base, "g-l4", objective="grpo_len", updates_per_batch=4,
+                                                    clip_low=0.2, clip_high=0.27, train_precision="fp32")))
+    rl = [r for r in rows("g-l4") if not r["skipped"]]
+    assert rl and all(len(r["steps"]) == 4 for r in rl)
+    # 5. resume inside a K = 4 run is bit-identical to an uninterrupted run
+    kw = dict(objective="gspo", updates_per_batch=4, clip_low=0.001, clip_high=0.001)
+    run_cli("online", write(tmp, "g-ref", online_cfg(base, "g-ref", **kw)))
+    cfg_r = online_cfg(base, "g-res", **kw)
+    cfg_r.update(_debug_kill_after_round=2, _debug_ckpt_every=1)
+    run_cli("online", write(tmp, "g-res", cfg_r), expect=17)
+    cfg_r.pop("_debug_kill_after_round")
+    run_cli("online", write(tmp, "g-res", cfg_r))
+    assert file_sha256(ad("g-ref", 3)) == file_sha256(ad("g-res", 3))
+    # 6. K > 1 is refused for the constant-normalization reference
+    run_cli("online", write(tmp, "g-bad", online_cfg(base, "g-bad", objective="grpo_const", updates_per_batch=4)),
+            expect=1)

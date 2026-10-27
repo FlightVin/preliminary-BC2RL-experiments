@@ -7,10 +7,24 @@ A6 options (protocol/AMENDMENT-A6 Section 6; absent = frozen behaviour):
   online.pool_inputs  = [3]  -> the prompt pool keeps only problems with these input counts (arm T3);
   online.train_inputs = [3]  -> only completions of these input counts carry gradient (arm MASK); every prompt
                                 is still sampled, and the loss normalization is unchanged.
+
+A6 Section 12 (GSPO stage; absent = frozen behaviour):
+  online.objective = grpo_const (the GRPO above, K = 1 only) | grpo_len | gspo  (`losses.py`); setting it also turns
+                     on the per-round diagnostics (update norm, steps.csv).
+  online.updates_per_batch = K -> K full-batch optimizer steps per rollout batch (same micro-batch layout each step).
+                     Behaviour log-probs are the detached log-probs of the first gradient pass of the round, so the
+                     ratio of step 1 is exactly 1; they stay fixed for steps 2..K.
+  online.clip_low / clip_high -> asymmetric clip band (default `clip`; null = no clipping, calibration probes only).
+  online.train_precision = fp32 -> the frozen base weights are cast to FP32 (exact) for every scoring and training
+                     pass and back to BF16 for sampling; TF32 is off. Default bf16.
+  online.kl_every = N -> every N rounds, KL(current || initial adapter) on the rollout batch (same pass precision).
+  online.dump_ratios = true -> per round, the signed token and sequence log-ratios of rows with A != 0 at each step
+                     (`ratios/roundNNNN.npz` in the run directory; clip calibration probes, Section 12.4).
 """
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import time
@@ -21,7 +35,7 @@ import torch
 from . import task
 from .data import load_data
 from .evaluate import run_attempts, stable_int, summarize
-from .losses import filtered_loss_sum, grpo_advantages, grpo_loss_sum
+from .losses import filtered_loss_sum, grpo_advantages, grpo_len_loss_sum, grpo_loss_sum, gspo_loss_sum
 from .modeling import (chat_prompt, completion_logprob_table, gather_completion, load_adapter, load_policy,
                        load_tokenizer, model_info, sample, save_adapter, seq_logprobs, trainable_summary)
 from .runtime import (CKPT_INTERVAL_S, CostLedger, Run, StopFlag, atomic_json, atomic_torch_save, rng_state,
@@ -37,6 +51,20 @@ def prompt_stream(n_pool, per_round, rounds, seed):
     while len(idx) < need:
         idx.extend(rng.permutation(n_pool).tolist())
     return [idx[r * per_round:(r + 1) * per_round] for r in range(rounds)]
+
+
+def set_frozen_dtype(model, dtype):
+    """Cast the frozen (base) weights only; trainable adapter weights stay FP32. BF16 -> FP32 -> BF16 is exact."""
+    for p in model.parameters():
+        if not p.requires_grad and p.dtype != dtype:
+            p.data = p.data.to(dtype)
+
+
+def _q(v, qs=(0.5, 0.9, 0.99)):
+    if v.numel() == 0:
+        return [float("nan")] * (len(qs) + 1)
+    v = v.float().cpu()
+    return [float(torch.quantile(v, q)) if v.numel() < 16_000_000 else float("nan") for q in qs] + [float(v.max())]
 
 
 def cmd_online(cfg):
@@ -63,6 +91,23 @@ def cmd_online(cfg):
         init_sha = load_adapter(model, ipath)
         if init.get("sha256") and init["sha256"] != init_sha:
             raise SystemExit(f"init adapter hash {init_sha} != expected {init['sha256']}")
+    init_state = {n: p.detach().clone() for n, p in model.named_parameters() if p.requires_grad}
+    objective = on.get("objective", "grpo_const") if on["method"] == "grpo" else None
+    diag = "objective" in on
+    K = int(on.get("updates_per_batch", 1))
+    if objective not in (None, "grpo_const", "grpo_len", "gspo"):
+        raise SystemExit(f"unknown objective {objective}")
+    if K != 1 and objective in (None, "grpo_const"):
+        raise SystemExit("updates_per_batch > 1 needs objective grpo_len or gspo")
+    _b = lambda k: math.inf if on.get(k, on.get("clip")) is None else float(on.get(k, on.get("clip")))
+    e_lo, e_hi = _b("clip_low"), _b("clip_high")
+    train_fp32 = on.get("train_precision", "bf16") == "fp32"
+    if on.get("train_precision", "bf16") not in ("bf16", "fp32"):
+        raise SystemExit(f"unknown train_precision {on['train_precision']}")
+    if train_fp32:
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+    kl_every = on.get("kl_every")
     params = [p for p in model.parameters() if p.requires_grad]
     opt = torch.optim.AdamW(params, lr=on["lr"], weight_decay=0.0)     # fresh optimizer state at the fork
     P, G, R, cap = on["prompts_per_round"], on["group"], on["rounds"], on["cap"]
@@ -73,6 +118,8 @@ def cmd_online(cfg):
     state_path = run.path("state", "state.pt")
     rnd, rows, ckpts, counters = 0, [], [], {"opt_steps": 0, "generated_tokens": 0, "processed_tokens": 0,
                                              "skipped": 0}
+    if diag:
+        counters["trained_tokens"] = 0          # tokens through a gradient pass, summed over the K steps
     if os.path.exists(state_path):
         st = torch.load(state_path, map_location="cpu", weights_only=False)
         load_adapter(model, st["adapter_path"])
@@ -129,7 +176,25 @@ def cmd_online(cfg):
         seqs = [(o["prompt_ids"], o["completion_ids"]) for o in outs]
         ntok = torch.tensor([o["n_tokens"] for o in outs], device=model.device)
         tmask = (torch.arange(cap, device=model.device).unsqueeze(0) < ntok.unsqueeze(1)).float()
+        if train_fp32:
+            set_frozen_dtype(model, torch.float32)
         old_lp, entropy = completion_logprob_table(model, seqs, tok.pad_token_id, cap, micro=on["micro"])
+        kl = None
+        if kl_every and rnd % kl_every == 0:
+            with torch.no_grad():
+                cur = {n: p.detach().clone() for n, p in model.named_parameters() if p.requires_grad}
+                for n, p in model.named_parameters():
+                    if p.requires_grad:
+                        p.copy_(init_state[n])
+                init_lp, _ = completion_logprob_table(model, seqs, tok.pad_token_id, cap, micro=on["micro"])
+                for n, p in model.named_parameters():
+                    if p.requires_grad:
+                        p.copy_(cur[n])
+                d = (old_lp - init_lp) * tmask
+                nt = float(tmask.sum())
+                kl = {"kl_k1_tok": float(d.sum()) / max(nt, 1.0),
+                      "kl_k3_tok": float(((torch.exp(-d) - 1 + d) * tmask).sum()) / max(nt, 1.0),
+                      "kl_seq": float(d.sum()) / Q}
         adv = grpo_advantages(rewards, G) if on["method"] == "grpo" else None
         if on["method"] == "grpo":
             use = (adv != 0).nonzero().squeeze(-1).tolist()
@@ -141,9 +206,65 @@ def cmd_online(cfg):
             use = [k for k in use if probs[outs[k]["prompt_index"]].n_inputs in train_inputs]
         used_by_inputs = {str(h): sum(probs[outs[k]["prompt_index"]].n_inputs == h for k in use) for h in (3, 5, 10)}
         skipped = len(use) == 0
-        gn, ratio_dev, loss_total = None, 0.0, 0.0
+        gn, ratio_dev, loss_total, steps, upd = None, 0.0, 0.0, [], None
         tp_max, tp_sum, tp_n, tp_out = 0.0, 0.0, 0.0, 0.0     # two-pass (no-grad vs grad) log-prob diagnostic
-        if not skipped:
+        if not skipped and objective in ("grpo_len", "gspo"):
+            model.train()
+            sub = [seqs[i] for i in use]
+            beh, dump = {}, {}
+            for k in range(K):
+                opt.zero_grad(set_to_none=True)
+                p0 = [p.detach().clone() for p in params]
+                st = {"units": 0.0, "outside": 0.0, "clipped": 0.0, "clipped_tokens": 0.0, "unit_tokens": 0.0}
+                tok_lr, seq_lr, lsum = [], [], 0.0
+                for j, (sl, lp, cm, _) in enumerate(seq_logprobs(model, sub, tok.pad_token_id, on["micro"], grad=True)):
+                    rows_i = use[sl.start:sl.stop]
+                    lp_g = gather_completion(lp, cm, cap)
+                    m = tmask[rows_i]
+                    if k == 0:
+                        beh[j] = lp_g.detach()
+                        dev = (lp_g.detach() - old_lp[rows_i]).abs() * m
+                        tp_max = max(tp_max, float(dev.max()))
+                        tp_sum += float(dev.sum())
+                        tp_n += float(m.sum())
+                        tp_out += float((((dev.exp() > 1 + on["clip"]) | ((-dev).exp() < 1 - on["clip"])).float() * m).sum())
+                    a_i = adv[rows_i].to(lp_g.device)
+                    fn = gspo_loss_sum if objective == "gspo" else grpo_len_loss_sum
+                    ls, _, sts = fn(lp_g, beh[j], a_i, m, e_lo, e_hi)
+                    loss = ls / Q
+                    loss.backward()
+                    lsum += float(loss)
+                    for key in st:
+                        st[key] += sts.get(key, 0.0)
+                    d = lp_g.detach() - beh[j]
+                    nz = a_i != 0
+                    tok_lr.append(d[(m > 0) & nz.unsqueeze(1)])
+                    seq_lr.append(((d * m).sum(1) / m.sum(1).clamp(min=1.0))[nz & (m.sum(1) > 0)])
+                g_k = float(torch.nn.utils.clip_grad_norm_(params, 1.0))
+                opt.step()
+                counters["opt_steps"] += 1
+                counters["trained_tokens"] += int(sum(len(p) + len(c) for p, c in sub))
+                u_k = float(sum(((p.detach() - q) ** 2).sum() for p, q in zip(params, p0))) ** 0.5
+                tl, sq = torch.cat(tok_lr).abs(), torch.cat(seq_lr)
+                if on.get("dump_ratios"):
+                    dump[f"tok{k + 1}"] = torch.cat(tok_lr).float().cpu().numpy()
+                    dump[f"seq{k + 1}"] = sq.float().cpu().numpy()
+                steps.append({"step": k + 1, "loss": lsum, "grad_norm": g_k, "update_norm": u_k,
+                              "tok_abslogr": _q(tl), "seq_abslogs": _q(sq.abs()),
+                              "seq_logs_mean": float(sq.mean()) if sq.numel() else float("nan"),
+                              "units": st["units"], "frac_outside": st["outside"] / max(st["units"], 1.0),
+                              "frac_clipped": st["clipped"] / max(st["units"], 1.0),
+                              "frac_tokens_clipped": (st["clipped_tokens"] / max(st["unit_tokens"], 1.0)
+                                                      if objective == "gspo" else st["clipped"] / max(st["units"], 1.0))})
+                ratio_dev = max(ratio_dev, float(torch.expm1(tl.max()).abs()) if tl.numel() else 0.0)
+            gn, loss_total = steps[0]["grad_norm"], steps[0]["loss"]
+            if dump:
+                os.makedirs(run.path("ratios"), exist_ok=True)
+                np.savez_compressed(run.path("ratios", f"round{rnd + 1:04d}.npz"), **dump)
+            upd = float(sum(((p.detach() - q) ** 2).sum() for p, q in zip(params, [init_state[n] for n, pp in
+                        model.named_parameters() if pp.requires_grad]))) ** 0.5
+        elif not skipped:
+            p0 = [p.detach().clone() for p in params] if diag else None
             model.train()
             opt.zero_grad(set_to_none=True)
             sub = [seqs[i] for i in use]
@@ -171,8 +292,16 @@ def cmd_online(cfg):
             gn = float(torch.nn.utils.clip_grad_norm_(params, 1.0))
             opt.step()
             counters["opt_steps"] += 1
+            if diag:
+                counters["trained_tokens"] += int(sum(len(seqs[i][0]) + len(seqs[i][1]) for i in use))
+                steps.append({"step": 1, "loss": loss_total, "grad_norm": gn, "update_norm": float(sum(
+                    ((p.detach() - q) ** 2).sum() for p, q in zip(params, p0))) ** 0.5})
+                upd = float(sum(((p.detach() - q) ** 2).sum() for p, q in zip(params, [init_state[n] for n, pp in
+                            model.named_parameters() if pp.requires_grad]))) ** 0.5
         else:
             counters["skipped"] += 1
+        if train_fp32:
+            set_frozen_dtype(model, torch.bfloat16)
         gen_tok = int(ntok.sum())
         counters["generated_tokens"] += gen_tok
         counters["processed_tokens"] += int(sum(len(p) + len(c) for p, c in seqs)) + \
@@ -196,6 +325,8 @@ def cmd_online(cfg):
                                                           if p.n_inputs == h] or [float("nan")]))
                                    for h in (3, 5, 10)},
                      "round_s": time.time() - t0, "gen_s": t_gen})
+        if diag:
+            rows[-1].update({"steps": steps, "dist_from_init": upd, **(kl or {})})
         write_jsonl_gz(run.path("records", f"round{rnd:04d}.jsonl.gz"),
                        [{"round": rnd, "pid": probs[o["prompt_index"]].pid, "attempt": o["attempt"],
                          "text": o["text"], "n_tokens": o["n_tokens"], "finish": o["finish"],
@@ -250,4 +381,18 @@ def cmd_online(cfg):
             for r in rows:
                 f.write(",".join(str(r[k]) for k in keys) + "," +
                         ",".join(f"{r['by_inputs'][h]:.4f}" for h in ("3", "5", "10")) + "\n")
+        if diag:
+            f4 = lambda x: "" if x is None else (f"{x:.4g}" if isinstance(x, float) else str(x))
+            sk = ["loss", "grad_norm", "update_norm", "seq_logs_mean", "units", "frac_outside", "frac_clipped",
+                  "frac_tokens_clipped"]
+            with open(os.path.join(res, "steps.csv"), "w") as f:
+                f.write("round,step," + ",".join(sk) + ",tok_p50,tok_p90,tok_p99,tok_max,seq_p50,seq_p90,seq_p99,"
+                        "seq_max,dist_from_init,kl_k1_tok,kl_k3_tok,kl_seq\n")
+                for r in rows:
+                    for s_ in r.get("steps") or ([{"step": 0}] if r.get("kl_seq") is not None else []):
+                        f.write(f"{r['round']},{s_['step']}," + ",".join(f4(s_.get(k)) for k in sk) + "," +
+                                ",".join(f4(x) for x in (s_.get("tok_abslogr") or [None] * 4) +
+                                         (s_.get("seq_abslogs") or [None] * 4)) + "," +
+                                ",".join(f4(r.get(k)) for k in ("dist_from_init", "kl_k1_tok", "kl_k3_tok",
+                                                                 "kl_seq")) + "\n")
     return 0
