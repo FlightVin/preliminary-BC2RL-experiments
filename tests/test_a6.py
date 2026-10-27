@@ -451,7 +451,8 @@ def test_gspo_stage_online_options(env):
     r_c1 = rows("g-c1")
     assert r_c1[0]["kl_seq"] == 0.0 and all("dist_from_init" in r for r in r_c1)
     # 2. at K = 1 GSPO and length-normalized GRPO give the same update (ratio exactly 1)
-    for rid, obj, kw in (("g-l1", "grpo_len", {}), ("g-s1", "gspo", {}),
+    for rid, obj, kw in (("g-l1", "grpo_len", {"clip_low": 0.2, "clip_high": 0.2}),
+                         ("g-s1", "gspo", {"clip_low": 3e-4, "clip_high": 4e-4}),
                          ("g-t1", "ctpo", {"clip_low": 0.025, "clip_high": 0.05, "clip_c": 0.05})):
         run_cli("online", write(tmp, rid, online_cfg(base, rid, objective=obj, rounds=1, save_rounds=[1], **kw)))
     a = load_file(ad("g-l1", 1))
@@ -470,9 +471,11 @@ def test_gspo_stage_online_options(env):
     assert all(r["steps"][k]["frac_clipped"] == 0.0 for r in trained for k in range(4))       # no band
     assert rs[-1]["opt_steps"] == 4 * len(trained)
     npz = np.load(os.path.join(rd("g-s4"), "ratios", f"round{trained[0]['round']:04d}.npz"))
-    assert set(npz.files) == {f"{u}{k}" for u in ("tok", "seq") for k in (1, 2, 3, 4)}
+    assert set(npz.files) == {f"{u}{k}" for u in ("tok", "seq", "cum", "pos") for k in (1, 2, 3, 4)}
     assert np.all(npz["seq1"] == 0) and np.all(npz["tok1"] == 0)
-    assert rs[0]["kl_seq"] == 0.0
+    assert rs[0]["kl_seq"] == 0.0 and rs[0]["kl_after_updates_of_rounds"] == 0
+    summ = json.load(open(os.path.join(rd("g-s4"), "summary.json")))
+    assert summ["kl_final"]["kl_after_updates_of_rounds"] == 3 and np.isfinite(summ["kl_final"]["kl_seq"])
     # 4. length-normalized GRPO, K = 4, clipped, FP32 training passes
     run_cli("online", write(tmp, "g-l4", online_cfg(base, "g-l4", objective="grpo_len", updates_per_batch=4,
                                                     clip_low=0.2, clip_high=0.27, train_precision="fp32")))
@@ -502,3 +505,48 @@ def test_gspo_stage_online_options(env):
     # 6. K > 1 is refused for the constant-normalization reference
     run_cli("online", write(tmp, "g-bad", online_cfg(base, "g-bad", objective="grpo_const", updates_per_batch=4)),
             expect=1)
+    # 7. the new objectives refuse a config without explicit clip_low / clip_high
+    run_cli("online", write(tmp, "g-bad2", online_cfg(base, "g-bad2", objective="gspo", updates_per_batch=4)), expect=1)
+
+
+def test_first_update_gradients_agree_on_tiny_model(tmp_path):
+    """grpo_len, gspo and ctpo at behaviour = current give the same accumulated LoRA gradient as the closed form
+    -(1/Q) sum_i A_i / |y_i| sum_t grad log p (magnitude included); B != 0 so every LoRA matrix has a gradient."""
+    import torch
+    from transformers import Qwen2Config, Qwen2ForCausalLM
+    from bc2rl.losses import ctpo_loss_sum, grpo_len_loss_sum, gspo_loss_sum
+    from bc2rl.modeling import gather_completion, load_policy, seq_logprobs
+    torch.manual_seed(0)
+    Qwen2ForCausalLM(Qwen2Config(vocab_size=512, hidden_size=32, intermediate_size=64, num_hidden_layers=2,
+                                 num_attention_heads=4, num_key_value_heads=2, max_position_embeddings=256,
+                                 tie_word_embeddings=True)).save_pretrained(tmp_path / "m")
+    model = load_policy(str(tmp_path / "m"), {"r": 4, "alpha": 8, "dropout": 0.0}, seed=1, device="cpu")
+    with torch.no_grad():
+        for n, p in model.named_parameters():
+            if p.requires_grad and "lora_B" in n:
+                p.normal_(0, 0.05)
+    params = [p for p in model.parameters() if p.requires_grad]
+    g = torch.Generator().manual_seed(2)
+    lens = [3, 7, 1, 5, 6, 2]
+    seqs = [(torch.randint(1, 512, (4,), generator=g).tolist(), torch.randint(1, 512, (n,), generator=g).tolist())
+            for n in lens]
+    cap, Q, micro = 8, 8, 4
+    adv = torch.tensor([1.0, -0.5, 0.7, 0.0, -1.2, 0.4])
+    mask = (torch.arange(cap).unsqueeze(0) < torch.tensor(lens).unsqueeze(1)).float()
+
+    def grads(fn):
+        for p in params:
+            p.grad = None
+        for sl, lp, cm, _ in seq_logprobs(model, seqs, 0, micro, grad=True):
+            lp_g = gather_completion(lp, cm, cap).double()
+            rows = slice(sl.start, sl.stop)
+            ((fn(lp_g, adv[rows].double(), mask[rows].double())) / Q).backward()
+        return torch.cat([p.grad.flatten().double() for p in params])
+
+    ref = grads(lambda lp, a, m: -((a.unsqueeze(1) * lp * m).sum(1) / m.sum(1)).sum())
+    out = {"len": grads(lambda lp, a, m: grpo_len_loss_sum(lp, lp.detach(), a, m, 0.2, 0.2)[0]),
+           "gspo": grads(lambda lp, a, m: gspo_loss_sum(lp, lp.detach(), a, m, 3e-4, 4e-4)[0]),
+           "ctpo": grads(lambda lp, a, m: ctpo_loss_sum(lp, lp.detach(), a, m, 0.025, 0.05, 0.05, 0.5)[0])}
+    assert ref.norm() > 0
+    for k, v in out.items():
+        assert float((v - ref).norm() / ref.norm()) < 1e-5, k

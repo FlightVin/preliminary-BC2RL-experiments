@@ -521,3 +521,13 @@ E(T4) - E(L4) < 0 or E(T4) - E(S4) < 0 on yd3 (lower coverage loss). This trigge
 **Forecast (added to 12.7).** Probes +2 (0.3-0.5 GPU-h); dev +4 runs (5-8) + yd evaluation of 4 more finals (0.5);
 confirmation +10 T4 runs (13-20) + 10 x 32 x 896 gf completions (3-4); T4F conditional +10 runs (13-20) + 3-4.
 Stage G total with CTPO: about 105-155 GPU-h without T4F, 120-180 with T4F.
+
+### 12.9 Dated addition (2026-10-27 ~15:50 EDT; after an independent code review; before any stage-G job output)
+- Definitions made explicit: the diagnostics of step k (ratio quantiles, clipped fractions) are measured in the
+  gradient pass of step k, before its update; so "step 4" is the policy after 3 updates of the round. Gate D2 uses
+  this definition for all arms. Per-round KL is measured on the round's rollouts before its update (after r - 1
+  rounds); the final adapter's KL is measured once on one extra rollout batch sampled from it (`kl_final`).
+- Code fixes before any run: `grpo_len` / `gspo` / `ctpo` refuse a config without explicit `clip_low` and `clip_high`;
+  an explicit `clip_c: null` means no dual clip; a non-finite loss or gradient norm stops the run (deterministic
+  failure, no retry); a tiny-model test now checks the first-update gradient of all three objectives against the
+  closed form, magnitude included. No statistical rule changed.

@@ -73,14 +73,16 @@ def main():
     for init in ("light", "extended"):
         cum, nf = load(a.runs, init, "ctpo", "cum")
         pos, _ = load(a.runs, init, "ctpo", "pos")
+        mine = []
         for k in (2, 3, 4):
             if cum[k].size:
                 c = cum[k].astype(np.float64)
-                xs[0.5].append(c / np.sqrt(np.maximum(pos[k].astype(np.float64), 1.0)))
+                mine.append(c / np.sqrt(np.maximum(pos[k].astype(np.float64), 1.0)))
+                xs[0.5].append(mine[-1])
                 xs[0.0].append(c)
         res["probes"][f"{init}-ctpo"] = {"rounds_with_dump": nf, "n": int(sum(v.size for v in cum.values())),
                                         "frac_outside_reference_band": float(np.mean(np.concatenate(
-                                            [(x < -0.025) | (x > 0.05) for x in xs[0.5][-3:]]))) if xs[0.5] else None}
+                                            [(x < -0.025) | (x > 0.05) for x in mine]))) if mine else None}
     if not xs[0.5]:
         raise SystemExit("no ctpo probe dumps found")
     for pw, name in ((0.5, "ctpo"), (0.0, "ctpo_fixed")):

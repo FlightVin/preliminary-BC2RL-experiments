@@ -315,3 +315,92 @@ def test_ctpo_gradcheck_fp64():
     beh = logp.detach() + 0.03 * torch.randn_like(logp)
     f = lambda x: ctpo_loss_sum(x, beh, adv, mask, 0.025, 0.05, 0.05, 0.5)[0]
     assert torch.autograd.gradcheck(f, (logp.detach().clone().requires_grad_(True),), eps=1e-9, atol=1e-6)
+
+
+def _g_dev_fixture(tmp, n=120, clip=0.05, med4=1e-3):
+    import json as _j
+    import numpy as np
+    rng = np.random.default_rng(3)
+    ev = tmp / "evals"
+    ev.mkdir()
+    runs = tmp / "runs"
+    arms = ("C1", "L1", "L4", "S4", "T4", "T4F")
+
+    def summ(tag, n_att, p):
+        rows = []
+        for i in range(n):
+            if n_att == 48:
+                ca, cb = int(rng.binomial(24, p[i])), int(rng.binomial(24, p[i]))
+                c = ca + cb
+            else:
+                c = int(rng.binomial(n_att, p[i]))
+            r = {"pid": f"p{i}", "n": n_att, "c": c, "c_x": c, "mean_tokens": 60.0, "n_trunc": 0}
+            if n_att == 48:
+                r.update(c_a=ca, c_b=cb, c_b_x=cb)
+            rows.append(r)
+        _j.dump({"tag": tag, "counts": rows, "ext": {"3": {"mean_tokens_x": 61.0, "trunc_256": 0.0, "trunc_x": 0.0,
+                                                          "rescued": 0}}}, open(ev / f"{tag}.yd3.summary.json", "w"))
+    p0 = rng.uniform(0.05, 0.4, n)
+    for step in (16, 128):
+        summ(f"b{step}-s11", 48, p0)
+        for arm in arms:
+            summ(f"g-b{step}-{arm}-s11", 32, np.clip(p0 - (0.1 if arm == "T4" else 0.0), 0.01, 1))
+    for init in ("light", "extended"):
+        for arm in arms:
+            d = runs / f"bc2rl-g-{init}-{arm.lower()}-s11"
+            d.mkdir(parents=True)
+            K = 4 if arm.endswith("4") or arm == "T4F" else 1
+            rows = []
+            for r in range(1, 257):
+                st = [{"step": 1, "grad_norm": 0.1, "update_norm": 1e-3, "tok_abslogr": [0.0] * 4,
+                       "seq_abslogs": [0.0] * 4, "cum_abslogr": [0.0] * 4, "frac_outside": 0.0, "frac_clipped": 0.0,
+                       "frac_tokens_clipped": 0.0}]
+                for k in range(2, K + 1):
+                    v = med4 * (k - 1) / 3
+                    st.append({"step": k, "grad_norm": 0.1, "update_norm": 1e-3, "tok_abslogr": [v, 2 * v, 3 * v, 4 * v],
+                               "seq_abslogs": [v, 2 * v, 3 * v, 4 * v], "cum_abslogr": [v, 2 * v, 3 * v, 4 * v],
+                               "frac_outside": 2 * clip, "frac_clipped": clip, "frac_tokens_clipped": clip})
+                rows.append({"round": r, "skipped": False, "loss": 0.1, "mean_len": 60.0, "truncated": 0,
+                             "reward_mean": 0.3, "opt_steps": K * r, "dist_from_init": 0.01, "steps": st,
+                             **({"kl_k1_tok": 0.001, "kl_k3_tok": 0.001, "kl_seq": 0.05} if r % 8 == 1 else {})})
+            with open(d / "metrics.jsonl", "w") as f:
+                for row in rows:
+                    f.write(_j.dumps(row) + "\n")
+            _j.dump({}, open(d / "DONE.json", "w"))
+            _j.dump({"gpu_s_total": 100.0, "counters": {}}, open(d / "summary.json", "w"))
+    val = {"precision_decision": "fp32", "adapters": [{"batches": [{"V4_steps": [
+        {"med_abs_noise_seq": 1e-3, "med_abs_noise_tok": 1e-3, "med_abs_noise_cum": 1e-3}]}]}]}
+    _j.dump(val, open(tmp / "val.json", "w"))
+    return ev, runs, tmp / "val.json"
+
+
+def _run_g_dev(tmp, **kw):
+    import json as _j
+    import os
+    import subprocess
+    import sys
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ev, runs, val = _g_dev_fixture(tmp, **kw)
+    subprocess.run([sys.executable, "scripts/g_dev.py", "--evals", str(ev), "--runs", str(runs), "--validate",
+                    str(val), "--out", str(tmp / "o"), "--n-boot", "200"], cwd=root, check=True,
+                   env=dict(os.environ, PYTHONPATH=root))
+    return _j.load(open(tmp / "o" / "g_dev.json"))
+
+
+def test_g_dev_gate_trigger_and_planted_effect(tmp_path):
+    res = _run_g_dev(tmp_path)
+    g = res["gate_D"]
+    assert g["D1_valid"] and g["D2_L4"]["pass"] and g["D2_S4"]["pass"] and g["D2_T4"]["pass"]
+    # planted: T4 finals have lower success -> higher excess loss -> no "benefit" trigger
+    c = res["contrasts"]["K16_cap256_ctpo_vs_tok T4-L4"]["mean"]
+    assert c["point"] > 0 and c["ci95"][0] > 0
+    assert not res["T4F_trigger"]["triggered"]
+    assert res["runs"]["light-T4"]["step1_ratio_exactly_one"] and res["runs"]["light-T4"]["opt_steps"] == 1024
+    r = res["rates_yd3"]["g-b16-L4-s11"]
+    assert 0 <= r["pass^16_cap256"] <= r["pass@1_cap256"] <= r["pass@16_cap256"] <= 1
+
+
+def test_g_dev_gate_fails_when_not_exercised(tmp_path):
+    res = _run_g_dev(tmp_path, clip=0.001, med4=1e-5)
+    g = res["gate_D"]
+    assert g["D1_valid"] and not g["D2_L4"]["pass"] and not g["D2_S4"]["pass"] and not g["D2_T4"]["pass"]

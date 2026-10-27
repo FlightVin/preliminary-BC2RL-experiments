@@ -102,10 +102,13 @@ def cmd_online(cfg):
         raise SystemExit(f"unknown objective {objective}")
     if K != 1 and objective in (None, "grpo_const"):
         raise SystemExit("updates_per_batch > 1 needs objective grpo_len, gspo or ctpo")
+    if objective in ("grpo_len", "gspo", "ctpo") and not ("clip_low" in on and "clip_high" in on):
+        raise SystemExit(f"objective {objective} needs explicit clip_low and clip_high (null = no clipping)")
     _b = lambda k: math.inf if on.get(k, on.get("clip")) is None else float(on.get(k, on.get("clip")))
     e_lo, e_hi = _b("clip_low"), _b("clip_high")
-    e_c = e_hi if on.get("clip_c", on.get("clip_high", on.get("clip"))) is None else float(on.get("clip_c", e_hi))
+    e_c = (math.inf if on["clip_c"] is None else float(on["clip_c"])) if "clip_c" in on else e_hi
     c_pow = float(on.get("clip_power", 0.5))
+    clip_diag = float(on.get("clip") or 0.2)          # band of the two-pass diagnostic only
     train_fp32 = on.get("train_precision", "bf16") == "fp32"
     if on.get("train_precision", "bf16") not in ("bf16", "fp32"):
         raise SystemExit(f"unknown train_precision {on['train_precision']}")
@@ -197,7 +200,7 @@ def cmd_online(cfg):
                         p.copy_(cur[n])
                 d = (old_lp - init_lp) * tmask
                 nt = float(tmask.sum())
-                kl = {"kl_k1_tok": float(d.sum()) / max(nt, 1.0),
+                kl = {"kl_after_updates_of_rounds": rnd, "kl_k1_tok": float(d.sum()) / max(nt, 1.0),
                       "kl_k3_tok": float(((torch.exp(-d) - 1 + d) * tmask).sum()) / max(nt, 1.0),
                       "kl_seq": float(d.sum()) / Q}
         adv = grpo_advantages(rewards, G) if on["method"] == "grpo" else None
@@ -233,7 +236,7 @@ def cmd_online(cfg):
                         tp_max = max(tp_max, float(dev.max()))
                         tp_sum += float(dev.sum())
                         tp_n += float(m.sum())
-                        tp_out += float((((dev.exp() > 1 + on["clip"]) | ((-dev).exp() < 1 - on["clip"])).float() * m).sum())
+                        tp_out += float((((dev.exp() > 1 + clip_diag) | ((-dev).exp() < 1 - clip_diag)).float() * m).sum())
                     a_i = adv[rows_i].to(lp_g.device)
                     if objective == "ctpo":
                         ls, _, sts = ctpo_loss_sum(lp_g, beh[j], a_i, m, e_lo, e_hi, e_c, c_pow)
@@ -241,6 +244,8 @@ def cmd_online(cfg):
                         fn = gspo_loss_sum if objective == "gspo" else grpo_len_loss_sum
                         ls, _, sts = fn(lp_g, beh[j], a_i, m, e_lo, e_hi)
                     loss = ls / Q
+                    if not torch.isfinite(loss):
+                        raise SystemExit(f"non-finite loss at round {rnd + 1} step {k + 1}")
                     loss.backward()
                     lsum += float(loss)
                     for key in st:
@@ -253,6 +258,8 @@ def cmd_online(cfg):
                     cum_lr.append(torch.cumsum(d * m, dim=1)[sel])
                     cum_pos.append(torch.cumsum(m, dim=1)[sel])
                 g_k = float(torch.nn.utils.clip_grad_norm_(params, 1.0))
+                if not math.isfinite(g_k):
+                    raise SystemExit(f"non-finite gradient norm at round {rnd + 1} step {k + 1}")
                 opt.step()
                 counters["opt_steps"] += 1
                 counters["trained_tokens"] += int(sum(len(p) + len(c) for p, c in sub))
@@ -272,7 +279,7 @@ def cmd_online(cfg):
                         by_pos[str(b0)].update(frac_outside=st[f"o{b0}"] / max(st[f"u{b0}"], 1.0),
                                                frac_clipped=st[f"c{b0}"] / max(st[f"u{b0}"], 1.0))
                 steps.append({"step": k + 1, "loss": lsum, "grad_norm": g_k, "update_norm": u_k,
-                              "tok_abslogr": _q(tl), "seq_abslogs": _q(sq.abs()),
+                              "tok_abslogr": _q(tl), "seq_abslogs": _q(sq.abs()), "cum_abslogr": _q(cl.abs()),
                               "seq_logs_mean": float(sq.mean()) if sq.numel() else float("nan"),
                               "units": st["units"], "frac_outside": st["outside"] / max(st["units"], 1.0),
                               "frac_clipped": st["clipped"] / max(st["units"], 1.0),
@@ -383,11 +390,42 @@ def cmd_online(cfg):
             save_state(f"signal {stop.signum} at round {rnd}")
             print(f"[online] signal {stop.signum}: checkpointed at round {rnd}; exiting for requeue", flush=True)
             sys.exit(143)
+    kl_final = None
+    if kl_every:
+        # KL of the final adapter (after all R rounds) on one extra rollout batch sampled from it; the per-round KL
+        # entries measure the adapter before that round's update (after `kl_after_updates_of_rounds` rounds).
+        model.eval()
+        fin_idx = prompt_stream(len(pool), P, R + 1, on.get("stream_seed", cfg["seed"]))[R]
+        fo = sample(model, tok, [texts[i] for i in fin_idx], G, cap, seed=tag_seed + 10 ** 6, batch_seqs=Q)
+        fseqs = [(o["prompt_ids"], o["completion_ids"]) for o in fo]
+        fn_ = torch.tensor([o["n_tokens"] for o in fo], device=model.device)
+        fm = (torch.arange(cap, device=model.device).unsqueeze(0) < fn_.unsqueeze(1)).float()
+        if train_fp32:
+            set_frozen_dtype(model, torch.float32)
+        with torch.no_grad():
+            cur_lp, _ = completion_logprob_table(model, fseqs, tok.pad_token_id, cap, micro=on["micro"])
+            cur = {n: p.detach().clone() for n, p in model.named_parameters() if p.requires_grad}
+            for n, p in model.named_parameters():
+                if p.requires_grad:
+                    p.copy_(init_state[n])
+            ini_lp, _ = completion_logprob_table(model, fseqs, tok.pad_token_id, cap, micro=on["micro"])
+            for n, p in model.named_parameters():
+                if p.requires_grad:
+                    p.copy_(cur[n])
+        if train_fp32:
+            set_frozen_dtype(model, torch.bfloat16)
+        d = (cur_lp - ini_lp) * fm
+        nt = float(fm.sum())
+        kl_final = {"kl_after_updates_of_rounds": R, "kl_k1_tok": float(d.sum()) / max(nt, 1.0),
+                    "kl_k3_tok": float(((torch.exp(-d) - 1 + d) * fm).sum()) / max(nt, 1.0), "kl_seq": float(d.sum()) / Q,
+                    "mean_len": float(fn_.float().mean())}
     save_state("complete")
     summary = {"run_id": run.id, "config_hash": run.chash, "method": on["method"], "init": init,
                "init_sha256": init_sha, "rounds": rnd, "counters": counters, "checkpoints": ckpts,
                "gpu_s_total": ledger.total_gpu_s(), "segments": ledger.data["segments"],
                "lr": on["lr"], "data_version": cfg["data"]["version"]}
+    if kl_final is not None:
+        summary["kl_final"] = kl_final
     atomic_json(run.path("summary.json"), summary)
     atomic_json(run.path("DONE.json"), {"config_hash": run.chash, "artifacts": [
         {"path": os.path.relpath(os.path.join(pd, c["adapter"]), run.root), "sha256": c["sha256"]}
