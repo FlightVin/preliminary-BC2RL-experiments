@@ -266,7 +266,24 @@ preserved verified reasoning. Otherwise Y5 is not run, and the report gives the 
   reported, and it is not re-run with changed settings. A preemption resumes from the last checkpoint.
 
 ### 10.1 Dated additions
-(none yet)
+
+**10.1.1 (2026-10-26 ~21:00 EDT; after Y1 on xc3/xc5, job 10947200; before any yd or yf outcome was read).**
+Y1 (exploratory, xc3) generated the hypotheses below. They are tested at look 1 on yf3 with the M finals (steps 16 and
+128, both methods, seeds 11-66). The subgroup is the A5 one (1 <= c_a <= 11, cap 256). Seed-level unit = the mean over
+the 2 methods. A claim needs both the problem bootstrap and the seed-level t-interval to exclude 0, unless stated.
+- **H-W1 (whole panel, R2).** The mean over the 12 pairs of whole-panel final pass@16 (extended - light) on yf3 is
+  > 0. Same for pass@1. (Y1: 12/12 pairs > 0 on xc3.) If it holds, a larger subgroup loss does not imply a worse
+  whole-panel final state.
+- **H-F1 (failure types).** E_I(step 16) < 0: online training from step 16 removes illegal-operand failures on its
+  subgroup (K = 1 code rate, standardized as Section 3.4). Also reported: E_I(step 128) and E_W for both steps.
+- **H-S1 (structure).** For each step, the subgroup mean excess loss_16 (not standardized) on problems whose every
+  valid solution uses multiplication, minus that on the other subgroup problems, is > 0. Features come from exact
+  enumeration (`yanalysis.solution_forms`).
+- **H-S2 (structure x init).** Delta on the needs-multiplication problems minus Delta on the other problems
+  (Delta = extended - light subgroup mean excess, not standardized). Two-sided; reported with both intervals.
+- **H-S3 (strategy).** Within each branch, the Pearson correlation over subgroup problems between the excess loss_16
+  and the drop (initial - final) in the policy's preference for the problem's best solution form is > 0. The claim
+  needs the seed-level t-interval only (the correlation has no problem-bootstrap interval here); it is made per step.
 
 ## 11. Forecast (from A5 measurements)
 Throughput: evaluation 25.7 completions/s averaged over X5 (645,120 completions in 6.97 GPU-h); online GRPO

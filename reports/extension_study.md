@@ -310,3 +310,16 @@ interpretation need a new owner amendment and pre-registration:
 - X7 pre-registered (`b65d9cd`) and submitted.
 - Recipes: the GPU-memory precondition now runs (done-predicate "false"). GPU recipes now require a passing
   test-suite marker for their own commit.
+
+## 14. Corrections after the A6 interpretation audit (2026-10-26; added after the final report)
+Source: A6 stage Y1 (`protocol/AMENDMENT-A6-2026-10-26.md` Section 4; job 10947200, `y1_audit.json`, `y1_npmle.csv`,
+`y1_whole_panel.csv` in `$PROJ_DATA/analysis/a6/y1/`). Y1 reproduces the X5 and X7 primaries exactly (+0.2034, +0.1999).
+The A5 protocol, its decision rules and the decisions do not change. These rows correct the wording of this report.
+
+| where | statement | correction |
+|---|---|---|
+| Section 1, Section 0 | "at the same initial success probability"; "at the same selected initial success range" | The bins match **observed** selection counts, not true success probabilities. A nonparametric estimate of each adapter's distribution of p gives, inside the bins, a higher mean p for extended adapters: bin 1-2 0.097-0.107 vs 0.070-0.085; bin 3-5 0.173-0.192 vs 0.098-0.145; bin 6-11 0.305-0.318 vs 0.120-0.241. The model agrees with the observed baseline rates within about 0.02. |
+| Section 0, Section 6 | "online training removed more coverage (pass@16) when it started from extended BC" | This is a change from baseline on each adapter's own subgroup. On those subgroups, Delta = +0.202 (seeds 11-66) splits into a worse final state (+0.130 [0.104, 0.155]) and a better baseline (-0.071). On the **whole** xc3 panel, extended finals have higher pass@16 (0.60-0.70) and pass@1 than light finals in 12 of 12 pairs; xc5 shows the same direction. A larger subgroup loss is not a worse whole-panel final state. |
+| Sections 3.5, 5.5 | "the baseline mismatch cannot produce the sign of the result" | Too strong. Cell matching equates counts, not true p. The measured mismatch favours the extended adapters; it explains the sign only if the final loss decreases with initial p. That assumption is not tested. |
+| Section 5.3 | six-seed t-interval [0.141, 0.262] | The 6 seeds share one problem panel, so the interval is conditional on xc3. A two-level bootstrap (seeds, then problems) gives [0.150, 0.254]. |
+| Sections 3.5, 5.5 (addition) | truncation | The K = 1 failure-code decomposition shows that most of the difference is not truncation (D_T = -0.012) but illegal-operand failures: light-BC baselines fail often by illegal operands, and online training removes them (exploratory; tested on fresh problems under A6). |

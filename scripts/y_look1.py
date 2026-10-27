@@ -71,6 +71,7 @@ def main():
     ap.add_argument("--evals", required=True)
     ap.add_argument("--matching", required=True)
     ap.add_argument("--runs", required=True)
+    ap.add_argument("--config", required=True, help="configs/a6/ydata.json (panel problems for Section 10.1)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--n-boot", type=int, default=10000)
     a = ap.parse_args()
@@ -229,6 +230,7 @@ def main():
                                   "pass16": float((1 - loss_k(n, e.arr(t, "c"), 16)).mean()),
                                   "pass1_x": float(e.arr(t, "c_x").mean() / n)}
     res["whole_panel"] = wp
+    res["S10_1"] = frozen_10_1(ev, idx, w, a.config, a.evals)
     json.dump(res, open(os.path.join(a.out, "look1.json"), "w"), indent=1, default=float)
     json.dump(man, open(os.path.join(a.out, "look1_manip.json"), "w"), indent=1, default=float)
     keys = list(dict.fromkeys(k for r in rows for k in r))
@@ -238,6 +240,80 @@ def main():
         wr.writerows(rows)
     print(f"[look1] Y2a {res['Y2a_class']}; Y3 C1 {p['C1_DeltaM_minus_DeltaMASK']['point']:+.4f} "
           f"C2 {p['C2_Delta_MASK']['point']:+.4f}; Y4 shape {y4['shape']}", flush=True)
+
+
+def frozen_10_1(ev, idx, w, config, evals):
+    """Protocol Section 10.1.1 hypotheses (H-W1, H-F1, H-S1, H-S2, H-S3) on yf3, M finals, steps 16 / 128."""
+    from collections import Counter, defaultdict
+    from bc2rl.extension import load_ext
+    from bc2rl.runtime import load_config, read_jsonl_gz
+    probs, _ = load_ext(load_config(config), "a6")
+    pmap = {p.pid: p for p in probs["yf3"]}
+    feats = {pid: Y.solution_forms(pmap[pid].inputs, pmap[pid].target)[1] for pid in ev.pids}
+    mul = np.array([bool(f) and all("*" in x[:2] for x in f) for f in (feats[p] for p in ev.pids)])
+    out = {"n_needs_mul": int(mul.sum())}
+    unit = lambda k: k[1]
+    # H-W1: whole-panel final pass@16 and pass@1, extended - light
+    for K in (16, 1):
+        P, R = {}, {}
+        for m in METHODS:
+            for s in SEEDS:
+                d = (loss_k(32, ev.arr(ft(16, m, s), "c"), K) - loss_k(32, ev.arr(ft(128, m, s), "c"), K))
+                P[(m, s)], R[(m, s)] = float(d.mean()), d[idx].mean(1)
+        out[f"H-W1_pass{K}"] = Y.group_units(P, R, unit, idx)
+    # H-F1: illegal-operand and wrong-target code excess per step (standardized)
+    for code in ("I", "W"):
+        for n in (16, 128):
+            P, R = {}, {}
+            for m in METHODS:
+                for s in SEEDS:
+                    use = Y.usable(ev, [it(16, s), it(128, s)])
+                    P[(m, s)], R[(m, s)] = Y.branch(ev, it(n, s), ft(n, m, s), w, use, idx, K=1, code=code)
+            out[f"H-F1_E_{code}_step{n}"] = Y.group_units(P, R, unit, idx)
+    # H-S1 / H-S2: unstandardized subgroup means by the needs-multiplication feature
+
+    def sub_mean(vals, msk, ix):
+        v, mm = vals[ix], msk[ix]
+        return np.where(mm.sum(1) > 0, (v * mm).sum(1) / np.maximum(mm.sum(1), 1), np.nan)
+    one = np.arange(len(ev.pids))[None, :]
+    S1 = {n: ({}, {}) for n in (16, 128)}
+    for n in (16, 128):
+        for m in METHODS:
+            for s in SEEDS:
+                e = Y.per_problem(ev, it(n, s), ft(n, m, s), K=16)
+                ca = ev.arr(it(n, s), "c_a")
+                sub = (ca >= 1) & (ca <= 11)
+                pt = sub_mean(e, sub & mul, one)[0] - sub_mean(e, sub & ~mul, one)[0]
+                rp = sub_mean(e, sub & mul, idx) - sub_mean(e, sub & ~mul, idx)
+                S1[n][0][(m, s)], S1[n][1][(m, s)] = float(pt), rp
+        out[f"H-S1_step{n}"] = Y.group_units(S1[n][0], S1[n][1], unit, idx)
+    out["H-S2"] = Y.diff_of(S1[128][0], S1[128][1], S1[16][0], S1[16][1], unit, idx)
+    # H-S3: correlation of excess with the drop in form preference (seed-level t only)
+    forms = {}
+    for n in (16, 128):
+        for s in SEEDS:
+            for t in [it(n, s)] + [ft(n, m, s) for m in METHODS]:
+                fm = defaultdict(Counter)
+                for r in read_jsonl_gz(os.path.join(evals, f"{t}.yf3.jsonl.gz")):
+                    if r["reward"]:
+                        fm[r["pid"]][Y.form_of_text(r["text"])] += 1
+                tot = Counter()
+                for c in fm.values():
+                    tot.update(c)
+                forms[t] = (tot, sum(tot.values()) or 1)
+    for n in (16, 128):
+        P = {}
+        for m in METHODS:
+            for s in SEEDS:
+                (fi, ni), (ff, nf) = forms[it(n, s)], forms[ft(n, m, s)]
+                e = Y.per_problem(ev, it(n, s), ft(n, m, s), K=16)
+                ca = ev.arr(it(n, s), "c_a")
+                ks = [k for k in range(len(ev.pids)) if 1 <= ca[k] <= 11]
+                drop = [max((fi[x] / ni for x in feats[ev.pids[k]]), default=0.0) -
+                        max((ff[x] / nf for x in feats[ev.pids[k]]), default=0.0) for k in ks]
+                P[(m, s)] = float(np.corrcoef(e[ks], drop)[0, 1])
+        out[f"H-S3_step{n}"] = Y.group_units(P, None, unit, None)
+    return out
 
 
 def displacement_norms(runs):
