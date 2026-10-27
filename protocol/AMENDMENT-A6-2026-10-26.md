@@ -304,6 +304,13 @@ Matched pairs for Section 8.3 (from `y4_matching.json`, Section 8.2 rule, 24 ini
 - Step-32 adapters (re-run path) had lower truncation on yd3 (<= 0.0002 per adapter) than steps 16 and 64. The
   Section 3.2 reproduction check runs before look 1 (job `bc2rl-a6-repro-main-s0`); the report gives its result.
 
+**10.1.3 (2026-10-27 ~04:20 EDT; Section 3.2 reproduction result, job 10949310).** The re-run BC adapters are not
+bit-identical to the originals (0/18 sha256 equal). Relative L2 distance re-run vs original: step 16 0.003-0.006,
+step 64 0.011-0.017, step 128 0.018-0.028. The re-run step-32 adapter is at 0.032-0.033 from the original step 16 and
+0.041-0.042 from the original step 64. As Section 3.2 requires, the re-run step-16/64/128 adapters get yd evaluations
+(tags `rr<step>-s<seed>`, 6 tasks appended to the worklist). They enter the report only as the reproduction check, not
+in any test. The analysis plan is unchanged: step 32 comes from the re-run; steps 16, 64, 128 from the originals.
+
 ## 11. Forecast (from A5 measurements)
 Throughput: evaluation 25.7 completions/s averaged over X5 (645,120 completions in 6.97 GPU-h); online GRPO
 0.6-1.3 GPU-h per branch (X7); BC about 6 min per seed for 128 steps (A100).

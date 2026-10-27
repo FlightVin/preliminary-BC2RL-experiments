@@ -134,8 +134,8 @@ def test_lenient_parse_and_codes():
 def test_a6_configs_match_frozen_protocol():
     """Every A6 config differs from its frozen source only in the keys the protocol names."""
     wl = json.load(open(os.path.join(ROOT, "configs/worklists/a6.json")))
-    assert wl["name"] == "a6" and len(wl["tasks"]) == 67
-    assert len({t["id"] for t in wl["tasks"]}) == 67
+    assert wl["name"] == "a6" and len(wl["tasks"]) == 73
+    assert len({t["id"] for t in wl["tasks"]}) == 73
     for s in SEEDS:
         b = json.load(open(os.path.join(ROOT, f"configs/a6/bc-path-s{s}.json")))
         b0 = json.load(open(os.path.join(ROOT, b["a6_source"])))
@@ -312,3 +312,111 @@ def test_xeval_cap_extension(env):
     r2 = subprocess.run([sys.executable, "-m", "bc2rl", "xeval", "--config", str(write(tmp, "xe", cfg))],
                         cwd=ROOT, capture_output=True, text=True)
     assert "reuse" in r2.stdout
+
+
+# ----------------------------------------------------------------------------- look 1 end to end (synthetic)
+
+def _look1_fixture(tmp, n=200):
+    """Synthetic yf panels, evaluations, matching file and runs for `scripts/y_look1.py`. Planted effect: arm M from
+    step 128 (and 64, 32 in proportion) loses more than from step 16; MASK / T3 / T3E lose the same at both steps."""
+    import torch
+    from safetensors.torch import save_file
+    from bc2rl.extension import draw_fresh
+    from bc2rl.runtime import write_jsonl_gz
+    rng = np.random.default_rng(3)
+    pd = tmp / "pd"
+    d = pd / "data" / "t1" / "ext" / "a6"
+    d.mkdir(parents=True)
+    out, _ = draw_fresh(5, task.GenConfig(), {"yf3": (3, n), "yf5": (5, 64)}, set())
+    man = {"panels": {}}
+    for k, probs in out.items():
+        task.save_split(str(d / f"{k}.jsonl"), probs)
+        man["panels"][k] = {"count": len(probs), "n_inputs": probs[0].n_inputs, "sha256": task.manifest_hash(probs)}
+    json.dump(man, open(d / "manifest.json", "w"))
+    cfg = tmp / "ydata.json"
+    json.dump({"proj_data": str(pd), "data": {"version": "t1"}}, open(cfg, "w"))
+    ev_dir = tmp / "evals"
+    ev_dir.mkdir()
+    drop = {16: 0.85, 32: 0.75, 64: 0.65, 128: 0.45}
+    beta = {16: (0.5, 3.0), 32: (0.6, 2.4), 64: (0.75, 1.9), 128: (0.9, 1.4)}
+
+    def emit(tag, panel, probs, p, n_att, split, records):
+        att = rng.random((len(probs), n_att)) < p[:, None]
+        fails = np.array(list(Y.FAIL_CODES))
+        cod = np.where(att, "S", rng.choice(fails, size=att.shape))
+        rows, recs = [], []
+        for q, x, c in zip(probs, att, cod):
+            c = "".join(c)
+            r = {"pid": q.pid, "n": n_att, "c": int(x.sum()), "c_x": int(x.sum()), "codes": c, "x_codes": c}
+            if split:
+                r.update(c_a=int(x[:split].sum()), c_b=int(x[split:].sum()), c_a_x=int(x[:split].sum()),
+                         c_b_x=int(x[split:].sum()))
+            rows.append(r)
+            if records:
+                recs += [{"pid": q.pid, "attempt": j, "reward": int(x[j]),
+                          "text": task.completion_text(q) if x[j] else "no"} for j in range(n_att)]
+        json.dump({"tag": tag, "panel": panel, "counts": rows}, open(ev_dir / f"{tag}.{panel}.summary.json", "w"))
+        if records:
+            write_jsonl_gz(str(ev_dir / f"{tag}.{panel}.jsonl.gz"), recs)
+
+    for s in SEEDS:
+        for step in STEPS_ALL:
+            p3 = rng.beta(*beta[step], len(out["yf3"]))
+            p5 = rng.beta(0.3, 6.0, len(out["yf5"]))
+            rec = step in (16, 128)
+            emit(f"b{step}-s{s}", "yf3", out["yf3"], p3, 48, 24, rec)
+            emit(f"b{step}-s{s}", "yf5", out["yf5"], p5, 48, 24, False)
+            arms = [("grpo", "M")] + ([("filtered", "M"), ("grpo", "MASK"), ("grpo", "T3"), ("grpo", "T3E")]
+                                      if rec else [])
+            for m, arm in arms:
+                f = drop[step] if arm == "M" else 0.85
+                emit(f"b{step}-{m}-{arm}-s{s}", "yf3", out["yf3"], p3 * f, 32, 0, rec and arm == "M")
+                emit(f"b{step}-{m}-{arm}-s{s}", "yf5", out["yf5"], p5 * f, 32, 0, False)
+    prof = {f"b{n_}-s{s}": {"pass1_3": float(rng.random())} for n_ in STEPS_ALL for s in SEEDS}
+    mt = {"rule": "test", "profiles": prof, "matched_pairs": [{"low": "b16-s44", "high": "b32-s11"},
+                                                             {"low": "b64-s33", "high": "b128-s66"}]}
+    json.dump(mt, open(tmp / "match.json", "w"))
+    runs = tmp / "runs"
+    sd = lambda v: {"a": torch.full((4, 2), float(v)), "b": torch.zeros(3)}
+    for s in SEEDS:
+        for n_ in (16, 128):
+            p = runs / f"bc2rl-s1-bc-broad-s{s}" / "adapters"
+            p.mkdir(parents=True, exist_ok=True)
+            save_file(sd(0), str(p / f"step{n_:04d}.safetensors"))
+    p = runs / "bc2rl-y3-light-grpo-mask-s11"
+    (p / "adapters").mkdir(parents=True)
+    save_file(sd(1), str(p / "adapters" / "round0064.safetensors"))
+    with open(p / "metrics.jsonl", "w") as f:
+        f.write(json.dumps({"used_by_inputs": {"3": 5, "5": 0, "10": 0}}) + "\n")
+    return cfg, ev_dir, tmp / "match.json", runs
+
+
+STEPS_ALL = (16, 32, 64, 128)
+
+
+def test_look1_end_to_end_synthetic(tmp_path):
+    cfg, ev_dir, match, runs = _look1_fixture(tmp_path)
+    out = tmp_path / "out"
+    cmd = [sys.executable, "scripts/y_look1.py", "--evals", str(ev_dir), "--matching", str(match), "--runs", str(runs),
+           "--config", str(cfg), "--out", str(out), "--n-boot", "300"]
+    r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
+    res = json.load(open(out / "look1.json"))
+    man = json.load(open(out / "look1_manip.json"))
+    y3 = res["Y3"]["cap256_K16"]
+    assert y3["Delta_M"]["point"] > 0.05 and y3["C1_DeltaM_minus_DeltaMASK"]["sign"] == "+"
+    assert abs(y3["C2_Delta_MASK"]["point"]) < 0.05 and y3["C2_Delta_MASK"]["sign"] != "+"
+    assert res["Y2a_class"] == "not explained by truncation"           # c_x == c in the fixture
+    assert res["Y2a_delta_256_minus_1024"]["point"] == 0
+    assert set(res["Y2b_cap256"]["codes"]) == set(Y.FAIL_CODES)
+    assert res["Y4"]["shape"] in ("gradual", "threshold", "non-monotonic", "undetermined")
+    assert res["Y4"]["E_step128"]["point"] > res["Y4"]["E_step16"]["point"]
+    assert set(res["Y4"]["matched"]["pairs"]) == {"b16-s44|b32-s11", "b64-s33|b128-s66"}
+    assert {"H-W1_pass16", "H-W1_pass1", "H-F1_E_I_step16", "H-S1_step128", "H-S2", "H-S3_step16"} <= set(res["S10_1"])
+    assert res["S10_1"]["n_needs_mul"] > 0
+    assert man["used_by_inputs"] == {"step16-mask-s11": {"3": 5, "5": 0, "10": 0}}
+    assert man["displacement_norms"]["step16-MASK-s11-r64"] == pytest.approx(8 ** 0.5)
+    assert len(res["whole_panel"]) == 2 * (24 + 72)
+    os.remove(ev_dir / "b64-grpo-M-s66.yf5.summary.json")             # an incomplete set is refused
+    r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode != 0 and "look 1 refused" in r.stderr

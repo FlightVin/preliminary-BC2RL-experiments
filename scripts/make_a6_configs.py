@@ -72,7 +72,7 @@ def ck_final(tag, adapter):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    tasks = {"bc": [], "yd": [], "y3": [], "y4_64": [], "init32": [], "y4_32": [], "yf": []}
+    tasks = {"bc": [], "yd": [], "y3": [], "y4_64": [], "init32": [], "y4_32": [], "yf": [], "repro": []}
     base_bc, _ = frozen_bc(11)
     # BC path re-runs (Section 3.2): frozen config, 128 steps, checkpoints 16/32/64/128, new run id
     bc_steps = []
@@ -127,6 +127,13 @@ def main():
                     {"name": "xeval", "cmd": "xeval", "config": write(
                         f"xeval-y3-{i}-{arm.lower()}-s{s}.json",
                         xeval_cfg(base_bc, f"bc2rl-a6-yf-y3-{i}-{arm.lower()}-s{s}", ["yf3", "yf5"], cks))}]})
+        # Section 3.2 reproduction check (added 2026-10-27, after the re-run sha256 differed from the originals):
+        # dev pass@1 of the re-run step-16/64/128 adapters (tags rr<step>-s<seed>); yd only, never used in a test
+        rr = [f"runs/bc2rl-y4-bc-path-s{s}/adapters/step{n:04d}.safetensors" for n in (16, 64, 128)]
+        tasks["repro"].append({"id": f"repro-yd-s{s}", "requires": rr, "steps": [{"name": "xeval", "cmd": "xeval",
+            "config": write(f"xeval-yd-repro-s{s}.json", xeval_cfg(base_bc, f"bc2rl-a6-yd-repro-s{s}", ["yd3", "yd5"],
+                [{"tag": f"rr{n}-s{s}", "adapter": ad, "attempts": 48, "split": 24}
+                 for n, ad in zip((16, 64, 128), rr)]))}]})
         # Y4 (Section 8.1): GRPO from steps 32 and 64
         for n in (64, 32):
             c, src = frozen_online("light", "grpo", s)
@@ -151,7 +158,7 @@ def main():
                 tasks["y4_32"].append(t)
             else:
                 tasks["y4_64"].append(t)
-    order = tasks["bc"] + tasks["yd"] + tasks["init32"] + tasks["y3"] + tasks["y4_64"] + tasks["y4_32"] + tasks["yf"]
+    order = tasks["bc"] + tasks["yd"] + tasks["init32"] + tasks["y3"] + tasks["y4_64"] + tasks["y4_32"] + tasks["yf"] + tasks["repro"]
     wl = {"name": "a6", "tasks": order}
     with open(os.path.join(ROOT, "configs", "worklists", "a6.json"), "w") as f:
         json.dump(wl, f, indent=1)

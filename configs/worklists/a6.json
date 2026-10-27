@@ -941,6 +941,96 @@
      "config": "configs/a6/xeval-yf-fin-s66.json"
     }
    ]
+  },
+  {
+   "id": "repro-yd-s11",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s11/adapters/step0016.safetensors",
+    "runs/bc2rl-y4-bc-path-s11/adapters/step0064.safetensors",
+    "runs/bc2rl-y4-bc-path-s11/adapters/step0128.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-repro-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "repro-yd-s22",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s22/adapters/step0016.safetensors",
+    "runs/bc2rl-y4-bc-path-s22/adapters/step0064.safetensors",
+    "runs/bc2rl-y4-bc-path-s22/adapters/step0128.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-repro-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "repro-yd-s33",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s33/adapters/step0016.safetensors",
+    "runs/bc2rl-y4-bc-path-s33/adapters/step0064.safetensors",
+    "runs/bc2rl-y4-bc-path-s33/adapters/step0128.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-repro-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "repro-yd-s44",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s44/adapters/step0016.safetensors",
+    "runs/bc2rl-y4-bc-path-s44/adapters/step0064.safetensors",
+    "runs/bc2rl-y4-bc-path-s44/adapters/step0128.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-repro-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "repro-yd-s55",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s55/adapters/step0016.safetensors",
+    "runs/bc2rl-y4-bc-path-s55/adapters/step0064.safetensors",
+    "runs/bc2rl-y4-bc-path-s55/adapters/step0128.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-repro-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "repro-yd-s66",
+   "requires": [
+    "runs/bc2rl-y4-bc-path-s66/adapters/step0016.safetensors",
+    "runs/bc2rl-y4-bc-path-s66/adapters/step0064.safetensors",
+    "runs/bc2rl-y4-bc-path-s66/adapters/step0128.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/a6/xeval-yd-repro-s66.json"
+    }
+   ]
   }
  ]
 }
