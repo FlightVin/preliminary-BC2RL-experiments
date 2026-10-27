@@ -40,17 +40,24 @@ def required():
     return inits, fin
 
 
+def includes_0(summ):
+    return any(summ[k][0] <= 0 <= summ[k][1] for k in ("boot95", "t95"))
+
+
 def classify_y2a(d1024, diff, d256):
+    """Protocol 5.2 with the 10.1.4 readings: 'an interval includes 0' = at least one of the two intervals contains
+    0; 'largely explained' needs Delta_256 - Delta_1024 > 0 (both intervals)."""
     lo = [d1024[k][0] for k in ("boot95", "t95")]
     if min(lo) > 0 and d1024["point"] >= 0.5 * d256["point"]:
         return "not explained by truncation"
-    if not d1024["both_exclude_0"] and diff["both_exclude_0"]:
+    if includes_0(d1024) and diff["sign"] == "+":
         return "largely explained by truncation"
     return "partly explained by truncation"
 
 
 def classify_shape(inc, total):
-    """Section 8.3 shape rule on the three increments (summaries) and E128 - E16 (summary)."""
+    """Section 8.3 shape rule on the three increments (summaries) and E128 - E16 (summary). 10.1.4 reading of
+    'the other two have intervals that include 0': both intervals of each of the other two increments include 0."""
     pts = [i["point"] for i in inc]
     pos = [min(i["boot95"][0], i["t95"][0]) > 0 for i in inc]
     neg = [max(i["boot95"][1], i["t95"][1]) < 0 for i in inc]
@@ -61,7 +68,7 @@ def classify_shape(inc, total):
     for j in range(3):
         others = [k for k in range(3) if k != j]
         if pos[j] and total["point"] > 0 and pts[j] >= 0.7 * total["point"] and \
-                not any(inc[k]["both_exclude_0"] for k in others):
+                all(all(inc[k][c][0] <= 0 <= inc[k][c][1] for c in ("boot95", "t95")) for k in others):
             return "threshold"
     return "undetermined"
 
@@ -81,13 +88,24 @@ def main():
     missing = [t for t in inits + fins if t not in c3 or t not in c5]
     if missing:
         raise SystemExit(f"yf incomplete, missing {missing}; look 1 refused")
+    problems = validate(c3, c5, inits, fins, a)
+    if problems:
+        raise SystemExit(f"yf inputs invalid: {problems[:20]}; look 1 refused")
     ev = Y.Evals({t: c3[t] for t in inits + fins})
     ev5 = Y.Evals({t: c5[t] for t in inits + fins})
     idx = boot_idx(len(ev.pids), a.n_boot, 61)
     w = Y.pooled_weights(ev, inits)
     unit = lambda k: k[1]
     res = {"weights_pooled24": w.tolist(), "n_problems": {"yf3": len(ev.pids), "yf5": len(ev5.pids)},
-           "n_boot": a.n_boot}
+           "n_boot": a.n_boot, "excluded_units": {}}
+
+    def dump():
+        json.dump(res, open(os.path.join(a.out, "look1.json"), "w"), indent=1, default=float)
+    # 10.1.4: a seed (or matched pair) with no usable bin is excluded from that comparison and listed
+    seeds_y3 = [s for s in SEEDS if Y.usable(ev, [it(16, s), it(128, s)])]
+    seeds_y4 = [s for s in SEEDS if Y.usable(ev, [it(n, s) for n in STEPS])]
+    res["excluded_units"]["Y3_H-F1_seeds"] = sorted(set(SEEDS) - set(seeds_y3))
+    res["excluded_units"]["Y4_seeds"] = sorted(set(SEEDS) - set(seeds_y4))
     m_pairs = {(m, s): (it(16, s), ft(16, m, s), it(128, s), ft(128, m, s)) for m in METHODS for s in SEEDS}
     # ---- Y2-a truncation
     D = {}
@@ -105,14 +123,16 @@ def main():
         for code in Y.FAIL_CODES:
             s_ = Y.init_contrast(ev, m_pairs, w, idx, unit, K=1, cap=cap, code=code)[0]
             s_["share_of_delta_K1"] = s_["point"] / tot["point"] if tot["point"] else None
-            s_["accounts_for_part"] = bool(s_["both_exclude_0"] and s_["point"] > 0)
-            s_["works_against"] = bool(s_["both_exclude_0"] and s_["point"] < 0)
+            s_["accounts_for_part"] = s_["sign"] == "+"
+            s_["works_against"] = s_["sign"] == "-"
             dec[code] = s_
         res[f"Y2b_cap{cap}"] = {"delta_K1": tot, "codes": dec}
+    dump()
     # ---- method interaction (Section 7)
     _, P, R = Y.init_contrast(ev, m_pairs, w, idx, unit)
-    res["method_interaction"] = Y.diff_of({s: P[("filtered", s)] for s in SEEDS}, {s: R[("filtered", s)] for s in SEEDS},
-                                          {s: P[("grpo", s)] for s in SEEDS}, {s: R[("grpo", s)] for s in SEEDS},
+    res["method_interaction"] = Y.diff_of({s: P[("filtered", s)] for s in seeds_y3},
+                                          {s: R[("filtered", s)] for s in seeds_y3},
+                                          {s: P[("grpo", s)] for s in seeds_y3}, {s: R[("grpo", s)] for s in seeds_y3},
                                           lambda k: k, idx)
     res["method_interaction"]["claim"] = ("the objective changes the init difference"
                                           if res["method_interaction"]["both_exclude_0"] else "no method difference shown")
@@ -123,7 +143,7 @@ def main():
         for K in (16, 1, 4, 24):
             if cap == 1024 and K != 16:
                 continue
-            for s in SEEDS:
+            for s in seeds_y3:
                 use = Y.usable(ev, [it(16, s), it(128, s)])
                 for n in (16, 128):
                     for arm in Y3_ARMS:
@@ -133,8 +153,8 @@ def main():
     y3 = {}
     for cap, K in ((256, 16), (1024, 16), (256, 1), (256, 4), (256, 24)):
         def ed(arm):                                     # Delta_arm per seed: E(128) - E(16)
-            return ({s: E[(cap, K, 128, arm, s)][0] - E[(cap, K, 16, arm, s)][0] for s in SEEDS},
-                    {s: E[(cap, K, 128, arm, s)][1] - E[(cap, K, 16, arm, s)][1] for s in SEEDS})
+            return ({s: E[(cap, K, 128, arm, s)][0] - E[(cap, K, 16, arm, s)][0] for s in seeds_y3},
+                    {s: E[(cap, K, 128, arm, s)][1] - E[(cap, K, 16, arm, s)][1] for s in seeds_y3})
         dM, dMASK, dT3, dT3E = ed("M"), ed("MASK"), ed("T3"), ed("T3E")
         out = {"Delta_M": Y.summarize_contrast(*dM), "C2_Delta_MASK": Y.summarize_contrast(*dMASK),
                "Delta_T3": Y.summarize_contrast(*dT3), "Delta_T3E": Y.summarize_contrast(*dT3E),
@@ -142,7 +162,8 @@ def main():
                "DeltaMASK_minus_DeltaT3E": Y.diff_of(*dMASK, *dT3E, lambda k: k, idx)}
         for n in (16, 128):
             def eo(arm):
-                return ({s: E[(cap, K, n, arm, s)][0] for s in SEEDS}, {s: E[(cap, K, n, arm, s)][1] for s in SEEDS})
+                return ({s: E[(cap, K, n, arm, s)][0] for s in seeds_y3},
+                        {s: E[(cap, K, n, arm, s)][1] for s in seeds_y3})
             for arm in Y3_ARMS:
                 out[f"E_step{n}_{arm}"] = Y.summarize_contrast(*eo(arm))
             out[f"C3_step{n}_M_minus_MASK"] = Y.diff_of(*eo("M"), *eo("MASK"), lambda k: k, idx)
@@ -154,6 +175,7 @@ def main():
         "harder-problem updates contribute to the init difference": p["C1_DeltaM_minus_DeltaMASK"]["sign"] == "+",
         "the init difference arises without harder-problem updates": p["C2_Delta_MASK"]["sign"] == "+"}
     res["Y3"] = y3
+    dump()
     # manipulation checks: yf5 pass@1 change (final - initial) per arm; gradient-carrying completions by input count
     man = {"yf5_pass1_change": {}, "used_by_inputs": {}}
     for n in (16, 128):
@@ -161,21 +183,31 @@ def main():
             v = [float(ev5.arr(ft(n, "grpo", s, arm), "c").mean() / 32 - ev5.arr(it(n, s), "c").mean() / 48)
                  for s in SEEDS]
             man["yf5_pass1_change"][f"step{n}_{arm}"] = {"seeds": v, "mean": float(np.mean(v))}
+    man["used_by_inputs_missing"] = []
     for n, init in ((16, "light"), (128, "extended")):
-        for arm in ("mask", "t3"):
+        for arm, rid in (("M", "bc2rl-s2-{i}-grpo-s{s}"), ("mask", "bc2rl-y3-{i}-grpo-mask-s{s}"),
+                         ("t3", "bc2rl-y3-{i}-grpo-t3-s{s}")):
             for s in SEEDS:
-                f = os.path.join(a.runs, f"bc2rl-y3-{init}-grpo-{arm}-s{s}", "metrics.jsonl")
+                f = os.path.join(a.runs, rid.format(i=init, s=s), "metrics.jsonl")
+                tot = {"3": 0, "5": 0, "10": 0}
                 if os.path.exists(f):
-                    tot = {"3": 0, "5": 0, "10": 0}
                     for line in open(f):
-                        r = json.loads(line)
+                        r = json.loads(line) if line.strip() else {}
                         for h, v in r.get("used_by_inputs", {}).items():
                             tot[h] += v
-                    man["used_by_inputs"][f"step{n}-{arm}-s{s}"] = tot
-    man["displacement_norms"] = displacement_norms(a.runs)
+                if not sum(tot.values()):
+                    man["used_by_inputs_missing"].append(f"step{n}-{arm}-s{s}")
+                    continue
+                man["used_by_inputs"][f"step{n}-{arm}-s{s}"] = dict(
+                    tot, **{f"share_{h}": tot[h] / sum(tot.values()) for h in ("3", "5", "10")})
+    try:
+        man["displacement_norms"] = displacement_norms(a.runs)
+    except Exception as e:                                # a diagnostic; it must not stop the frozen tests
+        man["displacement_norms"] = {"error": repr(e)}
+    json.dump(man, open(os.path.join(a.out, "look1_manip.json"), "w"), indent=1, default=float)
     # ---- Y4 dose-response (GRPO, arm M)
     Ed = {}
-    for s in SEEDS:
+    for s in seeds_y4:
         use = Y.usable(ev, [it(n, s) for n in STEPS])
         for n in STEPS:
             Ed[(n, s)] = Y.branch(ev, it(n, s), ft(n, "grpo", s), w, use, idx)
@@ -183,7 +215,7 @@ def main():
                          "bins_used": len(use)})
 
     def es(n):
-        return {s: Ed[(n, s)][0] for s in SEEDS}, {s: Ed[(n, s)][1] for s in SEEDS}
+        return {s: Ed[(n, s)][0] for s in seeds_y4}, {s: Ed[(n, s)][1] for s in seeds_y4}
     y4 = {f"E_step{n}": Y.summarize_contrast(*es(n)) for n in STEPS}
     inc = [Y.diff_of(*es(b), *es(a_), lambda k: k, idx) for a_, b in ((16, 32), (32, 64), (64, 128))]
     y4["increments"] = {"I1_32_minus_16": inc[0], "I2_64_minus_32": inc[1], "I3_128_minus_64": inc[2]}
@@ -194,10 +226,14 @@ def main():
         y4["matched"] = {"status": "overlap inadequate (no pair met Section 8.2)"}
     else:
         P, R = {}, {}
+        res["excluded_units"]["Y4_matched_pairs"] = []
         for mp in mt["matched_pairs"]:
             lo, hi = mp["low"], mp["high"]
             (nl, sl), (nh, sh) = [(int(t.split("-")[0][1:]), int(t.split("-")[1][1:])) for t in (lo, hi)]
             use = Y.usable(ev, [lo, hi])
+            if not use:
+                res["excluded_units"]["Y4_matched_pairs"].append(f"{lo}|{hi}")
+                continue
             a_, ar = Y.branch(ev, lo, ft(nl, "grpo", sl), w, use, idx)
             b_, br = Y.branch(ev, hi, ft(nh, "grpo", sh), w, use, idx)
             P[(lo, hi)], R[(lo, hi)] = b_ - a_, br - ar
@@ -211,16 +247,20 @@ def main():
                                    if bo[0] > 0 and allpos else
                                    "matched initial distribution explains the step effect for these pairs"
                                    if -0.05 <= bo[0] and bo[1] <= 0.05 else "undetermined"),
-                         "note": "no seed-level interval: pairs can share adapters"}
+                         "note": "no seed-level interval: pairs can share adapters",
+                         "residual_mismatch_dev": {f"{mp['low']}|{mp['high']}": {k: v for k, v in mp.items()
+                                                                                 if k.startswith("d_") or k == "tv"}
+                                                   for mp in mt["matched_pairs"]}}
     # secondary: regression of E on log2(step) and yd3 pass@1 over the 24 checkpoints
     prof = mt["profiles"]
-    X = np.array([[1.0, np.log2(n), prof[it(n, s)]["pass1_3"]] for n in STEPS for s in SEEDS])
-    yv = np.array([Ed[(n, s)][0] for n in STEPS for s in SEEDS])
+    X = np.array([[1.0, np.log2(n), prof[it(n, s)]["pass1_3"]] for n in STEPS for s in seeds_y4])
+    yv = np.array([Ed[(n, s)][0] for n in STEPS for s in seeds_y4])
     beta = np.linalg.lstsq(X, yv, rcond=None)[0]
     y4["regression"] = {"coef_log2step": float(beta[1]), "coef_pass1_yd3": float(beta[2]),
                         "corr_predictors": float(np.corrcoef(X[:, 1], X[:, 2])[0, 1]),
                         "descriptive_only": bool(abs(np.corrcoef(X[:, 1], X[:, 2])[0, 1]) > 0.8)}
     res["Y4"] = y4
+    dump()
     # whole-panel pass@1 / pass@16 for every adapter (descriptive)
     wp = {}
     for t in inits + fins:
@@ -230,9 +270,9 @@ def main():
                                   "pass16": float((1 - loss_k(n, e.arr(t, "c"), 16)).mean()),
                                   "pass1_x": float(e.arr(t, "c_x").mean() / n)}
     res["whole_panel"] = wp
-    res["S10_1"] = frozen_10_1(ev, idx, w, a.config, a.evals)
-    json.dump(res, open(os.path.join(a.out, "look1.json"), "w"), indent=1, default=float)
-    json.dump(man, open(os.path.join(a.out, "look1_manip.json"), "w"), indent=1, default=float)
+    dump()
+    res["S10_1"] = frozen_10_1(ev, idx, w, a.config, a.evals, seeds_y3)
+    dump()
     keys = list(dict.fromkeys(k for r in rows for k in r))
     with open(os.path.join(a.out, "look1_branches.csv"), "w", newline="") as f:
         wr = csv.DictWriter(f, fieldnames=keys)
@@ -242,7 +282,31 @@ def main():
           f"C2 {p['C2_Delta_MASK']['point']:+.4f}; Y4 shape {y4['shape']}", flush=True)
 
 
-def frozen_10_1(ev, idx, w, config, evals):
+def validate(c3, c5, inits, fins, a):
+    """Structural checks before any statistic (10.1.4): attempt counts, cap-1,024 fields and code strings, records
+    for H-S3, the data config and the matching file."""
+    bad = []
+    for t in inits + fins:
+        n_want = 48 if t in inits else 32
+        for pname, c in (("yf3", c3), ("yf5", c5)):
+            for r in c[t].values():
+                keys = ("n", "c", "c_x", "codes", "x_codes") + (("c_a", "c_b", "c_b_x") if t in inits else ())
+                if int(r["n"]) != n_want or any(k not in r or r[k] in ("", None) for k in keys) or \
+                        len(r["codes"]) != n_want or len(r["x_codes"]) != n_want:
+                    bad.append(f"{t}.{pname}.{r.get('pid')}")
+                    break
+    for n in (16, 128):
+        for s in SEEDS:
+            for t in [it(n, s)] + [ft(n, m, s) for m in METHODS]:
+                if not os.path.exists(os.path.join(a.evals, f"{t}.yf3.jsonl.gz")):
+                    bad.append(f"records {t}.yf3")
+    for f in (a.config, a.matching):
+        if not os.path.exists(f):
+            bad.append(f"missing {f}")
+    return bad
+
+
+def frozen_10_1(ev, idx, w, config, evals, seeds_y3):
     """Protocol Section 10.1.1 hypotheses (H-W1, H-F1, H-S1, H-S2, H-S3) on yf3, M finals, steps 16 / 128."""
     from collections import Counter, defaultdict
     from bc2rl.extension import load_ext
@@ -266,7 +330,7 @@ def frozen_10_1(ev, idx, w, config, evals):
         for n in (16, 128):
             P, R = {}, {}
             for m in METHODS:
-                for s in SEEDS:
+                for s in seeds_y3:
                     use = Y.usable(ev, [it(16, s), it(128, s)])
                     P[(m, s)], R[(m, s)] = Y.branch(ev, it(n, s), ft(n, m, s), w, use, idx, K=1, code=code)
             out[f"H-F1_E_{code}_step{n}"] = Y.group_units(P, R, unit, idx)
@@ -311,8 +375,13 @@ def frozen_10_1(ev, idx, w, config, evals):
                 ks = [k for k in range(len(ev.pids)) if 1 <= ca[k] <= 11]
                 drop = [max((fi[x] / ni for x in feats[ev.pids[k]]), default=0.0) -
                         max((ff[x] / nf for x in feats[ev.pids[k]]), default=0.0) for k in ks]
-                P[(m, s)] = float(np.corrcoef(e[ks], drop)[0, 1])
-        out[f"H-S3_step{n}"] = Y.group_units(P, None, unit, None)
+                r_ = float(np.corrcoef(e[ks], drop)[0, 1]) if len(ks) > 2 else float("nan")
+                if np.isfinite(r_):                       # 10.1.4: a NaN correlation (constant vector) is dropped
+                    P[(m, s)] = r_
+        h = Y.group_units(P, None, unit, None)
+        h["n_branches_used"] = len(P)
+        h["claim"] = bool("t95" in h and h["t95"][0] > 0)  # 10.1.1: the seed-level t-interval only
+        out[f"H-S3_step{n}"] = h
     return out
 
 

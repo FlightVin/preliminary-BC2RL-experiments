@@ -286,7 +286,7 @@ the 2 methods. A claim needs both the problem bootstrap and the seed-level t-int
   needs the seed-level t-interval only (the correlation has no problem-bootstrap interval here); it is made per step.
 
 **10.1.2 (2026-10-27 ~03:10 EDT; after the dev job 10947639 on yd only; before any yf outcome was read).**
-Matched pairs for Section 8.3 (from `y4_matching.json`, Section 8.2 rule, 24 initial adapters, 240 cross-step pairs):
+Matched pairs for Section 8.3 (from `y4_matching.json`, Section 8.2 rule, 24 initial adapters, 216 cross-step pairs):
 
 | lower step | higher step | d pass@1 yd3 | d pass@1 yd5 | TV | max d bin baseline |
 |---|---|---:|---:|---:|---:|
@@ -310,6 +310,26 @@ step 64 0.011-0.017, step 128 0.018-0.028. The re-run step-32 adapter is at 0.03
 0.041-0.042 from the original step 64. As Section 3.2 requires, the re-run step-16/64/128 adapters get yd evaluations
 (tags `rr<step>-s<seed>`, 6 tasks appended to the worklist). They enter the report only as the reproduction check, not
 in any test. The analysis plan is unchanged: step 32 comes from the re-run; steps 16, 64, 128 from the originals.
+
+**10.1.4 (2026-10-27 ~05:00 EDT; after an independent statistical review of `scripts/y_look1.py`; before any yf
+outcome was read).** Readings and handling rules fixed for look 1:
+- **H-S3 claim** = the seed-level t-interval lower limit > 0 (10.1.1 says "t-interval only"; the earlier code could
+  never set the claim). A branch whose correlation is undefined (a constant vector) is dropped; the count of branches
+  used is reported. The "best form" drop is max_f pref_initial(f) - max_f pref_final(f) over the problem's valid
+  forms, as in the Y1 analysis that generated H-S3. Successes whose form cannot be parsed stay in the denominator.
+- **Empty usable set.** A seed (Y3, H-F1, method interaction, Y4) or a matched pair with no usable bin is excluded from
+  that comparison and listed in `look1.json` (`excluded_units`).
+- **Y2-a.** "An interval includes 0" = at least one of the two intervals contains 0. "Largely explained by
+  truncation" also needs Delta_256 - Delta_1024 > 0 (both intervals).
+- **Y4 threshold.** "The other two have intervals that include 0" = both intervals of each of the other two
+  increments contain 0.
+- **Y2-b flags** use the sign rule of Section 3.4 (both intervals on the same side of 0).
+- **Y3 secondary scope.** K = 1, 4, 24 at cap 256; cap 1,024 at K = 16. The smallest excluded effect is read from the
+  intervals in the report.
+- **Manipulation check (6.2).** Shares of gradient-carrying completions by input count for M, MASK and T3; branches
+  without a `used_by_inputs` log are listed. Displacement norms are a diagnostic; their failure cannot stop look 1.
+- **Input validation before any statistic:** attempt counts (48 / 32), cap-1,024 fields and code strings for every
+  tag, yf3 records for the H-S3 tags, the data config and the matching file. Results are written after each section.
 
 ## 11. Forecast (from A5 measurements)
 Throughput: evaluation 25.7 completions/s averaged over X5 (645,120 completions in 6.97 GPU-h); online GRPO

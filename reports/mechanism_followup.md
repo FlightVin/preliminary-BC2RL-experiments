@@ -1,20 +1,74 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 0, 2026-10-26 ~19:45 EDT. No A6 result exists yet.** This update gives the design, the experiment
-matrix, the rationale, the timeline and the resource forecast. Protocol (pre-registered before any A6 job):
-`protocol/AMENDMENT-A6-2026-10-26.md`, commit `c6f7d0a`. The A5 study (`reports/extension_study.md`) is complete. A6
-does not change it.
+**Status: update 1, 2026-10-27 ~04:45 EDT.** Wave 1 is running. This update adds the exploratory results from the
+existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
+Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
+commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
+is complete. A6 does not change it. Section 14 of that report records five corrections from Y1.
 
 ## 0. Summary
 
-| stage | question | state |
+| stage | question | state (2026-10-27 ~04:45) |
 |---|---|---|
-| Y1 interpretation audit | Is the A5 effect a larger change from a higher baseline, or a worse final state? Do matched counts hide different true probabilities? | CPU job 10947200 queued |
-| Y2 truncation and failure types | Are intermittent solutions less likely, or hidden by length or format? Which failure types make the extended-light difference? | queued (workers) |
-| Y3 cross-difficulty | Do updates on 5- and 10-input problems cause the 3-input losses, or does 3-input training itself? | queued (workers) |
-| Y4 BC exposure | Does BC exposure predict loss beyond the initial success distribution? What is the shape over steps 16-128? | queued (workers) |
+| Y1 interpretation audit | Is the A5 effect a larger change from a higher baseline, or a worse final state? Do matched counts hide different true probabilities? | done (exploratory, A5 records); Section 0.1 |
+| Y2 truncation and failure types | Are intermittent solutions hidden by length or format? Which failure types make the extended-light difference? | dev done (exploratory); yf at look 1 |
+| Y3 cross-difficulty | Do updates on 5- and 10-input problems cause the 3-input losses, or does 3-input training itself? | 5 of 24 branches complete (training and yf evaluation), more running; canary passed |
+| Y4 BC exposure | Does BC exposure predict loss beyond the initial success distribution? Shape over steps 16-128? | step-32 adapters made and evaluated on yd; 3 matched pairs frozen; training not started |
 | method interaction | Does the objective (GRPO vs filtered) change the init difference? | tested at look 1 |
 | Y5 E2 redesign | Can controlled single updates predict later losses? | decided after look 1 |
+
+### 0.1 What the exploratory data show (not confirmation)
+
+Y1 uses the A5 panel xc3 (768 problems, 24 initial and 24 final adapters). The dev results use yd3 (384 problems).
+Both are exploratory. The same data generated the hypotheses in protocol 10.1.1. Look 1 tests them on yf3.
+
+| finding | Y1 (xc3) | dev (yd3) |
+|---|---|---|
+| Delta (K = 16, cap 256), ext - light | +0.202, boot [0.175, 0.227], t [0.141, 0.262] | +0.281, boot [0.246, 0.316], t [0.204, 0.358] |
+| Delta at cap 1,024 (subgroup fixed at cap 256) | not measured (A5 had cap 256 only) | +0.281 (identical; 0 rescued attempts) |
+| Delta split: worse subgroup final state / better baseline | +0.130 / -0.071 | not computed on yd |
+| Whole-panel finals, ext - light (pass@1 and pass@16) | ext better in 12/12 (method, seed) pairs | ext mean pass@1 0.475 vs light 0.388 |
+| True p inside bins (NPMLE) | higher for ext in every bin | not computed on yd |
+| K = 1 decomposition: illegal operand D_I | +0.342, t [0.044, 0.641] | +0.375, boot [0.350, 0.401], t [0.026, 0.725] |
+| K = 1 decomposition: wrong target D_W | -0.144 | -0.132 (t-interval includes 0) |
+| K = 1 decomposition: truncation D_T, format D_F | -0.012, +0.029 | -0.004, +0.031 (t-intervals include 0) |
+
+- **R1 (truncation, format).** On yd, 33,491 of 737,280 attempts (4.5%) stopped at 256 tokens. After continuation of
+  the same attempts to 1,024 tokens, **none** reached a valid solution. Of the 33,491 continued attempts, 47.8% are still
+  truncated at 1,024 tokens, 42.3% end with an illegal operand, 7.9% are malformed and 2.0% have an arithmetic error. Five sampled texts show long chains of operations that repeat or
+  drift (`slurm-agentic-engineering/results/bc2rl-a6-repro-main-s0/y4_repro.json`). Truncation is concentrated in a few adapters (for example
+  b16-s66 12%, b64-s66 11%, b128-s33 9%); most adapters truncate < 1%. A lenient re-parse would accept 841 failed
+  attempts (diagnostic only; never a reward). On yd, truncation up to 1,024 tokens does not explain the
+  difference. Longer continuations were not measured. Look 1 tests this on yf.
+- **R2 (comparison artifact).** "The extended start loses more on its own intermittent problems" is not "the extended
+  start ends worse". On both panels the extended finals are better on the whole panel. Report Section 14 of
+  `extension_study.md` corrects the A5 wording.
+- **Failure types.** The largest component is illegal-operand failures. In Y1, online training from step 16 removed
+  many of them on its subgroup (E_I from -0.19 to -0.64 per branch). This lowers the light loss and so
+  increases Delta. This describes the measured difference. It is not a mechanism.
+- **Problem structure (exploratory).** Losses concentrate on problems where every valid solution uses
+  multiplication, where one solution form exists, and where the target is >= 100 (both steps; larger from step 128).
+  The excess loss correlates with the drop in the policy's preference for the problem's best form (yd: r = 0.62 from
+  step 128, 0.53 from step 16, pooled over branches). These are hypotheses H-S1-H-S3, frozen for look 1.
+
+### 0.2 Initial competence by BC step (yd, 6 seeds each)
+
+| BC step | yd3 pass@1 (mean, range) | yd5 pass@1 (mean) |
+|---|---|---|
+| 16 | 0.098 (0.069-0.127) | 0.005 |
+| 32 (re-run path) | 0.151 (0.129-0.170) | 0.010 |
+| 64 | 0.221 (0.207-0.237) | 0.015 |
+| 128 | 0.284 (0.238-0.305) | 0.024 |
+
+- **Matching (Section 8.2, frozen 10.1.2).** 3 of 216 cross-step adapter pairs meet all four criteria:
+  b16-s44 / b32-s11, b64-s33 / b128-s66, b64-s44 / b128-s66. **No pair spans step 16 vs step 128.** The matched
+  comparison can only test one doubling of BC exposure at matched competence. It cannot separate R5 from R6 for the
+  full 16-to-128 contrast. The residual mismatch per pair is in protocol 10.1.2.
+- **Reproduction check (Section 3.2, 10.1.3).** The re-run BC adapters are not bit-identical to the originals (0/18).
+  Relative L2 distance: step 16 0.003-0.006, step 64 0.011-0.017, step 128 0.018-0.028. The re-run step-32 adapter is
+  0.032 from the original step 16 and 0.041 from the original step 64. The yd pass@1 of the re-run adapters is queued
+  (6 tasks). The step-32 point in the dose-response therefore comes from a BC path that differs from the original
+  one (relative L2 0.003-0.006 at step 16). The report will state the pass@1 difference when it is measured.
 
 ## 1. Starting point
 
@@ -102,5 +156,32 @@ state the smallest effect that each interval excludes.
 - Resource rules: preempt GPUs only; at most 5 BC2RL GPU slots, counting pending jobs (`tools/bc2rl_guard.py`). GPU use
   before A6: 40.65 GPU-h.
 
-## 7. Changes
-- Update 0: design, matrix and forecast. No results.
+## 7. Accounting and updated forecast (2026-10-27 ~04:40)
+
+| item | value |
+|---|---|
+| A6 GPU-hours used (sacct, all attempts incl. 8 preempted attempts) | 20.3 |
+| worklist tasks complete | 24 of 73 (BC re-runs, 12 yd evaluations, 6 step-32 evaluations, 5 Y3 branches) |
+| Y3 branch cost (measured) | 0.45-1.1 GPU-h training + 0.1-0.25 GPU-h yf evaluation |
+| remaining (estimate) | 19 Y3 branches about 17 GPU-h; 12 Y4 branches about 13; 12 yf evaluations of existing adapters about 16; 6 reproduction yd evaluations about 4 |
+| wave-1 total (forecast) | about 70 GPU-h (pre-registered forecast 75-93) |
+
+- Wall time with 5 slots: about 10-12 h more, plus queue waits and preemptions. Look 1 runs after the last yf
+  evaluation: about 2026-10-27 16:00-20:00 EDT if the queue holds.
+- The worklist grew from 67 to 73 tasks (the reproduction yd evaluations, 10.1.3).
+- Slots: 5 BC2RL GPU slots, preempt only, counting pending jobs (`tools/bc2rl_guard.py`). No general GPU, no `ae-topup`.
+
+## 8. Checks done in this update
+
+- Y3 canary (`scripts/a6_canary.py`, job 10949310): 10 MASK/T3 runs. MASK used 0 completions from 5- and 10-input
+  prompts while its stream sampled them in every round. T3 sampled only 3-input prompts. All 10 pass.
+- Dev outputs recomputed outside the project code (laptop, from the harvested CSV/JSON): pass@1 profiles agree with
+  the per-adapter table (48/48); the matching rule applied again to the 216 pairs gives the same 3 pairs; code counts
+  sum to the attempt count.
+- `scripts/y_look1.py` now has a synthetic end-to-end test (planted cross-difficulty effect; refusal of an incomplete
+  set). The test job runs before look 1. Audit file: `slurm-agentic-engineering/audits/a6-update1-audit-20261027.md`.
+
+## 9. Changes
+- Update 0 (2026-10-26 ~19:45): design, matrix and forecast. No results.
+- Update 1 (2026-10-27 ~04:45): Y1 and dev results (exploratory); matched pairs; reproduction check; canary;
+  accounting and forecast. No yf outcome read.

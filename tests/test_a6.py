@@ -414,9 +414,19 @@ def test_look1_end_to_end_synthetic(tmp_path):
     assert set(res["Y4"]["matched"]["pairs"]) == {"b16-s44|b32-s11", "b64-s33|b128-s66"}
     assert {"H-W1_pass16", "H-W1_pass1", "H-F1_E_I_step16", "H-S1_step128", "H-S2", "H-S3_step16"} <= set(res["S10_1"])
     assert res["S10_1"]["n_needs_mul"] > 0
-    assert man["used_by_inputs"] == {"step16-mask-s11": {"3": 5, "5": 0, "10": 0}}
+    assert man["used_by_inputs"] == {"step16-mask-s11": {"3": 5, "5": 0, "10": 0, "share_3": 1.0, "share_5": 0.0,
+                                                         "share_10": 0.0}}
+    assert len(man["used_by_inputs_missing"]) == 3 * 2 * 6 - 1
+    assert res["excluded_units"] == {"Y3_H-F1_seeds": [], "Y4_seeds": [], "Y4_matched_pairs": []}
+    assert set(res["Y4"]["matched"]["residual_mismatch_dev"]) == {"b16-s44|b32-s11", "b64-s33|b128-s66"}
+    for n in (16, 128):
+        h = res["S10_1"][f"H-S3_step{n}"]
+        assert isinstance(h["claim"], bool) and 0 <= h["n_branches_used"] <= 12
     assert man["displacement_norms"]["step16-MASK-s11-r64"] == pytest.approx(8 ** 0.5)
     assert len(res["whole_panel"]) == 2 * (24 + 72)
+    os.remove(ev_dir / "b16-grpo-M-s11.yf3.jsonl.gz")                 # missing H-S3 records are refused
+    r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode != 0 and "inputs invalid" in r.stderr
     os.remove(ev_dir / "b64-grpo-M-s66.yf5.summary.json")             # an incomplete set is refused
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     assert r.returncode != 0 and "look 1 refused" in r.stderr
