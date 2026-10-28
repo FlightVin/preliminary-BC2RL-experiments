@@ -706,3 +706,110 @@ why online training changed the policy.
 
 ### 13.11 Dated additions (program S)
 (none yet)
+
+## 14. Stage R — retention, policy drift and the source of training responses (owner addition 2026-10-28)
+
+Owner addition A6-R (PROJECT.md, 2026-10-28 ~18:00 EDT). Recorded at 18:20 EDT, before any stage-R job and before any
+stage-R outcome exists. It adds to A6. It does not change stage G (Section 12) or program S (Section 13); those continue.
+Question: **does retention depend on how far the policy changes, and on where its successful training responses come
+from, beyond differences in initial competence and later improvement?**
+
+**Open item (blocks only the R3 training matrix).** The owner refers to "Section 11 of the updated proposal" for the
+common-pool construction and the common supervised loss. The proposal copies in `protocol/` (revision of 2026-10-24)
+have no such section. The values that the owner message states are fixed below. The supervised loss and any other
+Section-11 detail stay open. No R3 training job is submitted until that text is available and recorded in 14.9.
+
+### 14.1 Stage R1 — policy drift on existing checkpoints (exploratory)
+- **Branches:** every A5/A6 online branch with saved adapters (M GRPO and filtered, steps 16/128, seeds 11-66; Y3 MASK
+  and T3; Y4 steps 32/64). Reference policy = the branch's own BC checkpoint (step 32 = the re-run adapter, Section
+  3.2). Rounds 0 (the reference itself), 64, 128, 256. Only saved files are scored. A missing file is listed as
+  missing and is never re-created.
+- **Problems:** from the opened dev panels, the 192 yd3 and 64 yd5 problems with the smallest
+  sha256("A6-R drift:" + pid). Their existing yd selection, baseline and outcome attempts are reused.
+- **Reference responses:** 16 per problem from each BC reference (evaluation decoding, cap 256, sampling seed 8),
+  stored with token ids. All responses enter, failures included.
+- **Estimator.** KL(initial || current) per problem = mean over its reference responses of
+  sum_t [log p_init(y_t | prefix) - log p_cur(y_t | prefix)], summed over every completion token, including the
+  sampled stop token. A response that reaches the cap without a stop token contributes its 256-token sum with no stop
+  term: the estimate is the KL between the two distributions over capped outputs. Both policies are scored in FP32
+  (frozen weights cast exactly; TF32 off). The per-token average (sum / tokens) is a separate diagnostic, not KL.
+  Reverse KL is not estimated (it needs current-policy samples).
+- **Sampling-scoring check.** The log-prob of each sampled token is recorded during sampling (BF16, as all
+  evaluation). Report the signed mean per-token difference (sampling - FP32 scoring of the reference) and the median
+  absolute sequence difference. The check passes if |signed mean| <= 0.005 nats/token. If it fails, the KL values
+  are reported with that bias bound and the label "sampling/scoring mismatch".
+- **Analyses (exploratory; no claim).** Within-seed drift trajectories by round. Per-problem association of round-256
+  drift with excess loss_16 (M finals: yd outcome attempts), initial competence (c_a), structure (needs-multiplication,
+  number of forms; `bc2rl.structure`), response length and per-problem improvement. Branch-level association with
+  the look-1 E values (already opened; descriptive). Retrospective leave-one-seed-out prediction of branch E from
+  (competence, improvement) with and without drift. Correlation is not presented as a mechanism.
+- After R1, a dated addition names at most two drift relationships to confirm on the R3 runs, with their tests,
+  before any R3 confirmation outcome exists.
+
+### 14.2 Stage R2 — retention at similar learning progress
+- Progress = pass@1 improvement over the initial adapter on yd3 (dev; 16 attempts per problem per saved checkpoint,
+  sampling seed 9). Fixed-round results are always reported; matched-progress results are reported beside them.
+- Target level L* (fixed on the dev seed-7 R3 block only, before confirmation): L* = 0.8 x the smallest, over arms
+  and inits, of the largest improvement reached at a saved round, rounded down to 0.01. If L* < 0.02, the
+  matched-progress comparison is marked unavailable.
+- Checkpoint rule (frozen with L*): within each initialization, the earliest saved checkpoint with |improvement - L*|
+  <= 0.01 on yd3. A branch without one is unavailable; a seed unit with an unavailable branch is excluded; a
+  comparison with fewer than 3 seed units is unavailable. No extrapolation; no use of confirmation outcomes.
+- Reported: achieved improvement with its problem-bootstrap interval; for cross-initialization comparisons, matched
+  improvement and matched final accuracy are kept separate. Equal observed accuracy is not equal true accuracy.
+
+### 14.3 Stage R3 — response-source experiment (one supervised loss)
+| arm | target per prompt occurrence |
+|---|---|
+| S | the fixed solver trace of the problem (generator reference trace, `task.completion_text`) |
+| I | one fixed verified response of the starting BC policy (initial-policy cache, independent attempts) |
+| F | a fresh verified response of the same frozen starting policy |
+| O | a fresh verified response of this arm's current policy |
+Contrasts: S vs I (target source), I vs F (fixed-cache reuse), F vs O (policy refresh). This is not a GRPO-versus-
+supervision comparison. The design studies solutions available at the start; it cannot show discovery of new ones.
+- **Checkpoints:** dev seed 7 (`bc2rl-s0-bc-devlight` step 16, `bc2rl-s0-bc-devext` step 128); confirmation BC steps 16
+  and 128 of seeds 11, 22, 33: 6 four-arm blocks, **24 confirmatory branches**.
+- **Common pool (3 inputs; new data `rs1`, seed 20261030; all earlier keys, st1 included, excluded):** candidates in
+  draw order are screened with independent attempts under all six confirmation checkpoints; a candidate qualifies
+  when every checkpoint solves it at least once. Stop at 256 qualifying problems or 2,048 screened candidates. If
+  fewer than 256 qualify, the pool is the first 128 (the development-fixed fallback); fewer than 128 is a failed gate
+  (diagnosis, not a relaxed rule). The screening attempt count is fixed in 14.9 before screening. Exclusions and
+  screening costs are recorded.
+- **Caches:** I = for each starting checkpoint (8), sample with independent attempts until the first verified success,
+  at most 64 attempts; a pool problem without an I target for a confirmation checkpoint is excluded and counted.
+- **Fresh targets (F, O):** per prompt occurrence, sample until the first verified success or 64 attempts; one target
+  per occurrence. If F or O has no target, the occurrence is masked in all four arms. Masking above 5% of the
+  occurrences of a block is reported as a failure of the exposure-matching criterion (threshold fixed now).
+- **Training:** 256 rounds x 32 prompt occurrences (same prompt order in all arms of a block), learning rate 1e-5,
+  adapter, decoding and optimizer settings as the frozen configuration; one optimizer step per round per arm; identical
+  accepted occurrences and loss denominator in all arms; a round with every occurrence masked takes no step in any arm.
+  Saved rounds 0, 32, 64, 128, 192, 256. One GPU worker runs a block: the four arms in sequence in each round, each
+  with its own optimizer state. Every candidate (accepted or not), cache cost and token is counted. **The supervised
+  loss: open item (Section 11 of the updated proposal).**
+
+### 14.4 Evaluation and inference (R3; frozen before confirmation)
+- Fresh panels from `rs1`: rf3 = 768 three-input, rf5 = 128 five-input problems. Initial adapters: 48 attempts
+  (0-23 selection, 24-47 baseline); finals: 32 attempts; estimator, bins and intervals as Section 3.4 (pooled weights
+  over the 6 confirmation initial adapters; K = 16).
+- **Primary:** the three source contrasts at round 256 (E(X) - E(Y) per init; seed unit = mean over the two inits):
+  F vs O (named primary), S vs I, I vs F. Holm correction over the three at family alpha 0.05: a contrast's p-value is
+  the larger of the paired problem-bootstrap p and the seed-level t p (df 2); a claim needs the Holm step to pass.
+  Problem and seed uncertainty are reported separately.
+- Secondary: the initialization interaction of each contrast; matched-progress versions (14.2); whole-panel pass@1
+  and the full supported pass@k / pass^k curves; initial, final and change values; drift (14.1 protocol, own
+  reference); failure types; target diversity (canonical forms per problem, `bc2rl.structure`); generated tokens;
+  actual optimizer steps; masking rate. Fixed-exposure results stay reported when matched-progress results differ.
+
+### 14.5 Order, stopping and resources
+- Order: R1 (scoring code + test -> GPU scoring -> CPU analysis) and the R3 development checks (rs1 data, screening,
+  caches, dev block seed 7) come first; the 6 confirmation blocks start only after 14.9 records the loss and the
+  frozen settings. R2's L* is fixed on the dev block.
+- Three seeds are the prespecified confirmation size; no seed is added unless a precision plan is recorded before
+  confirmation. An uninformative comparison is closed explicitly.
+- Resources: A6 Section 2 and the stricter shared-account guard; the 5 BC2RL GPU slots (running, pending, array
+  concurrency) are shared with stage G and program S; one GPU per job; no MPS, no multi-GPU, no general GPUs; CPU one
+  job at a time. Planning forecast: R1 about 3-5 GPU-h; R3 screening and caches about 2-4 GPU-h; dev block plus
+  evaluations about 4-6 GPU-h; confirmation 6 blocks plus evaluations (incl. R2 dev measurements) about 25-35 GPU-h.
+
+### 14.9 Dated additions (stage R)
+(none yet)
