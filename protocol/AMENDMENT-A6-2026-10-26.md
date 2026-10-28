@@ -546,3 +546,163 @@ light batch had no row with A != 0 and was skipped by design, so 3 batches enter
 - Timing: an FP32 gradient pass takes about 1.8-1.9x the BF16 pass (0.35 vs 0.20 s and 1.08 vs 0.58 s; the first
   FP32 pass, 13.6 s, includes warm-up and is not used). Forecast changes go to the report.
 - No statistical rule changed.
+
+## 13. Program S — learning signal, transfer between problem classes, and solution concentration (owner addition 2026-10-28)
+
+Owner addition A6-S (PROJECT.md, 2026-10-28 ~17:15 EDT). Recorded at 17:20 EDT, before any program-S job and before any
+program-S outcome exists. It adds to A6 and supersedes no earlier section. Stage G (Section 12) continues unchanged.
+This section fixes the questions, the stage order, the design rules and the decision rules. Each stage also gets a
+dated addition (13.11) with its exact sizes and thresholds. That addition is committed after the stage's development
+work and before any of its confirmation data is generated or read.
+
+### 13.1 Questions and competing explanations
+Goal: distinguish three explanations of the coverage loss, then test one intervention that addresses the supported
+explanation. A negative or measurement-limited result is a valid end.
+
+| id | explanation | evidence that supports it | stage |
+|---|---|---|---|
+| Q-SIG | Insufficient learning signal: the vulnerable problems produce few mixed-reward groups, so their solutions get little reinforcement | few informative groups for the vulnerable class; loss independent of other-class updates | S3 (signal counts), S6 |
+| Q-TRF | Harmful transfer: updates on one problem class reduce success on another class | masked-control contrast T > 0 (13.4) | S1, S3 |
+| Q-CON | Concentration: successful outputs move onto fewer solution forms; forms with little successful training disappear | form concentration at matched success counts; losses on low-support forms | S4, S6 |
+
+The explanations are not exclusive. The intervention stage (S5) tests whether a loss can be reduced. A positive S5
+result alone does not prove gradient interference.
+
+### 13.2 Stage S1 — complete the existing cross-difficulty question (no new GPU work)
+Data: look-1 yf3 counts (export job 10968369). Estimator, bins, weights and intervals: Section 3.4. Script:
+workspace `audits/s1_cross_difficulty.py` (own code; it reproduces the 8 look-1 E points exactly).
+- Report separately, for each initialization (step 16, step 128) and for the difference (step 128 - step 16):
+  harder = M - MASK (effect of including the harder-problem updates); totalmix = M - T3 (equal total sampling);
+  exposure = MASK - T3E (equal 3-input exposure; T3E has fewer optimizer steps); more3 = T3 - MASK.
+- A near-zero init interaction (C1) is not evidence that harder-problem updates have no effect. The report gives
+  the per-init contrasts and the effects that each interval excludes.
+- **Precision plan (set 2026-10-28 17:20; it uses the seed SD only, not the point estimates).** Meaningful size
+  delta = 0.25 x Delta_M(K = 16) = 0.039. For a contrast with seed SD s, n_req = the smallest seed count with
+  t(0.975, n - 1) s / sqrt(n) <= delta. New paired seeds (new BC paths, then M and MASK from steps 16 and 128) are
+  added only if n_req <= 12 for C1, the primary open Y3 contrast. Observed: s(C1) = 0.083, n_req = 20. **Decision:
+  no seeds are added to Y3.** The S3 masked controls test transfer directly and at lower cost. The per-init
+  contrasts have n_req 8-9; they are reported with their bounds and get no seeds.
+- Wave-2 decisions (Section 10): filtered Y3 (6.5) is not run now; it can return only through a dated addition if a
+  program-S result makes the objective dependence a live question. Y5 (E2 redesign, Section 9) is not run: the S3
+  behavioural masked controls address the transfer question, and the E2 assay had no valid radius (X6).
+
+### 13.3 Stage S2 — a 3-input dataset that separates structure from difficulty
+Generator v1 rules, prompt, decoding and verifier v1 do not change. New data name `st1`, new seed 20261028. A
+canonical key in any earlier split or panel (v1 splits, format example, mechanism splits, X5, a6, g1) is rejected
+and counted.
+- **Exact enumeration.** For each problem, enumerate every valid solution under the verifier rules (any operand
+  pairing and order; negative, zero and large intermediates are legal). Three levels are counted separately:
+  *traces* (ordered operation chains; operand order of + and * collapsed), *forms* (the canonical expression over the
+  input values: + and - flattened to a signed multiset of terms, * flattened to a multiset of factors, then sorted
+  recursively; so (a+b)-c and (a-c)+b are one form), and *shapes* (a form with the values replaced by placeholders,
+  such as `x*y+z`).
+- **Labels.** Class A (no multiplication required): at least one form uses only + and -. Class B (multiplication
+  required): every form uses *. Also: minimum number of * over forms; number of traces and of forms; whether every
+  solution needs a negative intermediate; input maximum, input sum and target; initial success of each starting
+  checkpoint, measured on independent attempts (a prescreen, never reused as an evaluation outcome).
+- **Development inspection (exploratory; dev candidates only).** Distributions by class of: initial success (light
+  and extended, seed 11), number of forms, magnitudes, minimum multiplications and response length. The two classes
+  are not assumed to differ only in operator use.
+- **Training pools.** Built from dev candidates by coarsened exact matching on: initial-success bin under the light
+  and the extended seed-11 adapters, number-of-forms bin and target-magnitude bin. A and B get equal counts per
+  matched cell. The dated addition reports the cells without common support and the residual differences. It never
+  forces a match in a cell without support.
+- **Evaluation panels** (fresh problems, disjoint from all training candidates; dev and confirmation versions are
+  separate draws): (1) **representative panel** `sr3` = a generator sample with the natural class mix; (2) **diagnostic
+  panel** `sd3` = balanced over class x prescreen-success range. Results on the two panels are reported separately.
+  The manifest reports how deduplication, exclusion and balancing change the distribution.
+- **Gate S2** (on dev data only): each class has enough unique problems for the S3 pools (the size is fixed in the
+  dated addition) and common support in initial success for both inits. If the gate fails, or if 3 inputs give too
+  few shapes for S4, a separate 4-input extension is pre-registered (classes from all valid solutions, not the
+  generator tree; learnability on dev first). The 3-input study stays a distinct result.
+
+### 13.4 Stage S3 — which classes help or harm each other (GRPO, established configuration)
+Initial adapters: light (BC step 16) and extended (step 128) of each seed. The frozen A5/A6 GRPO configuration
+applies (32 prompts per round, G = 4, cap 256, 256 rounds, LR 1e-5, AdamW, the constant loss normalization, the
+same decoding and reward). Every arm uses the same number of unique training problems and the same passes per problem.
+
+| arm | prompt stream | gradient from |
+|---|---|---|
+| A | pool A only | all completions |
+| B | pool B only | all completions |
+| AB | 16 A + 16 B prompts per round (fixed split) | all completions |
+| AB-mB | identical stream and sampling seeds to AB | A completions only (B terms masked; budget not reallocated) |
+| AB-mA | identical stream and sampling seeds to AB | B completions only |
+
+- Masking keeps the loss normalization of AB, as Y3 MASK. One AdamW state is kept for the run; masked terms give zero
+  gradient; no state reset. A round with no unmasked completion with a nonzero advantage takes no optimizer step and
+  is counted as skipped. The contrasts are the total effect of including the updates, including their effects through
+  the optimizer state and the later policy.
+- **Primary contrasts** (diagnostic panel, class subgroup with 1 <= c_a <= 11 of 24, standardized excess E at
+  K = 16 as Section 3.4): T_B->A(i) = E_A(AB) - E_A(AB-mB) and T_A->B(i) = E_B(AB) - E_B(AB-mA), for each init i, and
+  their init difference. **Transfer table** (descriptive, with intervals): arm in {A, B, AB} x evaluation class in
+  {A, B}, for E and pass@1 change.
+- Signal records per round and class: all-success groups, all-failure groups, mixed groups, gradient-carrying
+  completions and tokens; every 8 rounds the norm of each class's gradient and their cosine (diagnostic). Equal
+  sampled prompts do not imply equal learning signal. If a class has almost no informative groups, the report states
+  that limit and does not conclude that its structure cannot transfer.
+- Development: seed 11, all 5 arms x 2 inits, dev panels. Confirmation: seeds from 22, 33, 44, 55, 66; at least 3.
+  The dated addition fixes the seed count with the rule of 13.2 (planning SD = the Y3 C3 seed SD, 0.049) and fixes
+  delta for S3. One look; no seeds added after the look.
+
+### 13.5 Stage S4 — structural diversity vs more examples (only if chosen by 13.10)
+- **Diversity contrast:** a narrow pool (few shapes) vs a broad pool (more shapes) with equal unique problems, equal
+  sampled completions and rounds, approximately equal initial-success distribution, and other difficulty variables
+  matched where overlap permits.
+- **Breadth vs repetition:** within one fixed structural mixture, 64 vs 256 unique problems (adjusted on dev data if the
+  generator cannot supply them) with equal sampled completions.
+- Evaluation: fresh instances of the represented shapes; withheld shapes, where the partition permits; the
+  representative panel. If diversity and difficulty cannot be separated, the result is reported as the joint
+  intervention and is not called a diversity effect.
+
+### 13.6 Stage S5 — a preservation intervention (only if chosen by 13.10)
+- The vulnerable class is chosen on development evidence and frozen in a dated addition before confirmation.
+- Rehearsal set: independent training problems that the starting policy solves intermittently (prescreen 1-11 of 24);
+  verified solutions generated by that starting policy. No evaluation problem, and no selection by confirmation losses.
+- Arms: (1) online only; (2) online + rehearsal from the vulnerable class; (3) online + an equal-size broad rehearsal
+  set from all intermittently solved training problems. Arms 2 and 3 use the same rehearsal tokens and the same
+  coefficient (one coefficient calibrated on dev data, then frozen), and are matched in baseline success and solution
+  length where feasible. Online rollout exposure is equal in all arms; the extra training cost is reported.
+- Report coverage on the vulnerable class, accuracy and consistency, other classes, and whether rehearsal suppresses
+  learning everywhere; an accuracy-coverage plot; a comparison with an earlier online checkpoint of similar accuracy
+  (preservation vs slower training).
+
+### 13.7 Stage S6 — solution strategies (diagnostic)
+On a diagnostic subset fixed in the S3 dated addition, the full generated texts are kept (xeval records). For correct
+initial and final outputs: the forms used, the concentration of successful outputs (form entropy and top-form share),
+forms that disappear, and whether losses fall on forms with little successful online training. Comparisons use equal
+attempts and adjust for success counts (rarefaction to equal numbers of successes). Fewer observed forms with fewer
+successes is not by itself a collapse. S6 can select a later intervention only through a new prospective comparison.
+
+### 13.8 Stage S7 — oracle-assisted search (conditional; frozen policy)
+Only if the main stages leave open whether lost solutions stay reachable through intermediate choices. Sample
+candidate next operations, check validity and solvability of the resulting state with the exact solver, and compare
+unguided and solver-guided continuation at a matched generation budget. Label: oracle-assisted search. It cannot show
+why online training changed the policy.
+
+### 13.9 Common rules for program S
+- Each new experiment family: one development configuration (seed 11, dev panels) first; then frozen confirmation
+  settings; at least 3 paired seeds; seeds added only under a precision plan fixed before confirmation.
+- Report for every comparison: pass@1 and the full supported pass@k / pass^k curves; final value and change from
+  initialization; whole-panel and class-subgroup results; independent selection (c_a) and baseline (c_b) attempts for
+  intermittent subgroups; failure types, truncation, learning-signal counts, optimizer steps and resource use; the
+  paired problem interval and the seed interval separately. A claim needs both intervals to exclude 0.
+- Subgroups stay fixed across arms that share an initial checkpoint. Equal observed counts are not equal true success
+  probabilities.
+- Program-S runs reuse existing checkpoints and evaluations only when the protocol matches (same configuration, panel
+  and attempt rule). Stage-G runs are not reused in program S.
+
+### 13.10 Order, decisions, stopping and resources
+- Order: S1 (now, CPU) -> S2 (data, then GPU prescreen) -> S3 dev -> S3 confirmation -> one of S4 or S5 -> the other
+  only if it can still distinguish the remaining explanations -> S7 only if needed. S6 runs on the records of S3 and
+  of the chosen stage. The full product of structures, algorithms, BC lengths and controls is not run.
+- Choice after S3 (recorded as a dated addition with the reason, before any S4/S5 run): S5 if S3 or S6 identifies a
+  vulnerable class or form set; S4 if S3 shows that the loss depends on which classes or shapes are trained and no
+  class is clearly vulnerable. If neither, the report states which explanation stays open and why no feasible stage
+  separates it.
+- Stop: as Section 10. A failed gate leads to diagnosis or another authorized task, never to relaxed validity rules.
+- Resources: A6 Section 2 and the stricter shared-account guard. The 5 BC2RL GPU slots (running, pending, array
+  concurrency) are shared with stage G. CPU: one job at a time, <= 4 CPUs. Stage-level forecasts in the report.
+
+### 13.11 Dated additions (program S)
+(none yet)
