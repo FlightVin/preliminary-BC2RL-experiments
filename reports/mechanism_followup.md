@@ -1,6 +1,6 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 3, 2026-10-27 20:20 EDT.** Wave 1 training is complete. The workers report all 96 yf evaluation tasks done; look 1 is submitted (job 10960293) and has not run. Stage G (GSPO / CTPO, Section 9) is in validation. Update 1 added the exploratory results from the
+**Status: update 3, 2026-10-27 20:00 EDT.** Wave 1 training is complete. The workers report all 96 yf evaluation tasks done; look 1 is submitted (job 10960293) and has not run. Stage G (GSPO / CTPO, Section 9) is in validation. Update 1 added the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
 commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
@@ -8,7 +8,7 @@ is complete. A6 does not change it. Section 14 of that report records five corre
 
 ## 0. Summary
 
-| stage | question | state (2026-10-27 20:20) |
+| stage | question | state (2026-10-27 20:00) |
 |---|---|---|
 | Y1 interpretation audit | Is the A5 effect a larger change from a higher baseline, or a worse final state? Do matched counts hide different true probabilities? | done (exploratory, A5 records); Section 0.1 |
 | Y2 truncation and failure types | Are intermittent solutions hidden by length or format? Which failure types make the extended-light difference? | dev done (exploratory); yf at look 1 |
@@ -157,7 +157,7 @@ state the smallest effect that each interval excludes.
 - Resource rules: preempt GPUs only; at most 5 BC2RL GPU slots, counting pending jobs (`tools/bc2rl_guard.py`). GPU use
   before A6: 40.65 GPU-h.
 
-## 7. Accounting and updated forecast (2026-10-27 20:15)
+## 7. Accounting and updated forecast (2026-10-27 19:58)
 
 | item | value |
 |---|---|
@@ -205,5 +205,6 @@ state the smallest effect that each interval excludes.
   to the git commit times (they had been written as estimates 15-45 min late).
 - Update 2 (2026-10-27 12:15): progress, accounting and forecast only. No new result; no yf outcome read; no
   analysis code changed. Workers w6-w9 ended normally (no failed task).
-- Update 3 (2026-10-27 20:20): progress and accounting; stage G added (Section 9). Workers report all yf
+- Update 3 (2026-10-27 20:00): progress and accounting; stage G added (Section 9). Workers report all yf
   evaluations done; look 1 submitted. New script `scripts/a6_yf_accept.py` (structural check before look 1). No yf outcome read.
+- 2026-10-27 20:05: timestamps of update 3 corrected to the git commit time (20:00; had been written as 20:20).
