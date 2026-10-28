@@ -1,6 +1,6 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 4, 2026-10-28 04:25 EDT.** All 73 wave-1 tasks are done (worker logs). Look 1 (job 10960293) has not run: its test job waits in the CPU queue (Section 7). Stage G (GSPO / CTPO, Section 9) is in validation. Update 1 added the exploratory results from the
+**Status: update 4, 2026-10-28 04:14 EDT.** All 73 wave-1 tasks are done (worker logs). Look 1 (job 10960293) has not run: its test job waits in the CPU queue (Section 7). Stage G (GSPO / CTPO, Section 9) is in validation. Update 1 added the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
 commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
@@ -8,7 +8,7 @@ is complete. A6 does not change it. Section 14 of that report records five corre
 
 ## 0. Summary
 
-| stage | question | state (2026-10-28 04:25) |
+| stage | question | state (2026-10-28 04:14) |
 |---|---|---|
 | Y1 interpretation audit | Is the A5 effect a larger change from a higher baseline, or a worse final state? Do matched counts hide different true probabilities? | done (exploratory, A5 records); Section 0.1 |
 | Y2 truncation and failure types | Are intermittent solutions hidden by length or format? Which failure types make the extended-light difference? | dev done (exploratory); yf at look 1 |
@@ -157,7 +157,7 @@ state the smallest effect that each interval excludes.
 - Resource rules: preempt GPUs only; at most 5 BC2RL GPU slots, counting pending jobs (`tools/bc2rl_guard.py`). GPU use
   before A6: 40.65 GPU-h.
 
-## 7. Accounting and updated forecast (2026-10-28 04:20)
+## 7. Accounting and updated forecast (2026-10-28 04:13)
 
 | item | value |
 |---|---|
@@ -221,5 +221,5 @@ state the smallest effect that each interval excludes.
 - Update 3 (2026-10-27 20:00): progress and accounting; stage G added (Section 9). Workers report all yf
   evaluations done; look 1 submitted. New script `scripts/a6_yf_accept.py` (structural check before look 1). No yf outcome read.
 - 2026-10-27 20:01: timestamps of update 3 corrected to the git commit time (20:00; had been written as 20:20).
-- Update 4 (2026-10-28 04:25): reproduction check result (Section 8); accounting; CPU-queue blocker. No yf
+- Update 4 (2026-10-28 04:14): reproduction check result (Section 8); accounting; CPU-queue blocker. No yf
   outcome read; no code changed.
