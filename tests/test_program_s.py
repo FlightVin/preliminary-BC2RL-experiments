@@ -1,11 +1,14 @@
 """Tests for A6 program S stage S3 online options (protocol Section 13.4) on the tiny random Qwen2 of test_a6.py (CPU):
 class pool from ext panels, per-class streams, class masking, per-class signal counts, class-gradient diagnostic."""
 import json
+import subprocess
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from test_a6 import env, needs_tok, online_cfg, run_cli, write  # noqa: E402,F401
+from test_a6 import ROOT, env, needs_tok, online_cfg, run_cli, write  # noqa: E402,F401
+
+import numpy as np  # noqa: E402
 
 from bc2rl import task  # noqa: E402
 
@@ -61,3 +64,54 @@ def test_class_pool_stream_mask_and_diagnostic(env):
     assert all("class_grad" not in r for r in rows["ab"])
     bad = online_cfg(base, "s3-bad", train_classes=["A"])
     run_cli("online", write(tmp, "s3-bad", bad), expect=1)
+
+
+@needs_tok
+def test_drift_kl_self_zero_stop_token_and_missing(env):
+    """A6 stage R1 (protocol 14.1): reference sampling with log-probs, FP32 scoring, sequence KL per problem."""
+    import hashlib
+    import torch
+    from bc2rl.drift import select_problems
+    from bc2rl.extension import load_ext
+    from bc2rl.modeling import eos_ids, load_policy, load_tokenizer, model_info, save_adapter
+    tmp, base = env
+    _ext(base, "drt", {"p3": (3, 6), "p5": (5, 4)})
+    model = load_policy(base["model_path_override"], base["model"]["lora"], seed=0, device="cpu")
+    ad0 = os.path.join(base["proj_data"], "drift-ad0.safetensors")
+    save_adapter(model, ad0)
+    with torch.no_grad():
+        for n, p in model.named_parameters():
+            if p.requires_grad and "lora_B" in n:
+                p.add_(0.05 * torch.randn_like(p))
+    ad1 = os.path.join(base["proj_data"], "drift-ad1.safetensors")
+    save_adapter(model, ad1)
+    dc = {"data_name": "drt", "select": {"p3": 4, "p5": 2}, "salt": "A6-R drift", "n_ref": 3, "cap": 6, "seed": 8,
+          "batch_seqs": 8, "micro": 4, "out": "t",
+          "refs": [{"tag": "r0", "adapter": ad0}],
+          "score": [{"ref": "r0", "tag": "self", "adapter": ad0}, {"ref": "r0", "tag": "other", "adapter": ad1},
+                    {"ref": "r0", "tag": "gone", "adapter": "nope.safetensors"}]}
+    res = tmp / "dres"
+    r = subprocess.run([sys.executable, "-m", "bc2rl", "drift", "--config", str(write(tmp, "drift", dict(base, run_id="d", drift=dc))),
+                        "--results-dir", str(res)], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
+    ext, _ = load_ext(base, "drt")
+    sel = select_problems(ext, {"p3": 4, "p5": 2}, "A6-R drift")
+    h = lambda p: hashlib.sha256(f"A6-R drift:{p.pid}".encode()).hexdigest()
+    assert [p.pid for p in sel[:4]] == [p.pid for p in sorted(ext["p3"], key=h)[:4]]
+    s_self = json.load(open(res / "drift_self.json"))
+    s_oth = json.load(open(res / "drift_other.json"))
+    assert len(s_self["per_problem"]["pid"]) == 6 and all(v == 0.0 for v in s_self["per_problem"]["kl"])
+    assert all(np.isfinite(s_oth["per_problem"]["kl"])) and s_oth["kl_mean"] != 0.0
+    ref = json.load(open(res / "drift_ref_r0.json"))
+    assert abs(ref["check"]["signed_mean_per_token"]) < 0.05 and ref["summary"]["responses"] == 18
+    st = torch.load(os.path.join(base["proj_data"], "drift", "t", "refs", "r0.pt"), map_location="cpu", weights_only=False)
+    tok = load_tokenizer(model_info(base["proj_data"])["path"])
+    stops = set(eos_ids(tok))
+    for x in st["records"]:
+        assert x["n_tokens"] == len(x["completion_ids"]) <= 6
+        assert (x["finish"] == "stop") == (x["completion_ids"][-1] in stops)
+    run = json.load(open(res / "drift_run.json"))
+    assert [m["tag"] for m in run["missing"]] == ["gone"] and set(run["done"]) == {"self", "other"}
+    r2 = subprocess.run([sys.executable, "-m", "bc2rl", "drift", "--config", str(tmp / "drift.yaml")], cwd=ROOT,
+                        capture_output=True, text=True)
+    assert r2.returncode == 0 and "done=2" in r2.stdout
