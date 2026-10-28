@@ -6,7 +6,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from test_a6 import ROOT, env, needs_tok, online_cfg, run_cli, write  # noqa: E402,F401
+from test_a6 import PD, ROOT, env, needs_tok, online_cfg, run_cli, write  # noqa: E402,F401
 
 import numpy as np  # noqa: E402
 
@@ -115,3 +115,30 @@ def test_drift_kl_self_zero_stop_token_and_missing(env):
     r2 = subprocess.run([sys.executable, "-m", "bc2rl", "drift", "--config", str(tmp / "drift.yaml")], cwd=ROOT,
                         capture_output=True, text=True)
     assert r2.returncode == 0 and "done=2" in r2.stdout
+
+
+def test_r1_drift_generated_configs():
+    """The real generated stage-R1 configs (configs/r/drift-s*.json; protocol 14.1)."""
+    import glob
+    paths = sorted(glob.glob(os.path.join(ROOT, "configs", "r", "drift-s*.json")))
+    assert len(paths) == 6
+    sha = json.load(open(os.path.join(ROOT, "configs", "a6", "adapter_sha256.json")))
+    for p in paths:
+        c = json.load(open(p))
+        d = c["drift"]
+        s = int(p.rsplit("-s", 1)[1].split(".")[0])
+        assert d["select"] == {"yd3": 192, "yd5": 64} and d["n_ref"] == 16 and d["cap"] == 256 and d["data_name"] == "a6"
+        refs = {r["tag"]: r for r in d["refs"]}
+        assert set(refs) == {f"b{k}-s{s}" for k in (16, 32, 64, 128)}
+        assert refs[f"b32-s{s}"]["adapter"] == f"runs/bc2rl-y4-bc-path-s{s}/adapters/step0032.safetensors"
+        assert len(d["score"]) == 30 and len({x["tag"] for x in d["score"]}) == 30
+        for x in d["score"]:
+            step = int(x["tag"].split("-")[0][1:])
+            assert x["ref"] == f"b{step}-s{s}" and x["tag"].endswith(("-r064", "-r128", "-r256"))
+            assert x["adapter"].endswith(f"round{int(x['tag'][-3:]):04d}.safetensors")
+            if x["tag"].endswith("-r256") and x["adapter"] in sha:
+                assert x.get("sha256") in (None, sha[x["adapter"]])
+        assert all(r["adapter"] in sha or "y4-bc-path" in r["adapter"] for r in d["refs"])
+        if PD and os.path.isdir(os.path.join(PD, "runs")):
+            fin = [x for x in d["score"] if x["tag"].endswith("-r256")]
+            assert all(os.path.exists(os.path.join(PD, x["adapter"])) for x in fin), "a final adapter is missing"

@@ -1,0 +1,218 @@
+{
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "drift": {
+  "batch_seqs": 512,
+  "cap": 256,
+  "data_name": "a6",
+  "micro": 8,
+  "n_ref": 16,
+  "out": "a6r",
+  "refs": [
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s11/adapters/step0016.safetensors",
+    "sha256": "0a58d82fd9cd90c4d51a6cce818131a0b5bacbd501785a17cb789556f81742fd",
+    "tag": "b16-s11"
+   },
+   {
+    "adapter": "runs/bc2rl-y4-bc-path-s11/adapters/step0032.safetensors",
+    "tag": "b32-s11"
+   },
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s11/adapters/step0064.safetensors",
+    "sha256": "b17a109233b631d91262d131f357bbc31226b751aba7419c5d0cd0bfb14ae95b",
+    "tag": "b64-s11"
+   },
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s11/adapters/step0128.safetensors",
+    "sha256": "78d0932498eef67e15a498ea072a05207fa6c6da5dff3675739ae5a59c5a52d6",
+    "tag": "b128-s11"
+   }
+  ],
+  "salt": "A6-R drift",
+  "score": [
+   {
+    "adapter": "runs/bc2rl-s2-light-grpo-s11/adapters/round0064.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-grpo-M-s11-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-s2-light-grpo-s11/adapters/round0128.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-grpo-M-s11-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-s2-light-grpo-s11/adapters/round0256.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-grpo-M-s11-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-s2-light-filtered-s11/adapters/round0064.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-filtered-M-s11-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-s2-light-filtered-s11/adapters/round0128.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-filtered-M-s11-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-s2-light-filtered-s11/adapters/round0256.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-filtered-M-s11-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-light-grpo-mask-s11/adapters/round0064.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-grpo-MASK-s11-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-light-grpo-mask-s11/adapters/round0128.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-grpo-MASK-s11-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-light-grpo-mask-s11/adapters/round0256.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-grpo-MASK-s11-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-light-grpo-t3-s11/adapters/round0064.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-grpo-T3-s11-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-light-grpo-t3-s11/adapters/round0128.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-grpo-T3-s11-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-light-grpo-t3-s11/adapters/round0256.safetensors",
+    "ref": "b16-s11",
+    "tag": "b16-grpo-T3-s11-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-s2-extended-grpo-s11/adapters/round0064.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-grpo-M-s11-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-s2-extended-grpo-s11/adapters/round0128.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-grpo-M-s11-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-s2-extended-grpo-s11/adapters/round0256.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-grpo-M-s11-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-s2-extended-filtered-s11/adapters/round0064.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-filtered-M-s11-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-s2-extended-filtered-s11/adapters/round0128.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-filtered-M-s11-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-s2-extended-filtered-s11/adapters/round0256.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-filtered-M-s11-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-extended-grpo-mask-s11/adapters/round0064.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-grpo-MASK-s11-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-extended-grpo-mask-s11/adapters/round0128.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-grpo-MASK-s11-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-extended-grpo-mask-s11/adapters/round0256.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-grpo-MASK-s11-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-extended-grpo-t3-s11/adapters/round0064.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-grpo-T3-s11-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-extended-grpo-t3-s11/adapters/round0128.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-grpo-T3-s11-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-y3-extended-grpo-t3-s11/adapters/round0256.safetensors",
+    "ref": "b128-s11",
+    "tag": "b128-grpo-T3-s11-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-y4-step32-grpo-s11/adapters/round0064.safetensors",
+    "ref": "b32-s11",
+    "tag": "b32-grpo-M-s11-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-y4-step32-grpo-s11/adapters/round0128.safetensors",
+    "ref": "b32-s11",
+    "tag": "b32-grpo-M-s11-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-y4-step32-grpo-s11/adapters/round0256.safetensors",
+    "ref": "b32-s11",
+    "tag": "b32-grpo-M-s11-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-y4-step64-grpo-s11/adapters/round0064.safetensors",
+    "ref": "b64-s11",
+    "tag": "b64-grpo-M-s11-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-y4-step64-grpo-s11/adapters/round0128.safetensors",
+    "ref": "b64-s11",
+    "tag": "b64-grpo-M-s11-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-y4-step64-grpo-s11/adapters/round0256.safetensors",
+    "ref": "b64-s11",
+    "tag": "b64-grpo-M-s11-r256"
+   }
+  ],
+  "seed": 8,
+  "select": {
+   "yd3": 192,
+   "yd5": 64
+  }
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-r1-drift-s11"
+}

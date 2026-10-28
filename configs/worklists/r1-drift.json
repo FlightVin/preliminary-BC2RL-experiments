@@ -1,0 +1,65 @@
+{
+ "name": "r1-drift",
+ "tasks": [
+  {
+   "id": "r1-drift-s11",
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "r1-drift-s22",
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "r1-drift-s33",
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "r1-drift-s44",
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-s44.json"
+    }
+   ]
+  },
+  {
+   "id": "r1-drift-s55",
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-s55.json"
+    }
+   ]
+  },
+  {
+   "id": "r1-drift-s66",
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-s66.json"
+    }
+   ]
+  }
+ ]
+}
