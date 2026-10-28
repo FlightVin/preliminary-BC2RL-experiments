@@ -1,0 +1,65 @@
+{
+ "name": "g-probe",
+ "tasks": [
+  {
+   "id": "gp-light-grpo_len",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/probe-light-grpolen-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "gp-light-gspo",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/probe-light-gspo-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "gp-light-ctpo",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/probe-light-ctpo-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "gp-extended-grpo_len",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/probe-extended-grpolen-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "gp-extended-gspo",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/probe-extended-gspo-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "gp-extended-ctpo",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/probe-extended-ctpo-s11.json"
+    }
+   ]
+  }
+ ]
+}

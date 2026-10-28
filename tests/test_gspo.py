@@ -428,3 +428,34 @@ def test_g_validate_reads_the_real_configs_with_numeric_fields(monkeypatch):
         cfg = gv.read_config(os.path.join(root, "configs", "main", f"on-{init}-grpo-s11.yaml"))
         assert isinstance(cfg["online"]["lr"], float) and cfg["online"]["lr"] == 1e-05
         assert cfg["proj_data"] == "/nonexistent"
+
+
+def test_generated_probe_configs_differ_from_frozen_only_in_section12_keys():
+    """configs/g/probe-*.json (Section 12.4, precision from 12.10): the frozen M-arm config of the same init with only
+    the probe keys changed; init hash registered; worklist points at every probe."""
+    import glob
+    import json
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sha = json.load(open(os.path.join(root, "configs", "a6", "adapter_sha256.json")))
+    files = sorted(glob.glob(os.path.join(root, "configs", "g", "probe-*-s11.json")))
+    assert len(files) == 6
+    allowed = {"objective", "updates_per_batch", "clip_low", "clip_high", "dump_ratios", "train_precision",
+               "kl_every", "rounds", "save_rounds", "val_rounds", "endpoints"}
+    for f in files:
+        c = json.load(open(f))
+        src = json.load(open(os.path.join(root, c["g_source"])))
+        on, fo = c["online"], src["online"]
+        changed = {k for k in set(on) | set(fo) if on.get(k) != fo.get(k)} - {"init"}
+        assert changed <= allowed, (f, changed - allowed)
+        assert {k: v for k, v in on["init"].items() if k != "sha256"} == fo["init"]
+        assert on["init"]["sha256"] == sha[on["init"]["adapter"]]
+        assert on["objective"] in ("grpo_len", "gspo", "ctpo") and on["objective"].replace("_", "") in f
+        assert on["updates_per_batch"] == 4 and on["clip_low"] is None and on["clip_high"] is None
+        assert on["train_precision"] == "fp32" and on["dump_ratios"] is True and on["rounds"] == 32
+        assert isinstance(on["lr"], float) and on["lr"] == fo["lr"]
+        assert {k: v for k, v in c.items() if k not in ("online", "run_id", "g_source")} == \
+            {k: v for k, v in src.items() if k not in ("online", "run_id")}
+        assert c["run_id"].startswith("bc2rl-gp-") and c["run_id"].endswith("-s11")
+    wl = json.load(open(os.path.join(root, "configs", "worklists", "g-probe.json")))
+    assert sorted(t["steps"][0]["config"] for t in wl["tasks"]) == sorted(os.path.relpath(f, root) for f in files)
