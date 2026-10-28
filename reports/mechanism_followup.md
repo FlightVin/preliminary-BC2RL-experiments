@@ -207,4 +207,4 @@ state the smallest effect that each interval excludes.
   analysis code changed. Workers w6-w9 ended normally (no failed task).
 - Update 3 (2026-10-27 20:00): progress and accounting; stage G added (Section 9). Workers report all yf
   evaluations done; look 1 submitted. New script `scripts/a6_yf_accept.py` (structural check before look 1). No yf outcome read.
-- 2026-10-27 20:05: timestamps of update 3 corrected to the git commit time (20:00; had been written as 20:20).
+- 2026-10-27 20:01: timestamps of update 3 corrected to the git commit time (20:00; had been written as 20:20).
