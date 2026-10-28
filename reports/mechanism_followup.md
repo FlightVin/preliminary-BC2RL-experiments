@@ -1,6 +1,6 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 4, 2026-10-28 04:14 EDT.** All 73 wave-1 tasks are done (worker logs). Look 1 (job 10960293) has not run: its test job waits in the CPU queue (Section 7). Stage G (GSPO / CTPO, Section 9) is in validation. Update 1 added the exploratory results from the
+**Status: update 5, 2026-10-28 10:58 EDT.** Look 1 ran (job 10967586); its results are in Section 9 and were checked by an independent recompute (Section 8). Stage G (GSPO / CTPO, Section 10) is in validation. Update 1 added the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
 commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
@@ -8,15 +8,15 @@ is complete. A6 does not change it. Section 14 of that report records five corre
 
 ## 0. Summary
 
-| stage | question | state (2026-10-28 04:14) |
+| stage | question | state (2026-10-28 10:58) |
 |---|---|---|
 | Y1 interpretation audit | Is the A5 effect a larger change from a higher baseline, or a worse final state? Do matched counts hide different true probabilities? | done (exploratory, A5 records); Section 0.1 |
-| Y2 truncation and failure types | Are intermittent solutions hidden by length or format? Which failure types make the extended-light difference? | dev done (exploratory); yf at look 1 |
-| Y3 cross-difficulty | Do updates on 5- and 10-input problems cause the 3-input losses, or does 3-input training itself? | 24 of 24 branches trained and yf-evaluated; canary passed; look 1 submitted |
-| Y4 BC exposure | Does BC exposure predict loss beyond the initial success distribution? Shape over steps 16-128? | 3 matched pairs frozen; all branches trained and yf-evaluated; look 1 submitted |
-| method interaction | Does the objective (GRPO vs filtered) change the init difference? | tested at look 1 |
-| Y5 E2 redesign | Can controlled single updates predict later losses? | decided after look 1 |
-| G sequence-level and prefix objectives | Do GSPO or CTPO change coverage loss or its BC-init dependence, beyond length normalization and rollout reuse? | GPU validation pending (first attempt failed: script defect, fixed); Section 9 |
+| Y2 truncation and failure types | Are intermittent solutions hidden by length or format? Which failure types make the extended-light difference? | look 1: not explained by truncation; illegal-operand failures account for part of the difference (cap 256 only); Section 9.1 |
+| Y3 cross-difficulty | Do updates on 5- and 10-input problems cause the 3-input losses, or does 3-input training itself? | look 1: the init difference arises without harder-problem updates (C2); their contribution not shown (C1); Section 9.2 |
+| Y4 BC exposure | Does BC exposure predict loss beyond the initial success distribution? Shape over steps 16-128? | look 1: gradual increase over steps 16-128; for 3 matched pairs the initial distribution explains the step effect (problem interval only); Section 9.4 |
+| method interaction | Does the objective (GRPO vs filtered) change the init difference? | look 1: not shown (seed interval includes 0); Section 9.3 |
+| Y5 E2 redesign | Can controlled single updates predict later losses? | decision pending (Section 9.7) |
+| G sequence-level and prefix objectives | Do GSPO or CTPO change coverage loss or its BC-init dependence, beyond length normalization and rollout reuse? | GPU validation pending (first attempt failed: script defect, fixed); Section 10 |
 
 ### 0.1 What the exploratory data show (not confirmation)
 
@@ -157,19 +157,16 @@ state the smallest effect that each interval excludes.
 - Resource rules: preempt GPUs only; at most 5 BC2RL GPU slots, counting pending jobs (`tools/bc2rl_guard.py`). GPU use
   before A6: 40.65 GPU-h.
 
-## 7. Accounting and updated forecast (2026-10-28 04:13)
+## 7. Accounting and updated forecast (2026-10-28 10:51)
 
 | item | value |
 |---|---|
 | BC2RL GPU-hours since job 10947200 (sacct, all attempts incl. 16 preempted; 32 GPU attempts, all `preempt`) | 76.6 (A6 76.2; stage G 0.4) |
-| A6 worklist tasks complete | 73 of 73 (worker logs; w15 ended 2026-10-27 21:08) |
-| A6 wave-1 total | 76.2 GPU-h (update-3 forecast 77-78; pre-registered 75-93) |
-| look 1 | CPU job 10960293, after test job 10960288; structural check of the 96 yf evaluations first |
+| A6 wave 1 | complete: 76.2 GPU-h (pre-registered forecast 75-93); look 1 and its checks used CPU only |
+| stage G | GPU validation job 10967595 pending (Priority); no stage-G result |
 
-- **Blocker: CPU queue.** Test job 10960288 has waited since 2026-10-27 19:58 (8.3 h) with reason `Priority`.
-  At 04:13, 195 jobs were pending in `preempt_cpu_qos`. CPU-only work may run only in that QOS. Look 1 and the
-  stage-G validation (job 10960289) wait for this job. Start time: unknown (Slurm gives no estimate).
-- Look 1 forecast: about 1-6 h after the test job starts (tests 13 min in job 10956587; look 1 run time not measured).
+- The CPU-queue blocker of update 4 is resolved: test job 10967581 started at 09:54, look 1 at 10:23.
+- Wave-2 forecast: none yet; it depends on the Section 9.7 decisions.
 - Stage G forecast unchanged: 105-155 GPU-h without T4F, 120-180 with T4F; validation 1-1.5 GPU-h.
 - Slots: 5 BC2RL GPU slots, preempt only, counting pending jobs (`tools/bc2rl_guard.py`). No general GPU, no `ae-topup`.
 
@@ -198,7 +195,196 @@ state the smallest effect that each interval excludes.
   not bit-reproducible (10.1.3). The step-32 adapters come from the re-run, and step 32 has no original. This check
   estimates, but does not bound, the effect of mixing re-run and original adapters in Y4.
 
-## 9. Stage G status (GSPO / CTPO; protocol Section 12)
+- **Look-1 checks (update 5).** Structural acceptance (`scripts/a6_yf_accept.py`, phase 1 of job 10967586): 192 of
+  192 tag-panel rows pass (row counts, attempt counts, adapter hashes for the 42 registered adapters, one panel hash,
+  record files). The hash check covers the 42 adapters registered in `configs/a6/adapter_sha256.json`; for the
+  other 54 adapters it checks only that both panels have the same hash. Independent recompute
+  (`slurm-agentic-engineering/audits/a6_look1_recompute.py`, own code from the protocol 3.4 definitions, input =
+  per-problem yf3 counts exported by job 10968369): 15 of 15 statistics agree. Points and t-intervals agree to
+  < 1e-4 (the project code uses the rounded t quantile 2.571); bootstrap limits agree to < 0.001 (independent
+  resamples; largest difference 0.0009). The recompute checks the estimator only: the counts, the cap-1,024
+  continuation and the failure codes come from the project evaluation output.
+
+## 9. Look 1 results (confirmation panels yf3 / yf5; job 10967586, 2026-10-28 10:29 EDT)
+
+Look 1 ran once, at commit c2f55bd, after a structural check of all 96 yf evaluations (Section 8). An earlier look-1
+job (10960293, commit c6e7339) was cancelled while pending and never ran (empty log). The rule for a claim is the
+protocol rule (3.4): both the paired problem bootstrap (10,000 resamples) and the seed-level t-interval (df = 5)
+exclude 0. The problem interval is conditional on the trained adapters; only the seed interval covers variation
+over training runs. This report applies no correction for the number of tests. Fifteen of the statistics (Delta_M,
+C1, C2, the method interaction, Y2-a at both caps, the four Y4 E values and three increments, H-W1 at pass@1 and
+pass@16) were recomputed from the per-problem counts outside the project code (Section 8). The others come from the
+project code only (`scripts/y_look1.py`, reviewed before look 1; update-1 audit).
+
+### 9.1 Y2 truncation and failure types (12 pairs; R1)
+| statistic | point | problem bootstrap 95% | seed t 95% | reading |
+|---|---:|---|---|---|
+| Delta at cap 256 | +0.185 | [+0.158, +0.211] | [+0.120, +0.249] | — |
+| Delta at cap 1,024 | +0.185 | [+0.158, +0.211] | [+0.120, +0.249] | **not explained by truncation** |
+| Delta_256 - Delta_1024 | 0.000 | [0, 0] | [0, 0] | — |
+
+- Among the 36 Y2 adapters (12 initial, 24 M finals), no problem gained a success from continuation to 1,024 tokens,
+  so Delta is identical at the two caps for every seed. (In all 96 yf3 evaluations, one problem of one Y4 final,
+  `b64-grpo-M-s11`, went from 17 to 18 successes.) The development panels gave the same result (10.1.2). R1
+  (truncation) does not explain this effect.
+- Failure codes at K = 1. Delta(K = 1) = +0.210 at both caps (both intervals > 0). D_k is the contribution of code k
+  (extended minus light excess rate); the shares sum to 100%.
+
+| code | D_k cap 256 | problem bootstrap | seed t | share | D_k cap 1,024 | problem bootstrap | seed t | share |
+|---|---:|---|---|---:|---:|---|---|---:|
+| illegal operand (I) | +0.328 | [+0.307, +0.349] | [+0.025, +0.631] | 157% | +0.304 | [+0.282, +0.326] | [-0.008, +0.616] | 145% |
+| format (F) | +0.031 | [+0.027, +0.036] | [-0.006, +0.069] | 15% | +0.032 | [+0.027, +0.036] | [-0.009, +0.072] | 15% |
+| truncation (T) | -0.012 | [-0.020, -0.005] | [-0.121, +0.097] | -6% | +0.013 | [+0.009, +0.016] | [-0.067, +0.092] | 6% |
+| arithmetic (A) | -0.002 | [-0.010, +0.004] | [-0.036, +0.031] | -1% | -0.003 | [-0.010, +0.004] | [-0.037, +0.031] | -1% |
+| incomplete chain (P) | +0.002 | [-0.001, +0.004] | [-0.003, +0.006] | 1% | +0.002 | [-0.001, +0.004] | [-0.003, +0.006] | 1% |
+| wrong target (W) | -0.138 | [-0.149, -0.127] | [-0.479, +0.204] | -66% | -0.138 | [-0.149, -0.127] | [-0.479, +0.204] | -66% |
+
+- At cap 256, only illegal-operand failures meet the rule ("accounts for part of the difference"). At cap 1,024, no
+  code meets it (D_I seed interval [-0.008, +0.616]). From cap 256 to 1,024, D_I falls by 0.024 and D_T rises by 0.025;
+  the codes are differences of excess rates, so this does not trace individual attempts.
+- Code attribution is uncertain. The seed values of D_I range from +0.045 to +0.840, and at seed 11 D_I = +0.840 and
+  D_W = -0.657 nearly cancel. This pattern is consistent with failures moving between the illegal-operand and
+  wrong-target codes, not with two separate effects. The illegal-operand share (157%) is therefore not a precise size.
+
+### 9.2 Y3 cross-difficulty (GRPO, 6 seeds; R3 vs R4)
+| contrast (K = 16, cap 256) | point | problem bootstrap | seed t | reading |
+|---|---:|---|---|---|
+| Delta_M (reference) | +0.156 | [+0.126, +0.185] | [+0.083, +0.229] | — |
+| **C1** = Delta_M - Delta_MASK | +0.009 | [-0.008, +0.024] | [-0.078, +0.095] | not shown |
+| **C2** = Delta_MASK | +0.147 | [+0.120, +0.173] | [+0.089, +0.206] | **holds** |
+| C3 step 16 (E_M - E_MASK) | +0.009 | [-0.003, +0.022] | [-0.042, +0.060] | not shown |
+| C3 step 128 | +0.018 | [+0.007, +0.028] | [-0.030, +0.065] | not shown (problem interval only > 0) |
+| C4 step 16 (E_T3 - E_MASK) | -0.018 | [-0.032, -0.003] | [-0.053, +0.018] | not shown (problem interval only < 0) |
+| C4 step 128 | +0.028 | [+0.015, +0.042] | [-0.050, +0.106] | not shown (problem interval only > 0) |
+| Delta_T3 | +0.193 | [+0.165, +0.220] | [+0.114, +0.273] | > 0 |
+| Delta_T3E | +0.159 | [+0.130, +0.187] | [+0.107, +0.211] | > 0 |
+| Delta_MASK - Delta_T3E (secondary) | -0.012 | [-0.029, +0.006] | [-0.085, +0.062] | not shown |
+| step 16 E_MASK - E_T3E (secondary) | +0.045 | [+0.031, +0.058] | [+0.009, +0.082] | > 0 |
+| step 128 E_MASK - E_T3E (secondary) | +0.033 | [+0.022, +0.045] | [-0.042, +0.109] | not shown |
+
+- **The init difference arises without harder-problem updates** (C2 > 0, both intervals). C2 is 94% of Delta_M,
+  which matches the R4 prediction "C2 > 0, near Delta_M".
+- **A contribution of harder-problem updates is not shown** (C1). This is not evidence of no contribution: the seed
+  interval allows C1 up to +0.095 (61% of Delta_M). Conditional on these adapters, the problem interval excludes
+  C1 > +0.024. The planning note (protocol 6.4) expected this precision limit.
+- Other K and caps (secondary). C2 > 0 on both intervals at K = 1, 4 and 24 and at cap 1,024 (cap-1,024 values are
+  identical to cap 256); C1 is not shown in any of them. Three secondary results go against a pre-registered
+  prediction:
+  - C4 < 0 on both intervals at K = 1 (step 16: -0.091, seed t [-0.126, -0.056]; step 128: -0.093, [-0.118, -0.069])
+    and at K = 4, step 16 (-0.051, [-0.080, -0.022]). R4 predicts C4 >= 0. At K = 1 this means more 3-input exposure
+    (T3) gives lower single-attempt failure than MASK; at K = 16 the C4 sign is not decided.
+  - C3 < 0 on both intervals at K = 1, step 128 (-0.026, [-0.044, -0.007]). R3 predicts C3 > 0.
+  - At step 16, MASK loses more than T3E at K = 16 and 24 (both intervals) but less at K = 1 (-0.031, [-0.050,
+    -0.011]). T3E has equal 3-input exposure, fewer optimizer steps and no harder rollouts.
+- Manipulation checks. MASK and T3 used 0 completions from 5- or 10-input prompts (24 of 24 branches with logs). The
+  check for M (5-input terms present) is **not available**: the 12 M branches (from A5) have no `used_by_inputs` log.
+  The yf5 pass@1 change (final - initial, mean over seeds) does not separate the arms by harder-problem gradient:
+
+  | arm | step 16 | step 128 |
+  |---|---:|---:|
+  | M | +0.036 | +0.049 |
+  | MASK | +0.012 | +0.008 |
+  | T3 | +0.014 | +0.047 |
+  | T3E | +0.010 | +0.020 |
+
+  T3 (no harder rollouts) gains as much on yf5 as M at step 128.
+- Displacement from the initial adapter (L2, mean over seeds; diagnostic):
+
+  | step | arm | round 64 | round 128 | round 256 |
+  |---|---|---:|---:|---:|
+  | 16 | M | 0.33 | 0.47 | 0.64 |
+  | 16 | MASK | 0.33 | 0.46 | 0.62 |
+  | 16 | T3 | 0.39 | 0.54 | 0.75 |
+  | 128 | M | 0.30 | 0.41 | 0.59 |
+  | 128 | MASK | 0.30 | 0.39 | 0.57 |
+  | 128 | T3 | 0.32 | 0.46 | 0.65 |
+
+  MASK moves the adapter almost as far as M at every round.
+
+### 9.3 Method interaction (R7)
+I = mean_s [Delta(filtered) - Delta(GRPO)] = +0.058; problem bootstrap [+0.041, +0.076]; seed t [-0.008, +0.124]
+(5 of 6 seeds > 0). Conditional on these adapters, the problem interval excludes 0. The seed interval does not, so
+**no method difference is shown** under the Section 7 rule.
+
+### 9.4 Y4 BC exposure (GRPO; R5 vs R6)
+| step | E | problem bootstrap | seed t |
+|---|---:|---|---|
+| 16 | +0.163 | [+0.135, +0.192] | [+0.106, +0.220] |
+| 32 | +0.208 | [+0.185, +0.232] | [+0.180, +0.235] |
+| 64 | +0.251 | [+0.223, +0.279] | [+0.221, +0.281] |
+| 128 | +0.319 | [+0.291, +0.346] | [+0.270, +0.367] |
+
+| increment | point | problem bootstrap | seed t |
+|---|---:|---|---|
+| I1 = E32 - E16 | +0.045 | [+0.022, +0.067] | [-0.007, +0.097] |
+| I2 = E64 - E32 | +0.043 | [+0.022, +0.065] | [+0.016, +0.071] |
+| I3 = E128 - E64 | +0.068 | [+0.049, +0.086] | [+0.035, +0.100] |
+
+- Shape: **gradual** (all increments > 0; I2 and I3 have both lower limits > 0). The step-32 adapters come from the
+  re-run BC path (10.1.3; reproduction check in Section 8).
+- Matched pairs (10.1.2; residual dev mismatch as recorded there and in `look1.json`):
+
+  | pair | D | d pass@1 yd3 | d pass@1 yd5 | TV | max d bin baseline |
+  |---|---:|---:|---:|---:|---:|
+  | b16-s44 / b32-s11 | -0.031 | 0.013 | 0.003 | 0.086 | 0.020 |
+  | b64-s33 / b128-s66 | +0.003 | 0.011 | 0.004 | 0.078 | 0.010 |
+  | b64-s44 / b128-s66 | -0.016 | 0.001 | 0.003 | 0.089 | 0.027 |
+
+  Mean D = -0.014, problem bootstrap [-0.040, +0.011]; not all D > 0. The interval is within +-0.05, so by the
+  protocol rule (8.3) **the matched initial distribution explains the step effect for these pairs (problem
+  interval only)**. BC exposure beyond the measured initial distribution is not shown.
+- Limits of the matched result: it has no seed-level interval (two pairs share b128-s66), and the seed SD of a single
+  branch E is 0.026-0.054, about as large as the +-0.05 band, so training-run variation is not in the interval. There
+  are 3 pairs, and they cover only 16 vs 32 and 64 vs 128 (no 16 vs 128 pair). Conditional on these adapters, the
+  interval excludes a mean D above +0.011, which is smaller than one observed increment (0.043-0.068).
+- Regression of E on log2(step) and yd3 pass@1 (24 checkpoints; descriptive only, r = 0.968 between the
+  predictors): coefficient 0.005 for log2(step), 0.728 for yd3 pass@1.
+
+### 9.5 Hypotheses frozen from Y1 (10.1.1; M finals, both methods)
+| hypothesis | point | problem bootstrap | seed t | result |
+|---|---:|---|---|---|
+| H-W1 whole-panel final pass@16, extended - light | +0.129 | [+0.112, +0.147] | [+0.086, +0.172] | **holds** |
+| H-W1 whole-panel final pass@1, extended - light | +0.113 | [+0.098, +0.128] | [+0.096, +0.130] | **holds** |
+| H-F1 E_I step 16 < 0 | -0.356 | [-0.376, -0.335] | [-0.481, -0.231] | **holds** |
+| H-S1 step 16 (needs-multiplication minus other) | +0.310 | [+0.267, +0.354] | [+0.237, +0.384] | **holds** |
+| H-S1 step 128 | +0.368 | [+0.328, +0.408] | [+0.329, +0.407] | **holds** |
+| H-S2 (H-S1 difference, step 128 - step 16) | +0.058 | [+0.017, +0.097] | [-0.013, +0.128] | not shown |
+| H-S3 step 16 (mean correlation, 12 branches) | +0.535 | — | [+0.468, +0.601] | **holds** (t only, 10.1.4) |
+| H-S3 step 128 | +0.600 | — | [+0.549, +0.652] | **holds** (t only) |
+
+- H-W1: the extended-init finals are better on the whole panel at pass@1 and pass@16. A larger subgroup loss
+  does not mean a worse final state on the panel.
+- H-S1 and H-S3 are associations on the subgroup. H-S3 uses the panel-wide share of each solution form among all
+  successes, so a problem's "preference drop" depends only on which forms the problem admits. H-S3 therefore
+  overlaps the feature association of H-S1; it does not measure a per-problem strategy shift, and it does not show
+  that the drop causes the loss. On the whole yf3 panel, 473 of 768 problems need multiplication. The init
+  difference is not shown to depend on this feature (H-S2).
+- Also reported: E_I step 128 = -0.028 and E_W at both steps; their seed intervals include 0.
+
+### 9.6 What look 1 establishes and what it does not
+- Established (both intervals): the effect is not a truncation artifact; it arises when GRPO updates use 3-input
+  completions only (C2); it grows gradually with BC exposure from step 16 to step 128; the extended-init finals have
+  higher whole-panel pass@1 and pass@16.
+- Problem interval only: for the 3 dev-matched pairs, the initial success distribution accounts for the step effect.
+- Not established: whether harder-problem updates add to the effect (C1; seed interval up to +0.095); a method
+  difference (seed interval includes 0); whether BC exposure matters beyond the initial distribution (no 16 vs 128
+  match; no seed-level interval for the matched pairs); any causal mechanism behind H-S1 or H-S3.
+- Explanation status: R1 rejected for this effect. R4 (same-difficulty concentration) is consistent with C2, but its
+  secondary prediction C4 >= 0 fails at K = 1 and K = 4 (step 16). R3 is not excluded at the seed level, and its
+  secondary prediction C3 > 0 fails at K = 1, step 128. R6 is consistent for the matched pairs (problem interval
+  only); R5 is not shown. R7 is not shown. Generality beyond this task, model and training budget is not tested.
+
+### 9.7 Wave 2 decisions (protocol 6.5, 9, 10)
+- Filtered Y3 (6.5): condition (a) holds (C2 decided). Condition (b) needs a live objective-dependence question from
+  the method interaction or the per-method A5 values. The method interaction is not a Section 7 claim; its problem
+  interval excludes 0 and 5 of 6 seeds are > 0, which is a judgement input only. Decision pending; it will be a dated
+  addition before any run.
+- Y5 E2 redesign (protocol 9): it runs only if it can resolve a question that remains after look 1, with the
+  required pre-registration content; otherwise the report gives the reason. Decision pending.
+- Stop rule (10): the main remaining question is the size of C1, which 6 seeds leave between about -0.08 and +0.10.
+  The decision records will state whether any wave-2 option can narrow it.
+
+## 10. Stage G status (GSPO / CTPO; protocol Section 12)
 
 - Question (pre-registered 12.1, 12.8): do sequence-level weighting and clipping (GSPO) or cumulative-prefix
   correction (CTPO) change coverage loss or its dependence on BC initialization, beyond length normalization and
@@ -207,10 +393,12 @@ state the smallest effect that each interval excludes.
   resolved; audit `a6-stageG-code-review1-20261027.md`).
 - GPU validation job 10956589 failed after 24 min. Cause: `scripts/g_validate.py` read the YAML config with PyYAML,
   which reads `1e-05` as a string. The training code uses the JSON-first loader and is not affected. Fix and
-  regression test: commit 3f675ca. Rerun: job 10960289, after the test job. No stage-G result exists.
+  regression test: commit 3f675ca. Reruns 10958575 and 10960289 were cancelled while pending (replaced; never ran).
+- Test job 10967581 passed (98 tests, incl. the validation config-loader test). Validation rerun: job 10967595,
+  pending (Priority). No stage-G result exists.
 - Next: precision decision (V4), six unclipped probes, clip calibration on dev data, 12 dev runs, gate D.
 
-## 10. Changes
+## 11. Changes
 - Update 0 (2026-10-26 ~19:45): design, matrix and forecast. No results.
 - Update 1 (2026-10-27 04:16): Y1 and dev results (exploratory); matched pairs; reproduction check; canary;
   accounting and forecast. No yf outcome read.
@@ -218,8 +406,10 @@ state the smallest effect that each interval excludes.
   to the git commit times (they had been written as estimates 15-45 min late).
 - Update 2 (2026-10-27 12:15): progress, accounting and forecast only. No new result; no yf outcome read; no
   analysis code changed. Workers w6-w9 ended normally (no failed task).
-- Update 3 (2026-10-27 20:00): progress and accounting; stage G added (Section 9). Workers report all yf
+- Update 3 (2026-10-27 20:00): progress and accounting; stage G added (Section 9; now Section 10). Workers report all yf
   evaluations done; look 1 submitted. New script `scripts/a6_yf_accept.py` (structural check before look 1). No yf outcome read.
 - 2026-10-27 20:01: timestamps of update 3 corrected to the git commit time (20:00; had been written as 20:20).
 - Update 4 (2026-10-28 04:14): reproduction check result (Section 8); accounting; CPU-queue blocker. No yf
   outcome read; no code changed.
+- Update 5 (2026-10-28 10:58): look 1 results (Section 9) with structural acceptance and independent recompute
+  (Section 8); accounting. Wave-2 decisions pending.
