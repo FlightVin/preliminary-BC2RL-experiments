@@ -1,0 +1,52 @@
+{
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-s2-pre-extended-s11",
+ "xeval": {
+  "batch_seqs": 768,
+  "cap": 256,
+  "checkpoints": [
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s11/adapters/step0128.safetensors",
+    "attempts": 16,
+    "sha256": "78d0932498eef67e15a498ea072a05207fa6c6da5dff3675739ae5a59c5a52d6",
+    "tag": "pre-b128-s11"
+   }
+  ],
+  "data_name": "st1s",
+  "emit_counts": false,
+  "panels": [
+   "pre_pool",
+   "pre_dev",
+   "pre_conf"
+  ],
+  "seed": 7,
+  "variant": "format"
+ }
+}
