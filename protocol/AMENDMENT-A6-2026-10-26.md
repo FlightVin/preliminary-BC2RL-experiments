@@ -709,7 +709,7 @@ why online training changed the policy.
 
 ## 14. Stage R — retention, policy drift and the source of training responses (owner addition 2026-10-28)
 
-Owner addition A6-R (PROJECT.md, 2026-10-28 ~18:00 EDT). Recorded at 18:20 EDT, before any stage-R job and before any
+Owner addition A6-R (PROJECT.md, 2026-10-28 ~18:00 EDT). Recorded at 18:04 EDT (commit 49fc6fd), before any stage-R job and before any
 stage-R outcome exists. It adds to A6. It does not change stage G (Section 12) or program S (Section 13); those continue.
 Question: **does retention depend on how far the policy changes, and on where its successful training responses come
 from, beyond differences in initial competence and later improvement?**
