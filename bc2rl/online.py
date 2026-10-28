@@ -22,6 +22,19 @@ A6 Section 12 (GSPO stage; absent = frozen behaviour):
   online.kl_every = N -> every N rounds, KL(current || initial adapter) on the rollout batch (same pass precision).
   online.dump_ratios = true -> per round, the signed token and sequence log-ratios of rows with A != 0 at each step
                      (`ratios/roundNNNN.npz` in the run directory; clip calibration probes, Section 12.4).
+
+A6 Section 13 (program S, stage S3; absent = frozen behaviour):
+  online.pool_ext = {"name": N, "classes": {"A": [panel, count], ...}} -> the prompt pool is the first `count` problems
+                     of each named panel of ext data N (`bc2rl xdata` layout), labelled with its class key; it replaces
+                     the prompt_split pool.
+  online.class_per_round = {"A": 16, "B": 16} -> each round takes this many prompts of each class, each class from its
+                     own deterministic stream (seed + 1000 x class rank); default = one stream over the whole pool.
+  online.train_classes = ["A"] -> only completions of these classes carry gradient (as train_inputs); every prompt is
+                     still sampled, and the loss normalization is unchanged.
+  online.class_grad_every = N -> every N rounds (rounds 1, N + 1, ...), the norm of each class's GRPO gradient (all rows
+                     with A != 0, before masking) and their cosine; separate backward passes, then zeroed (diagnostic).
+  With pool_ext, every round logs `by_class`: prompts, mixed / all-success / all-fail groups, gradient-carrying
+  completions and tokens, mean reward; results get classes.csv.
 """
 from __future__ import annotations
 
@@ -84,6 +97,20 @@ def cmd_online(cfg):
     if on.get("pool_inputs"):
         pool = [p for p in pool if p.n_inputs in on["pool_inputs"]]
     train_inputs = set(on["train_inputs"]) if on.get("train_inputs") else None
+    pool_cls = None
+    if on.get("pool_ext"):
+        from .extension import load_ext
+        ext, _ = load_ext(cfg, on["pool_ext"]["name"])
+        pool, pool_cls = [], []
+        for c, (panel, count) in on["pool_ext"]["classes"].items():
+            got = ext[panel][:int(count)]
+            if len(got) < int(count):
+                raise SystemExit(f"pool_ext panel {panel} has {len(got)} < {count} problems")
+            pool += got
+            pool_cls += [c] * len(got)
+    train_classes = set(on["train_classes"]) if on.get("train_classes") else None
+    if (train_classes or on.get("class_per_round") or on.get("class_grad_every")) and pool_cls is None:
+        raise SystemExit("train_classes / class_per_round / class_grad_every need online.pool_ext")
     info = model_info(pd)
     tok = load_tokenizer(info["path"])
     model = load_policy(cfg.get("model_path_override") or info["path"], cfg["model"]["lora"], seed=cfg["seed"], device=device)
@@ -120,7 +147,18 @@ def cmd_online(cfg):
     opt = torch.optim.AdamW(params, lr=on["lr"], weight_decay=0.0)     # fresh optimizer state at the fork
     P, G, R, cap = on["prompts_per_round"], on["group"], on["rounds"], on["cap"]
     Q = P * G
-    stream = prompt_stream(len(pool), P, R, on.get("stream_seed", cfg["seed"]))
+    if on.get("class_per_round"):
+        cpr = {c: int(n) for c, n in on["class_per_round"].items()}
+        if sum(cpr.values()) != P or set(cpr) != set(pool_cls):
+            raise SystemExit(f"class_per_round {cpr} must cover the pool classes and sum to {P}")
+        stream = [[] for _ in range(R)]
+        for ci, c in enumerate(sorted(cpr)):
+            idx_c = [i for i, x in enumerate(pool_cls) if x == c]
+            sc = prompt_stream(len(idx_c), cpr[c], R, on.get("stream_seed", cfg["seed"]) + 1000 * (ci + 1))
+            for r_ in range(R):
+                stream[r_] += [idx_c[j] for j in sc[r_]]
+    else:
+        stream = prompt_stream(len(pool), P, R, on.get("stream_seed", cfg["seed"]))
     texts = [chat_prompt(tok, task.prompt_text(p, cfg["prompt_variant"], fmt)) for p in pool]
     ledger = CostLedger(run.path("cost.json"), "online")
     state_path = run.path("state", "state.pt")
@@ -212,6 +250,44 @@ def cmd_online(cfg):
             raise SystemExit(f"unknown method {on['method']}")
         if train_inputs is not None:
             use = [k for k in use if probs[outs[k]["prompt_index"]].n_inputs in train_inputs]
+        cls_of = [pool_cls[i] for i in stream[rnd]] if pool_cls is not None else None
+        use_all = use
+        if train_classes is not None:
+            use = [k for k in use if cls_of[outs[k]["prompt_index"]] in train_classes]
+        class_grad = None
+        if (cls_of is not None and on.get("class_grad_every") and rnd % int(on["class_grad_every"]) == 0
+                and on["method"] == "grpo" and objective in (None, "grpo_const")):
+            model.train()
+            vecs = {}
+            for c in sorted(set(cls_of)):
+                rows_c = [k for k in use_all if cls_of[outs[k]["prompt_index"]] == c]
+                if not rows_c:
+                    continue
+                opt.zero_grad(set_to_none=True)
+                for sl, lp, cm, _ in seq_logprobs(model, [seqs[i] for i in rows_c], tok.pad_token_id, on["micro"],
+                                                  grad=True):
+                    ri = rows_c[sl.start:sl.stop]
+                    lp_g = gather_completion(lp, cm, cap)
+                    ls, _ = grpo_loss_sum(lp_g, lp_g.detach(), adv[ri].to(lp_g.device), tmask[ri], on["clip"])
+                    (ls / (Q * cap)).backward()
+                vecs[c] = torch.cat([(p.grad.detach().flatten().float() if p.grad is not None else
+                                      torch.zeros(p.numel(), device=p.device)) for p in params])
+            opt.zero_grad(set_to_none=True)
+            class_grad = {f"norm_{c}": float(v.norm()) for c, v in vecs.items()}
+            if len(vecs) == 2:
+                va, vb = vecs.values()
+                class_grad["cos"] = float(torch.dot(va, vb) / (va.norm() * vb.norm()).clamp(min=1e-30))
+        by_class = None
+        if cls_of is not None:
+            by_class = {}
+            for c in sorted(set(cls_of)):
+                pi = [j for j, x in enumerate(cls_of) if x == c]
+                g_c = grp[pi]
+                uk = [k for k in use if cls_of[outs[k]["prompt_index"]] == c]
+                by_class[c] = {"prompts": len(pi), "mixed": int(((g_c > 0) & (g_c < G)).sum()),
+                               "all_success": int((g_c == G).sum()), "all_fail": int((g_c == 0).sum()),
+                               "used": len(uk), "used_tokens": int(sum(outs[k]["n_tokens"] for k in uk)),
+                               "reward": float(rewards.view(P, G)[pi].mean())}
         used_by_inputs = {str(h): sum(probs[outs[k]["prompt_index"]].n_inputs == h for k in use) for h in (3, 5, 10)}
         skipped = len(use) == 0
         gn, ratio_dev, loss_total, steps, upd = None, 0.0, 0.0, [], None
@@ -357,6 +433,10 @@ def cmd_online(cfg):
                      "round_s": time.time() - t0, "gen_s": t_gen})
         if diag:
             rows[-1].update({"steps": steps, "dist_from_init": upd, **(kl or {})})
+        if by_class is not None:
+            rows[-1]["by_class"] = by_class
+            if class_grad is not None:
+                rows[-1]["class_grad"] = class_grad
         write_jsonl_gz(run.path("records", f"round{rnd:04d}.jsonl.gz"),
                        [{"round": rnd, "pid": probs[o["prompt_index"]].pid, "attempt": o["attempt"],
                          "text": o["text"], "n_tokens": o["n_tokens"], "finish": o["finish"],
@@ -442,6 +522,15 @@ def cmd_online(cfg):
             for r in rows:
                 f.write(",".join(str(r[k]) for k in keys) + "," +
                         ",".join(f"{r['by_inputs'][h]:.4f}" for h in ("3", "5", "10")) + "\n")
+        if pool_cls is not None:
+            with open(os.path.join(res, "classes.csv"), "w") as f:
+                ck = ["prompts", "mixed", "all_success", "all_fail", "used", "used_tokens", "reward"]
+                f.write("round,class," + ",".join(ck) + ",grad_norm_class,grad_cos\n")
+                for r in rows:
+                    cg = r.get("class_grad") or {}
+                    for c, v in sorted(r["by_class"].items()):
+                        f.write(f"{r['round']},{c}," + ",".join(str(v[k]) for k in ck) +
+                                f",{cg.get('norm_' + c, '')},{cg.get('cos', '')}\n")
         if diag:
             f4 = lambda x: "" if x is None else (f"{x:.4g}" if isinstance(x, float) else str(x))
             sk = ["loss", "grad_norm", "update_norm", "seq_logs_mean", "units", "frac_outside", "frac_clipped",
