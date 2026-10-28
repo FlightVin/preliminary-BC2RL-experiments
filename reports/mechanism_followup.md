@@ -1,6 +1,6 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 3, 2026-10-27 20:00 EDT.** Wave 1 training is complete. The workers report all 96 yf evaluation tasks done; look 1 is submitted (job 10960293) and has not run. Stage G (GSPO / CTPO, Section 9) is in validation. Update 1 added the exploratory results from the
+**Status: update 4, 2026-10-28 04:25 EDT.** All 73 wave-1 tasks are done (worker logs). Look 1 (job 10960293) has not run: its test job waits in the CPU queue (Section 7). Stage G (GSPO / CTPO, Section 9) is in validation. Update 1 added the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
 commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
@@ -8,7 +8,7 @@ is complete. A6 does not change it. Section 14 of that report records five corre
 
 ## 0. Summary
 
-| stage | question | state (2026-10-27 20:00) |
+| stage | question | state (2026-10-28 04:25) |
 |---|---|---|
 | Y1 interpretation audit | Is the A5 effect a larger change from a higher baseline, or a worse final state? Do matched counts hide different true probabilities? | done (exploratory, A5 records); Section 0.1 |
 | Y2 truncation and failure types | Are intermittent solutions hidden by length or format? Which failure types make the extended-light difference? | dev done (exploratory); yf at look 1 |
@@ -157,20 +157,20 @@ state the smallest effect that each interval excludes.
 - Resource rules: preempt GPUs only; at most 5 BC2RL GPU slots, counting pending jobs (`tools/bc2rl_guard.py`). GPU use
   before A6: 40.65 GPU-h.
 
-## 7. Accounting and updated forecast (2026-10-27 19:58)
+## 7. Accounting and updated forecast (2026-10-28 04:20)
 
 | item | value |
 |---|---|
-| BC2RL GPU-hours since job 10947200 (sacct, all attempts incl. 15 preempted; 31 GPU attempts, all `preempt`) | 75.6 (A6 75.2; stage G 0.4) |
-| A6 worklist tasks complete | 72 of 73 (worker logs): all training; all 24 initial + 72 final yf evaluations; 5 of 6 reproduction yd evaluations |
-| running | reproduction yd evaluation s66 (worker w15) |
-| A6 wave-1 total (forecast) | about 77-78 GPU-h (update-2 forecast 72-78; pre-registered 75-93) |
-| look 1 | one CPU job (10960293) after test job 10960288; structural check of the 96 yf evaluations first |
+| BC2RL GPU-hours since job 10947200 (sacct, all attempts incl. 16 preempted; 32 GPU attempts, all `preempt`) | 76.6 (A6 76.2; stage G 0.4) |
+| A6 worklist tasks complete | 73 of 73 (worker logs; w15 ended 2026-10-27 21:08) |
+| A6 wave-1 total | 76.2 GPU-h (update-3 forecast 77-78; pre-registered 75-93) |
+| look 1 | CPU job 10960293, after test job 10960288; structural check of the 96 yf evaluations first |
 
-- Look 1 forecast: 2026-10-27 22:00 to 2026-10-28 06:00 EDT. The CPU queue sets the start. The update-2 forecast
-  (17:00-20:00) was late: Slurm preempted worker w13 at 15:03 and 18:31; it waited about 3.7 h in the queue.
-- Stage G forecast (protocol 12.7, 12.8): 105-155 GPU-h without T4F, 120-180 with T4F. Validation is now
-  forecast at 1-1.5 GPU-h, not 0.3: model loading took about 17 min in the failed attempt.
+- **Blocker: CPU queue.** Test job 10960288 has waited since 2026-10-27 19:58 (8.3 h) with reason `Priority`.
+  At 04:13, 195 jobs were pending in `preempt_cpu_qos`. CPU-only work may run only in that QOS. Look 1 and the
+  stage-G validation (job 10960289) wait for this job. Start time: unknown (Slurm gives no estimate).
+- Look 1 forecast: about 1-6 h after the test job starts (tests 13 min in job 10956587; look 1 run time not measured).
+- Stage G forecast unchanged: 105-155 GPU-h without T4F, 120-180 with T4F; validation 1-1.5 GPU-h.
 - Slots: 5 BC2RL GPU slots, preempt only, counting pending jobs (`tools/bc2rl_guard.py`). No general GPU, no `ae-topup`.
 
 ## 8. Checks done in this update
@@ -184,6 +184,19 @@ state the smallest effect that each interval excludes.
   set). All were fixed or given a fixed reading before any yf outcome (protocol 10.1.4, commit b76839f).
 - `scripts/y_look1.py` now has a synthetic end-to-end test (planted cross-difficulty effect; refusal of an incomplete
   set). The test job runs before look 1. Audit file: `slurm-agentic-engineering/audits/a6-update1-audit-20261027.md`.
+
+- **Reproduction check (Section 3.2, protocol 10.1.3; yd3, exploratory; not used in any test).** pass@1 of the
+  re-run BC adapters minus the originals, 6 seeds per step:
+
+  | BC step | mean difference | largest absolute difference | seed SD of originals |
+  |---|---:|---:|---:|
+  | 16 | +0.0014 | 0.0052 | 0.020 |
+  | 64 | -0.0047 | 0.0100 | 0.012 |
+  | 128 | -0.0031 | 0.0204 (s22) | 0.028 |
+
+  At each step the mean and the largest difference are smaller than the seed SD of the originals. The BC path is
+  not bit-reproducible (10.1.3). The step-32 adapters come from the re-run, and step 32 has no original. This check
+  estimates, but does not bound, the effect of mixing re-run and original adapters in Y4.
 
 ## 9. Stage G status (GSPO / CTPO; protocol Section 12)
 
@@ -208,3 +221,5 @@ state the smallest effect that each interval excludes.
 - Update 3 (2026-10-27 20:00): progress and accounting; stage G added (Section 9). Workers report all yf
   evaluations done; look 1 submitted. New script `scripts/a6_yf_accept.py` (structural check before look 1). No yf outcome read.
 - 2026-10-27 20:01: timestamps of update 3 corrected to the git commit time (20:00; had been written as 20:20).
+- Update 4 (2026-10-28 04:25): reproduction check result (Section 8); accounting; CPU-queue blocker. No yf
+  outcome read; no code changed.
