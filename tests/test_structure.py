@@ -99,3 +99,39 @@ def test_draw_candidates_and_summary():
     assert st2["excluded_existing"] >= 1 and cands[0]["key"] not in {c["key"] for c in excl}
     summ = s2_data.summarize(cands)
     assert sum(summ["by_role_class"]["all"].values()) == len(cands)
+
+
+import s2_build  # noqa: E402
+
+
+def _synth_cands(n=400, seed=3):
+    rng, out = random.Random(seed), []
+    for i in range(n):
+        cl = "A" if i % 3 else "B"
+        out.append({"pid": f"st1-3-{i:06d}", "role": ("pool", "dev_panel", "conf_panel")[i % 4 % 3], "first_draw": i,
+                    "inputs": [2, 3, 4], "target": rng.choice([5, 50, 500]), "ref_trace": [], "structure": "chain",
+                    "ops_used": [], "lab": {"cls": cl, "n_forms": rng.choice([1, 2, 3]), "n_traces": 3, "input_max": 4,
+                                            "input_sum": 9, "min_mult": int(cl == "B")}})
+    return out
+
+
+def test_s2_build_prescreen_cem_and_diag():
+    cands = _synth_cands()
+    sel = s2_build.select_prescreen(cands, 20, 10)
+    assert Counter(c["lab"]["cls"] for c in sel["pre_pool"]) == {"A": 20, "B": 20}
+    assert all(c["role"] == "pool" for c in sel["pre_pool"]) and all(c["role"] == "conf_panel" for c in sel["pre_conf"])
+    rng = random.Random(5)
+    succ = {c["pid"]: (rng.choice([0, 3, 9, 16]), rng.choice([0, 3, 9, 16])) for c in cands}
+    pool = [c for c in cands if c["role"] == "pool"]
+    trA, trB, rep = s2_build.cem_pools(pool, succ, 10**6, seed=1)
+    assert len(trA) == len(trB) == rep["matched_pairs_total"] > 0
+    assert all(c["lab"]["cls"] == "A" for c in trA) and all(c["lab"]["cls"] == "B" for c in trB)
+    cell = lambda c: (s2_build.binned(succ[c["pid"]][0], s2_build.SUCC_BINS), s2_build.binned(succ[c["pid"]][1], s2_build.SUCC_BINS),
+                      s2_build.binned(c["lab"]["n_forms"], s2_build.FORM_BINS), s2_build.binned(c["target"], s2_build.TARGET_BINS))
+    assert all(cell(a) == cell(b) for a, b in zip(trA, trB))        # every prefix stays matched cell by cell
+    assert rep["unmatched_A"] + rep["matched_pairs_total"] == sum(c["lab"]["cls"] == "A" for c in pool)
+    trA2, _, _ = s2_build.cem_pools(pool, succ, 5, seed=1)
+    assert [c["pid"] for c in trA2] == [c["pid"] for c in trA[:5]]
+    diag, tab = s2_build.diag_panel([c for c in cands if c["role"] == "dev_panel"], succ, 3, seed=2)
+    cnt = Counter((c["lab"]["cls"], s2_build.binned((succ[c["pid"]][0] + succ[c["pid"]][1]) / 32, s2_build.RATE_BINS)) for c in diag)
+    assert max(cnt.values()) <= 3 and all(t["taken"] == min(3, t["available"]) for t in tab)
