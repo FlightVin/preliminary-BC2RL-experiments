@@ -1,6 +1,6 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 5, 2026-10-28 10:58 EDT.** Look 1 ran (job 10967586); its results are in Section 9 and were checked by an independent recompute (Section 8). Stage G (GSPO / CTPO, Section 10) is in validation. Update 1 added the exploratory results from the
+**Status: update 6, 2026-10-28 12:14 EDT.** Look 1 results are in Section 9 (update 5). Stage G (GSPO / CTPO, Section 10) passed validation; it trains with FP32 passes; the clip-calibration probes wait for a GPU. Update 1 added the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
 commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
@@ -8,7 +8,7 @@ is complete. A6 does not change it. Section 14 of that report records five corre
 
 ## 0. Summary
 
-| stage | question | state (2026-10-28 10:58) |
+| stage | question | state (2026-10-28 12:14) |
 |---|---|---|
 | Y1 interpretation audit | Is the A5 effect a larger change from a higher baseline, or a worse final state? Do matched counts hide different true probabilities? | done (exploratory, A5 records); Section 0.1 |
 | Y2 truncation and failure types | Are intermittent solutions hidden by length or format? Which failure types make the extended-light difference? | look 1: not explained by truncation; illegal-operand failures account for part of the difference (cap 256 only); Section 9.1 |
@@ -16,7 +16,7 @@ is complete. A6 does not change it. Section 14 of that report records five corre
 | Y4 BC exposure | Does BC exposure predict loss beyond the initial success distribution? Shape over steps 16-128? | look 1: gradual increase over steps 16-128; for 3 matched pairs the initial distribution explains the step effect (problem interval only); Section 9.4 |
 | method interaction | Does the objective (GRPO vs filtered) change the init difference? | look 1: not shown (seed interval includes 0); Section 9.3 |
 | Y5 E2 redesign | Can controlled single updates predict later losses? | decision pending (Section 9.7) |
-| G sequence-level and prefix objectives | Do GSPO or CTPO change coverage loss or its BC-init dependence, beyond length normalization and rollout reuse? | GPU validation pending (first attempt failed: script defect, fixed); Section 10 |
+| G sequence-level and prefix objectives | Do GSPO or CTPO change coverage loss or its BC-init dependence, beyond length normalization and rollout reuse? | validation passed (V3, V7); BF16 too noisy (V4) -> FP32 training passes; probes queued; Section 10 |
 
 ### 0.1 What the exploratory data show (not confirmation)
 
@@ -157,17 +157,20 @@ state the smallest effect that each interval excludes.
 - Resource rules: preempt GPUs only; at most 5 BC2RL GPU slots, counting pending jobs (`tools/bc2rl_guard.py`). GPU use
   before A6: 40.65 GPU-h.
 
-## 7. Accounting and updated forecast (2026-10-28 10:51)
+## 7. Accounting and updated forecast (2026-10-28 12:13)
 
 | item | value |
 |---|---|
-| BC2RL GPU-hours since job 10947200 (sacct, all attempts incl. 16 preempted; 32 GPU attempts, all `preempt`) | 76.6 (A6 76.2; stage G 0.4) |
-| A6 wave 1 | complete: 76.2 GPU-h (pre-registered forecast 75-93); look 1 and its checks used CPU only |
-| stage G | GPU validation job 10967595 pending (Priority); no stage-G result |
+| BC2RL GPU-hours since job 10947200 (sacct, all attempts incl. 16 preempted; 33 GPU attempts, all `preempt`) | 76.7 (A6 76.2; stage G 0.5) |
+| A6 wave 1 | complete: 76.2 GPU-h (pre-registered forecast 75-93) |
+| stage G validation | 0.1 GPU-h (job 10967595, 6 min); the failed first attempt used 0.4 GPU-h |
+| stage G probes | canary worker 10968782 pending (Priority); second worker after the canary's first training line |
 
-- The CPU-queue blocker of update 4 is resolved: test job 10967581 started at 09:54, look 1 at 10:23.
-- Wave-2 forecast: none yet; it depends on the Section 9.7 decisions.
-- Stage G forecast unchanged: 105-155 GPU-h without T4F, 120-180 with T4F; validation 1-1.5 GPU-h.
+- Stage G forecast: the 12.7 / 12.8 ranges (105-155 GPU-h without T4F, 120-180 with T4F) assumed BF16 passes. FP32
+  gradient passes take 1.8-1.9x the BF16 time (12.10). Sampling stays BF16, so the run-level increase is smaller;
+  its size is unknown until the probes report round times. The revised forecast comes after the probes. Until then,
+  treat the ranges above as lower bounds for the K = 4 arms.
+- Wave-2 forecast (A6): none; the Section 9.7 decisions are pending.
 - Slots: 5 BC2RL GPU slots, preempt only, counting pending jobs (`tools/bc2rl_guard.py`). No general GPU, no `ae-topup`.
 
 ## 8. Checks done in this update
@@ -394,9 +397,15 @@ I = mean_s [Delta(filtered) - Delta(GRPO)] = +0.058; problem bootstrap [+0.041, 
 - GPU validation job 10956589 failed after 24 min. Cause: `scripts/g_validate.py` read the YAML config with PyYAML,
   which reads `1e-05` as a string. The training code uses the JSON-first loader and is not affected. Fix and
   regression test: commit 3f675ca. Reruns 10958575 and 10960289 were cancelled while pending (replaced; never ran).
-- Test job 10967581 passed (98 tests, incl. the validation config-loader test). Validation rerun: job 10967595,
-  pending (Priority). No stage-G result exists.
-- Next: precision decision (V4), six unclipped probes, clip calibration on dev data, 12 dev runs, gate D.
+- Validation (job 10967595, protocol 12.10): V3 passes (GSPO and CTPO gradients equal length-normalized GRPO at the
+  first update: relative L2 <= 1e-5, cosine 1.0). V7 passes (BF16 repeat passes identical). V4 fails for BF16: after
+  one step, BF16 noise is 48-78% of the FP32 sequence log-ratio (limit 10%). **All stage-G arms train with FP32
+  passes**; sampling stays BF16.
+- The measured one-step sequence log-ratio (median 0.004-0.008) is about 10-27 times the paper's GSPO clip band
+  (3e-4 / 4e-4). Clip calibration on the probes (12.4) sets the bands; no clipping result exists yet.
+- Probes: 6 configs (FP32) with a test of the generated files (99 tests passed, job 10968766). Canary worker 10968782
+  pending.
+- Next: probes -> clip calibration -> 12 dev runs -> gate D.
 
 ## 11. Changes
 - Update 0 (2026-10-26 ~19:45): design, matrix and forecast. No results.
@@ -413,3 +422,5 @@ I = mean_s [Delta(filtered) - Delta(GRPO)] = +0.058; problem bootstrap [+0.041, 
   outcome read; no code changed.
 - Update 5 (2026-10-28 10:58): look 1 results (Section 9) with structural acceptance and independent recompute
   (Section 8); accounting. Wave-2 decisions pending.
+- Update 6 (2026-10-28 12:14): stage-G validation result and precision decision (Section 10); accounting;
+  forecast note. No new A6 result.
