@@ -531,3 +531,18 @@ Stage G total with CTPO: about 105-155 GPU-h without T4F, 120-180 with T4F.
   an explicit `clip_c: null` means no dual clip; a non-finite loss or gradient norm stops the run (deterministic
   failure, no retry); a tiny-model test now checks the first-update gradient of all three objectives against the
   closed form, magnitude included. No statistical rule changed.
+
+### 12.10 Dated addition (2026-10-28 11:11 EDT; validation result, job 10967595; before any probe run)
+Validation ran on 2 initial adapters (light, extended; seed 11) and 2 real rollout batches each (NVIDIA L40S). One
+light batch had no row with A != 0 and was skipped by design, so 3 batches enter.
+- **V3 pass.** At the first update (behaviour = current), the gradients of `gspo` and `ctpo` agree with `grpo_len`
+  in FP32: relative L2 <= 1e-5 (limit 1e-4), cosine 1.0 (limit 0.99999), for all 3 batches.
+- **V7 pass.** Two BF16 no-grad passes with the same layout give identical log-probs (max |diff| = 0).
+- **V4: BF16 fails; all stage-G arms train with FP32 passes** (`online.train_precision: fp32`; sampling stays
+  BF16). After one GSPO step, the median |BF16 - FP32| sequence log-ratio is 0.0028-0.0039, against a median FP32
+  sequence log-ratio of 0.0040-0.0081: noise 48-97% of the signal (limit 10%). Token and cumulative levels fail too.
+- Measured scale after one full-batch step (FP32; medians): sequence |log s| 0.004-0.008, token |log r|
+  3e-6 to 1.2e-4, cumulative |C_t| 0.06-0.13. These are inputs for the probes, not calibration values (12.4).
+- Timing: an FP32 gradient pass takes about 1.8-1.9x the BF16 pass (0.35 vs 0.20 s and 1.08 vs 0.58 s; the first
+  FP32 pass, 13.6 s, includes warm-up and is not used). Forecast changes go to the report.
+- No statistical rule changed.
