@@ -1,6 +1,6 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 8, 2026-10-29 04:20 EDT.** No BC2RL job ran between 20:13 and 04:13; no new result. Section 11.2 has the stage-R3 loss (owner, 14.9.1), the revised stage-R forecast and the next decision point (gate DR). Programs S and R and the S1 table are in Section 11. No new GPU result since update 6. Look 1 results are in Section 9 (update 5). Stage G (GSPO / CTPO, Section 10) passed validation; it trains with FP32 passes; the clip-calibration probes wait for a GPU. Update 1 added the exploratory results from the
+**Status: update 8, 2026-10-29 04:15 EDT.** No BC2RL job ran between 20:13 and 04:13; no new result. Section 11.2 has the stage-R3 loss (owner, 14.9.1), the revised stage-R forecast and the next decision point (gate DR). Programs S and R and the S1 table are in Section 11. No new GPU result since update 6. Look 1 results are in Section 9 (update 5). Stage G (GSPO / CTPO, Section 10) passed validation; it trains with FP32 passes; the clip-calibration probes wait for a GPU. Update 1 added the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
 commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
@@ -490,5 +490,5 @@ E = excess coverage loss at K = 16; a positive contrast means more loss in the f
   forecast note. No new A6 result.
 - Update 7 (2026-10-28 20:15): S1 table (Section 11.1, exploratory); program S and stage R status; wave-2
   decisions (9.7); accounting. No new GPU result; no project code run for this update.
-- Update 8 (2026-10-29 04:20): R3 loss blocker resolved (owner, 14.9.1); revised stage-R forecast; next decision
+- Update 8 (2026-10-29 04:15): R3 loss blocker resolved (owner, 14.9.1); revised stage-R forecast; next decision
   point gate DR; C1 wording (unresolved, not absent); accounting. No job ran; no new result.
