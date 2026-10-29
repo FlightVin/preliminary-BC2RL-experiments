@@ -1,6 +1,6 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 7, 2026-10-28 20:15 EDT.** Programs S and R (amendment Sections 13-14) and the S1 cross-difficulty table are in Section 11. No new GPU result since update 6. Look 1 results are in Section 9 (update 5). Stage G (GSPO / CTPO, Section 10) passed validation; it trains with FP32 passes; the clip-calibration probes wait for a GPU. Update 1 added the exploratory results from the
+**Status: update 8, 2026-10-29 04:20 EDT.** No BC2RL job ran between 20:13 and 04:13; no new result. Section 11.2 has the stage-R3 loss (owner, 14.9.1), the revised stage-R forecast and the next decision point (gate DR). Programs S and R and the S1 table are in Section 11. No new GPU result since update 6. Look 1 results are in Section 9 (update 5). Stage G (GSPO / CTPO, Section 10) passed validation; it trains with FP32 passes; the clip-calibration probes wait for a GPU. Update 1 added the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
 commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
@@ -12,7 +12,7 @@ is complete. A6 does not change it. Section 14 of that report records five corre
 |---|---|---|
 | Y1 interpretation audit | Is the A5 effect a larger change from a higher baseline, or a worse final state? Do matched counts hide different true probabilities? | done (exploratory, A5 records); Section 0.1 |
 | Y2 truncation and failure types | Are intermittent solutions hidden by length or format? Which failure types make the extended-light difference? | look 1: not explained by truncation; illegal-operand failures account for part of the difference (cap 256 only); Section 9.1 |
-| Y3 cross-difficulty | Do updates on 5- and 10-input problems cause the 3-input losses, or does 3-input training itself? | look 1: the init difference arises without harder-problem updates (C2); their contribution not shown (C1); Section 9.2 |
+| Y3 cross-difficulty | Do updates on 5- and 10-input problems cause the 3-input losses, or does 3-input training itself? | look 1: the init difference arises without harder-problem updates (C2); their contribution is unresolved within the stated bounds, not absent (C1); Section 9.2 |
 | Y4 BC exposure | Does BC exposure predict loss beyond the initial success distribution? Shape over steps 16-128? | look 1: gradual increase over steps 16-128; for 3 matched pairs the initial distribution explains the step effect (problem interval only); Section 9.4 |
 | method interaction | Does the objective (GRPO vs filtered) change the init difference? | look 1: not shown (seed interval includes 0); Section 9.3 |
 | Y5 E2 redesign | Can controlled single updates predict later losses? | not run (protocol 13.2; Section 9.7) |
@@ -157,10 +157,10 @@ state the smallest effect that each interval excludes.
 - Resource rules: preempt GPUs only; at most 5 BC2RL GPU slots, counting pending jobs (`tools/bc2rl_guard.py`). GPU use
   before A6: 40.65 GPU-h.
 
-## 7. Accounting and updated forecast (2026-10-28 20:13)
+## 7. Accounting and updated forecast (2026-10-29 04:13)
 
-Update 7: BC2RL used **77.1 GPU-hours** since job 10947200 (`sacct -D`, all attempts, BC2RL job names only; 34 GPU
-rows, all `preempt`). No BC2RL GPU job ran between 12:13 and 20:13. The table below is from update 6.
+Update 8: BC2RL used **77.1 GPU-hours** since job 10947200 (`sacct -D -X`, all attempts, BC2RL job names only; 34
+GPU rows, all `preempt`). The total has not changed since 2026-10-28 18:10. The table below is from update 6.
 
 | item | value |
 |---|---|
@@ -392,6 +392,9 @@ I = mean_s [Delta(filtered) - Delta(GRPO)] = +0.058; problem bootstrap [+0.041, 
 - **Decided 2026-10-28 17:22 (protocol 13.2).** C1 needs about 20 seeds for the planned precision (Section 11.1).
   The rule adds seeds only if 12 or fewer are needed. Therefore no Y3 seeds are added, and filtered Y3 and the Y5
   E2 redesign do not run. The program-S masked-transfer arms (S3) test transfer directly at lower cost.
+- **Owner confirmation 2026-10-29 (A6-R2).** The owner kept this decision. The report states C1 as unresolved within
+  the stated bounds, not absent. The new contrasts (Section 11.1) stay exploratory. The two "Decision pending"
+  bullets above are closed by this decision.
 
 ## 10. Stage G status (GSPO / CTPO; protocol Section 12)
 
@@ -440,20 +443,33 @@ E = excess coverage loss at K = 16; a positive contrast means more loss in the f
   (T3E has fewer of both). It does not isolate one cause.
 - No init difference has both intervals excluding 0. The cross-difficulty question stays unresolved at 6 seeds.
 
-### 11.2 Program S and stage R status
-- Protocol: Section 13 (program S, `71165aa`, 17:22) and Section 14 (stage R, `49fc6fd`, 18:04). Both were
-  recorded before any of their jobs.
-- S2 structure data and the full CPU test suite: job 10972584 (commit `397abd3`), pending since 18:10 (Priority).
-  Three earlier S2 data jobs (10972316, 10972335, 10972343) were cancelled before start and replaced by this one.
-- R1 drift: canary worker 10972586 waits for 10972584. The second worker follows the canary's first output line.
-- Stage G probes: workers 10968782 and 10970808 pending (Priority). Probe 10968782 ran 23 min, was preempted at
-  15:36, and requeued.
-- **Blocker (R3).** Protocol 14.3 cites "Section 11 of the updated proposal" for the common supervised loss. The
-  proposal files in `protocol/` end at Section 10. R3 training does not start until the owner supplies it. R1, R2
-  and the R3 data work do not depend on it.
-- Forecast (planning only; protocol 14.5): R1 3-5 GPU-h; R3 screening and caches 2-4; R3 dev 4-6; R3 confirmation
-  25-35. The stage-G forecast stays as in Section 7. Queue waits are not forecast: worker 10970808 has pended on
-  Priority since 15:16 (5 h at 20:13).
+### 11.2 Program S and stage R status (2026-10-29 04:13)
+- Protocol: Section 13 (program S, `71165aa`), Section 14 (stage R, `49fc6fd`), and the dated additions 13.11.1,
+  14.9.1 and 14.9.2 (`65c4450`, 2026-10-29). All were recorded before any of their jobs ran.
+- **R3 loss blocker: resolved.** The owner supplied the common supervised loss (14.9.1). All four arms (S, I, F,
+  O) use L = -(1/(32 x 256)) sum_i m_i sum_t log p(y_it | x_i, y_i<t), with teacher forcing, a fixed denominator
+  and one acceptance mask m_i shared by all arms. If F or O fails in 64 attempts, the occurrence is masked in every
+  arm. A round with all 32 occurrences masked counts, but takes no optimizer step. This is the controlled
+  response-source experiment, not a reproduction of the filtered baseline.
+- Implementation: `bc2rl rprep` / `bc2rl rsource` (`65c4450`). The tests check the loss scale, token masks, the
+  shared mask, the empty round, one AdamW step and resume on a hand-computed batch. **They have not run yet:** they
+  run in CPU job 10976376 before any R3 GPU work.
+- Data order (13.11.1): rs1 is drawn before st1, because st1 would use most of the 3-input key universe.
+- Queue (all pending, none started): 10976376 (tests, then rs1 data; CPU; Priority since 01:59). After it:
+  S2 data 10976377, R1 drift canary 10976378 and R3 dev worker 10976381. Stage-G probe workers 10968782 and
+  10970808 pend on Priority (10970808 since 2026-10-28 15:16).
+- **Revised stage-R forecast (planning only).** R1 3-5 GPU-h; R3 screening and caches 2-4. R3 dev: the 14.5 value
+  (4-6 GPU-h) is now a lower bound. Each R3 round samples at least 2 x 32 x 8 = 512 responses (F and O) and takes
+  four training passes. A GRPO M round samples 128 responses and takes one pass. Gate DR records the measured
+  cost. R3 confirmation (25-35 GPU-h in 14.5) gets a new forecast from that measurement. Start times are not
+  forecast: no BC2RL job started in the last 8 h.
+- **Next decision point: gate DR (14.9.2).** It is due when both dev blocks finish 256 rounds. Its checks: pool
+  >= 128; finite losses; mask <= 5% per block; valid S/I targets; measured GPU-h. If L* < 0.02, R2 is not available;
+  this does not stop R3. After the gate, the dated addition 14.9.3 freezes L*, the confirmation configs and the R1
+  relationships.
+- Wave 2 (9.7, owner confirmation 2026-10-29): no Y3 seeds, no filtered Y3, no Y5 redesign. The harder-task
+  contribution C1 is **unresolved within the stated bounds, not absent**: its seed interval includes 0 and
+  ~20 seeds would be needed. The S1 contrasts stay exploratory.
 
 ## 12. Changes
 - Update 0 (2026-10-26 ~19:45): design, matrix and forecast. No results.
@@ -474,3 +490,5 @@ E = excess coverage loss at K = 16; a positive contrast means more loss in the f
   forecast note. No new A6 result.
 - Update 7 (2026-10-28 20:15): S1 table (Section 11.1, exploratory); program S and stage R status; wave-2
   decisions (9.7); accounting. No new GPU result; no project code run for this update.
+- Update 8 (2026-10-29 04:20): R3 loss blocker resolved (owner, 14.9.1); revised stage-R forecast; next decision
+  point gate DR; C1 wording (unresolved, not absent); accounting. No job ran; no new result.
