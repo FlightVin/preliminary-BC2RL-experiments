@@ -1,6 +1,6 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 6, 2026-10-28 12:14 EDT.** Look 1 results are in Section 9 (update 5). Stage G (GSPO / CTPO, Section 10) passed validation; it trains with FP32 passes; the clip-calibration probes wait for a GPU. Update 1 added the exploratory results from the
+**Status: update 7, 2026-10-28 20:30 EDT.** Programs S and R (amendment Sections 13-14) and the S1 cross-difficulty table are in Section 11. No new GPU result since update 6. Look 1 results are in Section 9 (update 5). Stage G (GSPO / CTPO, Section 10) passed validation; it trains with FP32 passes; the clip-calibration probes wait for a GPU. Update 1 added the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
 commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
@@ -15,7 +15,7 @@ is complete. A6 does not change it. Section 14 of that report records five corre
 | Y3 cross-difficulty | Do updates on 5- and 10-input problems cause the 3-input losses, or does 3-input training itself? | look 1: the init difference arises without harder-problem updates (C2); their contribution not shown (C1); Section 9.2 |
 | Y4 BC exposure | Does BC exposure predict loss beyond the initial success distribution? Shape over steps 16-128? | look 1: gradual increase over steps 16-128; for 3 matched pairs the initial distribution explains the step effect (problem interval only); Section 9.4 |
 | method interaction | Does the objective (GRPO vs filtered) change the init difference? | look 1: not shown (seed interval includes 0); Section 9.3 |
-| Y5 E2 redesign | Can controlled single updates predict later losses? | decision pending (Section 9.7) |
+| Y5 E2 redesign | Can controlled single updates predict later losses? | not run (protocol 13.2; Section 9.7) |
 | G sequence-level and prefix objectives | Do GSPO or CTPO change coverage loss or its BC-init dependence, beyond length normalization and rollout reuse? | validation passed (V3, V7); BF16 too noisy (V4) -> FP32 training passes; probes queued; Section 10 |
 
 ### 0.1 What the exploratory data show (not confirmation)
@@ -157,7 +157,10 @@ state the smallest effect that each interval excludes.
 - Resource rules: preempt GPUs only; at most 5 BC2RL GPU slots, counting pending jobs (`tools/bc2rl_guard.py`). GPU use
   before A6: 40.65 GPU-h.
 
-## 7. Accounting and updated forecast (2026-10-28 12:13)
+## 7. Accounting and updated forecast (2026-10-28 20:13)
+
+Update 7: BC2RL used **77.1 GPU-hours** since job 10947200 (`sacct -D`, all attempts, BC2RL job names only; 34 GPU
+rows, all `preempt`). No BC2RL GPU job ran between 12:13 and 20:13. The table below is from update 6.
 
 | item | value |
 |---|---|
@@ -170,7 +173,7 @@ state the smallest effect that each interval excludes.
   gradient passes take 1.8-1.9x the BF16 time (12.10). Sampling stays BF16, so the run-level increase is smaller;
   its size is unknown until the probes report round times. The revised forecast comes after the probes. Until then,
   treat the ranges above as lower bounds for the K = 4 arms.
-- Wave-2 forecast (A6): none; the Section 9.7 decisions are pending.
+- Wave-2 forecast (A6): none. The 9.7 decisions are made (protocol 13.2): no wave-2 runs.
 - Slots: 5 BC2RL GPU slots, preempt only, counting pending jobs (`tools/bc2rl_guard.py`). No general GPU, no `ae-topup`.
 
 ## 8. Checks done in this update
@@ -386,6 +389,9 @@ I = mean_s [Delta(filtered) - Delta(GRPO)] = +0.058; problem bootstrap [+0.041, 
   required pre-registration content; otherwise the report gives the reason. Decision pending.
 - Stop rule (10): the main remaining question is the size of C1, which 6 seeds leave between about -0.08 and +0.10.
   The decision records will state whether any wave-2 option can narrow it.
+- **Decided 2026-10-28 17:22 (protocol 13.2).** C1 needs about 20 seeds for the planned precision (Section 11.1).
+  The rule adds seeds only if 12 or fewer are needed. Therefore no Y3 seeds are added, and filtered Y3 and the Y5
+  E2 redesign do not run. The program-S masked-transfer arms (S3) test transfer directly at lower cost.
 
 ## 10. Stage G status (GSPO / CTPO; protocol Section 12)
 
@@ -407,7 +413,49 @@ I = mean_s [Delta(filtered) - Delta(GRPO)] = +0.058; problem bootstrap [+0.041, 
   pending.
 - Next: probes -> clip calibration -> 12 dev runs -> gate D.
 
-## 11. Changes
+## 11. Program S and stage R (amendment Sections 13 and 14)
+
+### 11.1 S1: cross-difficulty contrasts per initialization (exploratory)
+Source: `audits/s1_cross_difficulty.py` over the look-1 yf3 counts (job 10967586 export). It uses the Section 3.4
+estimator and reproduces all 8 look-1 E points. These contrasts were not pre-registered at `c6f7d0a`. They reuse the
+opened confirmation panel. They are descriptive; there is no multiplicity correction (12 rows at K = 16; 9 shown; T3 - MASK is in the JSON).
+E = excess coverage loss at K = 16; a positive contrast means more loss in the first arm.
+
+| contrast | init | point | seed t95 (df 5) | problem boot95 | seeds > 0 | seed SD | seeds needed |
+|---|---|---|---|---|---|---|---|
+| harder updates (M - MASK) | b16 | +0.009 | [-0.042, +0.060] | [-0.003, +0.021] | 4/6 | 0.049 | 9 |
+| | b128 | +0.018 | [-0.030, +0.065] | [+0.007, +0.028] | 4/6 | 0.045 | 8 |
+| | b128 - b16 (C1) | +0.009 | [-0.078, +0.095] | [-0.008, +0.024] | 3/6 | 0.083 | 20 |
+| equal total samples (M - T3) | b16 | +0.027 | [+0.004, +0.050] | [+0.012, +0.042] | 6/6 | 0.022 | 4 |
+| | b128 | -0.011 | [-0.057, +0.035] | [-0.022, +0.001] | 2/6 | 0.044 | 8 |
+| | b128 - b16 | -0.037 | [-0.091, +0.016] | [-0.056, -0.019] | 1/6 | 0.051 | 10 |
+| equal 3-input exposure (MASK - T3E) | b16 | +0.045 | [+0.009, +0.082] | [+0.032, +0.058] | 5/6 | 0.035 | 6 |
+| | b128 | +0.033 | [-0.042, +0.109] | [+0.022, +0.045] | 3/6 | 0.072 | 16 |
+| | b128 - b16 | -0.012 | [-0.085, +0.062] | [-0.029, +0.005] | 3/6 | 0.070 | 15 |
+
+- "Seeds needed" = the smallest n with t(0.975, n-1) x SD / sqrt(n) <= 0.039 (= 0.25 x Delta_M; protocol 13.2).
+- No harder-update contrast has both intervals above 0. The data do not show that the 5-/10-input updates harm
+  3-input coverage, and they do not exclude an effect of about +0.06 per init.
+- Two b16 contrasts have both intervals above 0. MASK - T3E also differs in optimizer steps and harder rollouts
+  (T3E has fewer of both). It does not isolate one cause.
+- No init difference has both intervals excluding 0. The cross-difficulty question stays unresolved at 6 seeds.
+
+### 11.2 Program S and stage R status
+- Protocol: Section 13 (program S, `71165aa`, 17:22) and Section 14 (stage R, `49fc6fd`, 18:04). Both were
+  recorded before any of their jobs.
+- S2 structure data and the full CPU test suite: job 10972584 (commit `397abd3`), pending since 18:10 (Priority).
+  Three earlier S2 data jobs (10972316, 10972335, 10972343) were cancelled before start and replaced by this one.
+- R1 drift: canary worker 10972586 waits for 10972584. The second worker follows the canary's first output line.
+- Stage G probes: workers 10968782 and 10970808 pending (Priority). Probe 10968782 ran 23 min, was preempted at
+  15:36, and requeued.
+- **Blocker (R3).** Protocol 14.3 cites "Section 11 of the updated proposal" for the common supervised loss. The
+  proposal files in `protocol/` end at Section 10. R3 training does not start until the owner supplies it. R1, R2
+  and the R3 data work do not depend on it.
+- Forecast (planning only; protocol 14.5): R1 3-5 GPU-h; R3 screening and caches 2-4; R3 dev 4-6; R3 confirmation
+  25-35. The stage-G forecast stays as in Section 7. Queue waits are not forecast: worker 10970808 has pended on
+  Priority since 15:16 (5 h at 20:13).
+
+## 12. Changes
 - Update 0 (2026-10-26 ~19:45): design, matrix and forecast. No results.
 - Update 1 (2026-10-27 04:16): Y1 and dev results (exploratory); matched pairs; reproduction check; canary;
   accounting and forecast. No yf outcome read.
@@ -424,3 +472,5 @@ I = mean_s [Delta(filtered) - Delta(GRPO)] = +0.058; problem bootstrap [+0.041, 
   (Section 8); accounting. Wave-2 decisions pending.
 - Update 6 (2026-10-28 12:14): stage-G validation result and precision decision (Section 10); accounting;
   forecast note. No new A6 result.
+- Update 7 (2026-10-28 20:30): S1 table (Section 11.1, exploratory); program S and stage R status; wave-2
+  decisions (9.7); accounting. No new GPU result; no project code run for this update.
