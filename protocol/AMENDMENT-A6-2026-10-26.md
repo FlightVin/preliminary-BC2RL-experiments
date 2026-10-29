@@ -760,7 +760,7 @@ why online training changed the policy.
   - **N = 256**: the largest N with 2N <= 650 and 2N dividing 8,192. Arms A and B train on the first 512 of trA / trB;
     the AB arms on the first 256 of each. Every arm: 512 unique problems, 16 passes per problem.
   - **Gate S2: pass.** Both classes have >= 512 matched problems, and the matched cells have common support in
-    initial success for both inits (light and extended success bins 0-2). Whether 3 inputs give enough shapes for
+    initial success for both inits (matched cells cover light success bins 0-1 and extended bins 0-2 of 16). Whether 3 inputs give enough shapes for
     S4 is decided at the S4 / S5 choice (13.10), not here.
   - Configs: `scripts/make_s3_configs.py dev --pool 256` (worklist `s3-dev`, 10 runs + 2 initial evaluations, seed
     11). The first S3 run is one canary worker.
