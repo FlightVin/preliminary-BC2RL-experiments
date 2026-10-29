@@ -745,6 +745,25 @@ why online training changed the policy.
     matching rule do not change.
   - Part 2 (after the build report, before any S3 run) fixes N, the diagnostic count per cell and the representative
     panel size, and decides gate S2. If the matched pairs stay below 128, gate S2 fails (13.3).
+- **13.11.2 part 2 (2026-10-29 09:17 EDT; build job 10978686; before any S3 run).**
+  - Panel sizes, fixed at 09:15 before the build report: diagnostic panels at most 128 per class x rate cell;
+    representative panels 512 each. Reason: the primary contrasts are within one class, so panel size has priority
+    over balance between classes. Cells with fewer candidates are taken whole and reported.
+  - st1p: CEM over 3,091 pre_pool candidates (st1s 1,916 + st1x 1,175): **650 matched pairs**; unmatched A 308, B
+    1,483; 20 cells without common support. Residual differences (A vs B, all 650): target 14.0 vs 36.2; traces 4.08
+    vs 1.04; input max 15.6 vs 13.0; prescreen success light 0.086 vs 0.072, extended 0.254 vs 0.190. The first
+    half (325) has the same residuals within 0.5 on every mean. The report states these differences; S3 contrasts
+    are within class and do not remove them.
+  - sd3d 498 (A 262, B 236); sd3f 496 (A 261, B 235). Cells with fewer than 128: dev A rate bins 0 / 3 (2, 4),
+    B bins 0 / 2 / 3 (60, 38, 10); conf A (5, 123, 5), B (70, 33, 4). sr3d 512 (A 110, B 402); sr3f 512 (A 95,
+    B 417).
+  - **N = 256**: the largest N with 2N <= 650 and 2N dividing 8,192. Arms A and B train on the first 512 of trA / trB;
+    the AB arms on the first 256 of each. Every arm: 512 unique problems, 16 passes per problem.
+  - **Gate S2: pass.** Both classes have >= 512 matched problems, and the matched cells have common support in
+    initial success for both inits (light and extended success bins 0-2). Whether 3 inputs give enough shapes for
+    S4 is decided at the S4 / S5 choice (13.10), not here.
+  - Configs: `scripts/make_s3_configs.py dev --pool 256` (worklist `s3-dev`, 10 runs + 2 initial evaluations, seed
+    11). The first S3 run is one canary worker.
 
 ## 14. Stage R — retention, policy drift and the source of training responses (owner addition 2026-10-28)
 

@@ -142,3 +142,37 @@ def test_r1_drift_generated_configs():
         if PD and os.path.isdir(os.path.join(PD, "runs")):
             fin = [x for x in d["score"] if x["tag"].endswith("-r256")]
             assert all(os.path.exists(os.path.join(PD, x["adapter"])) for x in fin), "a final adapter is missing"
+
+
+def test_s3_generated_dev_configs():
+    """The real generated S3 dev configs (configs/s3/on-*-s11.json; protocol 13.4, 13.11.2 part 2: N = 256)."""
+    import glob
+    paths = sorted(glob.glob(os.path.join(ROOT, "configs", "s3", "on-*-s11.json")))
+    assert len(paths) == 10
+    sha = json.load(open(os.path.join(ROOT, "configs", "a6", "adapter_sha256.json")))
+    ab = {"name": "st1p", "classes": {"A": ["trA", 256], "B": ["trB", 256]}}
+    want = {"a": ({"name": "st1p", "classes": {"A": ["trA", 512]}}, None, None),
+            "b": ({"name": "st1p", "classes": {"B": ["trB", 512]}}, None, None),
+            "ab": (ab, {"A": 16, "B": 16}, None), "ab-mb": (ab, {"A": 16, "B": 16}, ["A"]),
+            "ab-ma": (ab, {"A": 16, "B": 16}, ["B"])}
+    allowed = {"pool_ext", "class_per_round", "train_classes", "class_grad_every", "save_rounds"}
+    for p in paths:
+        c = json.load(open(p))
+        init, arm = os.path.basename(p)[3:-9].split("-", 1)
+        src = json.load(open(os.path.join(ROOT, c["s3_source"])))
+        on, fo = c["online"], src["online"]
+        changed = {k for k in set(on) | set(fo) if on.get(k) != fo.get(k)} - {"init"}
+        assert changed <= allowed, (p, changed - allowed)
+        assert (on["pool_ext"], on.get("class_per_round"), on.get("train_classes")) == want[arm], p
+        assert on["init"]["sha256"] == sha[on["init"]["adapter"]] and on["rounds"] == 256
+        assert on["prompts_per_round"] == 32
+        n = sum(v[1] for v in on["pool_ext"]["classes"].values())
+        assert n == 512 and (256 * 32) % n == 0                          # same unique problems and passes per arm
+        assert c["run_id"] == f"bc2rl-s3-{init}-{arm}-s11"
+    wl = json.load(open(os.path.join(ROOT, "configs", "worklists", "s3-dev.json")))
+    assert len(wl["tasks"]) == 12
+    for t in wl["tasks"]:
+        for st in t["steps"]:
+            if st["cmd"] == "xeval":
+                ev = json.load(open(os.path.join(ROOT, st["config"])))["xeval"]
+                assert ev["data_name"] == "st1p" and ev["panels"] == ["sd3d", "sr3d"] and ev["seed"] == 6
