@@ -1,0 +1,78 @@
+{
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "g_source": "configs/main/on-extended-grpo-s11.yaml",
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "online": {
+  "cap": 256,
+  "clip": 0.2,
+  "clip_c": 0.17,
+  "clip_high": 0.17,
+  "clip_low": 0.084,
+  "clip_power": 0.5,
+  "endpoints": {
+   "online": 256,
+   "total": 128
+  },
+  "group": 4,
+  "init": {
+   "adapter": "runs/bc2rl-s1-bc-broad-s11/adapters/step0128.safetensors",
+   "sha256": "78d0932498eef67e15a498ea072a05207fa6c6da5dff3675739ae5a59c5a52d6",
+   "tag": "extended-s11"
+  },
+  "kl_every": 8,
+  "lr": 1e-05,
+  "method": "grpo",
+  "micro": 8,
+  "objective": "ctpo",
+  "prompt_split": "online",
+  "prompts_per_round": 32,
+  "rounds": 256,
+  "save_rounds": [
+   64,
+   128,
+   256
+  ],
+  "stream_seed": 11,
+  "train_precision": "fp32",
+  "updates_per_batch": 4,
+  "val_rounds": [
+   0,
+   64,
+   128,
+   256
+  ]
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-g-extended-t4-s11",
+ "seed": 11,
+ "val": {
+  "attempts": 4,
+  "cap": 256,
+  "split": "val"
+ }
+}

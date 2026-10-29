@@ -1,0 +1,149 @@
+{
+ "name": "g-dev",
+ "tasks": [
+  {
+   "id": "g-light-c1-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-light-c1-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-light-l1-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-light-l1-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-light-l4-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-light-l4-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-light-s4-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-light-s4-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-light-t4-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-light-t4-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-light-t4f-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-light-t4f-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-extended-c1-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-extended-c1-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-extended-l1-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-extended-l1-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-extended-l4-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-extended-l4-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-extended-s4-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-extended-s4-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-extended-t4-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-extended-t4-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-extended-t4f-s11",
+   "steps": [
+    {
+     "name": "online",
+     "cmd": "online",
+     "config": "configs/g/on-extended-t4f-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "g-yd-s11",
+   "requires": [
+    "runs/bc2rl-g-light-c1-s11/adapters/round0256.safetensors",
+    "runs/bc2rl-g-light-l1-s11/adapters/round0256.safetensors",
+    "runs/bc2rl-g-light-l4-s11/adapters/round0256.safetensors",
+    "runs/bc2rl-g-light-s4-s11/adapters/round0256.safetensors",
+    "runs/bc2rl-g-light-t4-s11/adapters/round0256.safetensors",
+    "runs/bc2rl-g-light-t4f-s11/adapters/round0256.safetensors",
+    "runs/bc2rl-g-extended-c1-s11/adapters/round0256.safetensors",
+    "runs/bc2rl-g-extended-l1-s11/adapters/round0256.safetensors",
+    "runs/bc2rl-g-extended-l4-s11/adapters/round0256.safetensors",
+    "runs/bc2rl-g-extended-s4-s11/adapters/round0256.safetensors",
+    "runs/bc2rl-g-extended-t4-s11/adapters/round0256.safetensors",
+    "runs/bc2rl-g-extended-t4f-s11/adapters/round0256.safetensors"
+   ],
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/g/xeval-yd-s11.json"
+    }
+   ]
+  }
+ ]
+}

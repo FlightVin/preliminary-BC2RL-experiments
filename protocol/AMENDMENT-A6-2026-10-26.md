@@ -547,6 +547,22 @@ light batch had no row with A != 0 and was skipped by design, so 3 batches enter
   FP32 pass, 13.6 s, includes warm-up and is not used). Forecast changes go to the report.
 - No statistical rule changed.
 
+### 12.11 Dated addition (2026-10-29 07:18 EDT; clip calibration, job 10978094; before any dev run)
+The six unclipped probes (12.4, 12.8; seed 11, 32 rounds, FP32 passes) ran in jobs 10968782 and 10970808. The rule
+of 12.4 / 12.8 gives the bands below. No value was chosen by judgement. Source: `configs/g/g_calibration.json`.
+- Rounds with a dump: 29-32 per probe. The rounds without a dump had no row with A != 0 (light `grpo_len` rounds
+  14, 25, 26; light `gspo` round 26; light `ctpo` round 30), as 12.4 requires.
+- **e_tok = 0.011** (raw 0.01088; 308,940 tokens). **e_seq = 0.016** (raw 0.01558; 3,348 sequences).
+- **T4 (p = 0.5): e_lo = 0.084, e_hi = e_c = 0.17**; 15.1% of 212,478 probe tokens outside at the rounded values.
+- **T4F (p = 0): e_lo = 0.74, e_hi = e_c = 1.5**; 14.9% outside.
+- Fractions outside the paper values (reported, not used): token band 0.2 / 0.27: 1.4% (light), 1.3% (extended).
+  Sequence band 3e-4 / 4e-4: 95.0% (light), 92.3% (extended). CTPO reference band (0.025 / 0.05, p = 0.5): 45.6%
+  (light), 36.3% (extended). So the paper sequence band would clip most sequences in this setting.
+- Dev runs (12.5 with 12.8): 12 runs {C1, L1, L4, S4, T4, T4F} x {light, extended}, seed 11, FP32 passes (12.10),
+  checkpoints at rounds 64 / 128 / 256 (the frozen light config also saved round 240; dev drops it), KL every 8 rounds.
+  Configs: `scripts/make_g_configs.py dev`; worklist `g-dev` (12 runs + yd finals). Gate D and all thresholds are
+  unchanged.
+
 ## 13. Program S — learning signal, transfer between problem classes, and solution concentration (owner addition 2026-10-28)
 
 Owner addition A6-S (PROJECT.md, 2026-10-28 ~17:15 EDT). Recorded at 17:20 EDT, before any program-S job and before any

@@ -459,3 +459,45 @@ def test_generated_probe_configs_differ_from_frozen_only_in_section12_keys():
         assert c["run_id"].startswith("bc2rl-gp-") and c["run_id"].endswith("-s11")
     wl = json.load(open(os.path.join(root, "configs", "worklists", "g-probe.json")))
     assert sorted(t["steps"][0]["config"] for t in wl["tasks"]) == sorted(os.path.relpath(f, root) for f in files)
+
+
+def test_generated_dev_configs_use_the_calibration():
+    """configs/g/on-*-s11.json (Section 12.5 / 12.8 / 12.11): the frozen M-arm config with only the Section-12 keys
+    changed; clip values copied from configs/g/g_calibration.json; worklist g-dev = 12 runs + the yd finals."""
+    import glob
+    import json
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cal = json.load(open(os.path.join(root, "configs", "g", "g_calibration.json")))
+    assert (cal["eps_tok"], cal["eps_seq"]) == (0.011, 0.016)
+    files = sorted(glob.glob(os.path.join(root, "configs", "g", "on-*-s11.json")))
+    assert len(files) == 12
+    allowed = {"objective", "updates_per_batch", "clip_low", "clip_high", "clip_c", "clip_power", "train_precision",
+               "kl_every", "save_rounds"}
+    want = {"c1": ("grpo_const", None, None, None, None, None),
+            "l1": ("grpo_len", None, cal["eps_tok"], cal["eps_tok"], None, None),
+            "l4": ("grpo_len", 4, cal["eps_tok"], cal["eps_tok"], None, None),
+            "s4": ("gspo", 4, cal["eps_seq"], cal["eps_seq"], None, None),
+            "t4": ("ctpo", 4, cal["ctpo"]["clip_low"], cal["ctpo"]["clip_high"], cal["ctpo"]["clip_c"], 0.5),
+            "t4f": ("ctpo", 4, cal["ctpo_fixed"]["clip_low"], cal["ctpo_fixed"]["clip_high"],
+                    cal["ctpo_fixed"]["clip_c"], 0.0)}
+    finals = set()
+    for f in files:
+        c = json.load(open(f))
+        init, arm = os.path.basename(f)[3:-9].split("-")
+        src = json.load(open(os.path.join(root, c["g_source"])))
+        on, fo = c["online"], src["online"]
+        changed = {k for k in set(on) | set(fo) if on.get(k) != fo.get(k)} - {"init"}
+        assert changed <= allowed, (f, changed - allowed)
+        assert {k: v for k, v in on["init"].items() if k != "sha256"} == fo["init"]
+        assert tuple(on.get(k) for k in ("objective", "updates_per_batch", "clip_low", "clip_high", "clip_c",
+                                         "clip_power")) == want[arm], f
+        assert on["train_precision"] == "fp32" and on["rounds"] == fo["rounds"] == 256 and on["save_rounds"][-1] == 256
+        assert isinstance(on["lr"], float) and on["lr"] == fo["lr"] and not on.get("dump_ratios")
+        assert c["run_id"] == f"bc2rl-g-{init}-{arm}-s11"
+        finals.add(f"runs/{c['run_id']}/adapters/round0256.safetensors")
+    assert abs(cal["ctpo"]["clip_high"] - 2 * cal["ctpo"]["clip_low"]) < 0.01                  # e_hi = 2 e_lo (12.8)
+    wl = json.load(open(os.path.join(root, "configs", "worklists", "g-dev.json")))
+    assert len(wl["tasks"]) == 13 and set(wl["tasks"][-1]["requires"]) == finals
+    ev = json.load(open(os.path.join(root, wl["tasks"][-1]["steps"][0]["config"])))["xeval"]
+    assert {x["adapter"] for x in ev["checkpoints"]} == finals and ev["data_name"] == "a6"
