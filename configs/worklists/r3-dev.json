@@ -1,0 +1,61 @@
+{
+ "name": "r3-dev",
+ "tasks": [
+  {
+   "id": "r3-prep",
+   "steps": [
+    {
+     "name": "rprep",
+     "cmd": "rprep",
+     "config": "configs/r/rprep.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-dev-b16-s7",
+   "requires": [
+    "rsource/r3/common_pool.json"
+   ],
+   "steps": [
+    {
+     "name": "rsource",
+     "cmd": "rsource",
+     "config": "configs/r/rs-dev-light-s7.json"
+    },
+    {
+     "name": "xeval-rd3",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-rd3-dev-light-s7.json"
+    },
+    {
+     "name": "xeval-yd3",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-yd3-dev-light-s7.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-dev-b128-s7",
+   "requires": [
+    "rsource/r3/common_pool.json"
+   ],
+   "steps": [
+    {
+     "name": "rsource",
+     "cmd": "rsource",
+     "config": "configs/r/rs-dev-extended-s7.json"
+    },
+    {
+     "name": "xeval-rd3",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-rd3-dev-extended-s7.json"
+    },
+    {
+     "name": "xeval-yd3",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-yd3-dev-extended-s7.json"
+    }
+   ]
+  }
+ ]
+}

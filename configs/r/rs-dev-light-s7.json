@@ -1,0 +1,63 @@
+{
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "prompt_variant": "format",
+ "rsource": {
+  "batch_seqs": 512,
+  "cache_tag": "dev-b16-s7",
+  "cap": 256,
+  "data_name": "rs1",
+  "fresh": {
+   "attempts": 64,
+   "batch": 8
+  },
+  "init": {
+   "adapter": "runs/bc2rl-s0-bc-devlight/adapters/step0016.safetensors",
+   "tag": "dev-b16-s7"
+  },
+  "lr": 1e-05,
+  "mask_limit": 0.05,
+  "micro": 8,
+  "panel": "rsc",
+  "prep_out": "r3",
+  "prompts_per_round": 32,
+  "rounds": 256,
+  "sample_seed": 7,
+  "save_rounds": [
+   0,
+   32,
+   64,
+   128,
+   192,
+   256
+  ],
+  "stream_seed": 7
+ },
+ "run_id": "bc2rl-r3-dev-b16-s7",
+ "seed": 7
+}

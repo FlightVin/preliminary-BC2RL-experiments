@@ -81,7 +81,16 @@ def cmd_xdata(cfg):
         load_ext(cfg, xd["name"])
         print(f"ext data {d} exists; hashes OK")
         return 0
-    seen = existing_keys(cfg, xd.get("exclude_ext", ()))
+    excl = list(xd.get("exclude_ext", ()))
+    if xd.get("exclude_all_ext"):          # A6 stage R (14.9.2): every ext dataset; one without panels is refused
+        root = os.path.dirname(d)
+        names = sorted(n for n in (os.listdir(root) if os.path.isdir(root) else [])
+                       if n != xd["name"] and os.path.exists(os.path.join(root, n, "manifest.json")))
+        bad = [n for n in names if "panels" not in json.load(open(os.path.join(root, n, "manifest.json")))]
+        if bad:
+            raise SystemExit(f"ext data without a panels manifest (cannot exclude its keys): {bad}")
+        excl = sorted(set(excl) | set(names))
+    seen = existing_keys(cfg, excl)
     n_existing = len(seen)
     g = cfg["data"]
     gcfg = task.GenConfig(min_value=g["min_value"], max_value=g["max_value"], max_target=g["max_target"],
@@ -96,7 +105,7 @@ def cmd_xdata(cfg):
            "mech_manifest_sha256": hashlib.sha256(open(os.path.join(mech_dir(cfg), "mech_manifest.json"),
                                                        "rb").read()).hexdigest(),
            "generator": task.GENERATOR_VERSION, "gen_config": g, "seed": xd["seed"],
-           "existing_keys_excluded": n_existing, "exclude_ext": list(xd.get("exclude_ext", ())), "rejection_stats": {k: dict(v) for k, v in stats.items()},
+           "existing_keys_excluded": n_existing, "exclude_ext": excl, "rejection_stats": {k: dict(v) for k, v in stats.items()},
            "panels": {s: {"count": len(p), "n_inputs": panels[s][0], "sha256": task.manifest_hash(p),
                           "structure": dict(Counter(x.structure for x in p)),
                           "op_freq": dict(Counter(o for x in p for o in x.ops_used))} for s, p in out.items()}}

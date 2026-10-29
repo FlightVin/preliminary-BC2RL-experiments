@@ -1,0 +1,54 @@
+{
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-r3-data",
+ "xdata": {
+  "exclude_all_ext": true,
+  "name": "rs1",
+  "panels": {
+   "rd3": {
+    "count": 256,
+    "n_inputs": 3
+   },
+   "rf3": {
+    "count": 768,
+    "n_inputs": 3
+   },
+   "rf5": {
+    "count": 128,
+    "n_inputs": 5
+   },
+   "rsc": {
+    "count": 2048,
+    "n_inputs": 3
+   }
+  },
+  "seed": 20261030
+ }
+}

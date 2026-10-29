@@ -705,7 +705,11 @@ why online training changed the policy.
   concurrency) are shared with stage G. CPU: one job at a time, <= 4 CPUs. Stage-level forecasts in the report.
 
 ### 13.11 Dated additions (program S)
-(none yet)
+- **13.11.1 (2026-10-29, recorded before any st1 data exists; 14.9.2).** The stage-R data `rs1` is drawn before st1.
+  The 3-input key universe of the frozen generator has about 18,900 keys (independent count, own audit code); 400,000
+  st1 draws take nearly all of it, so rs1 could not be drawn after st1. st1 excludes every earlier ext dataset
+  (13.3, unchanged code), so st1 and rs1 stay disjoint. The st1 seed, draw count and rules do not change. The st1
+  manifest records the excluded keys.
 
 ## 14. Stage R — retention, policy drift and the source of training responses (owner addition 2026-10-28)
 
@@ -717,7 +721,7 @@ from, beyond differences in initial competence and later improvement?**
 **Open item (blocks only the R3 training matrix).** The owner refers to "Section 11 of the updated proposal" for the
 common-pool construction and the common supervised loss. The proposal copies in `protocol/` (revision of 2026-10-24)
 have no such section. The values that the owner message states are fixed below. The supervised loss and any other
-Section-11 detail stay open. No R3 training job is submitted until that text is available and recorded in 14.9.
+Section-11 detail stay open. No R3 training job is submitted until that text is available and recorded in 14.9. **Closed 2026-10-29 by 14.9.1 (owner definition).**
 
 ### 14.1 Stage R1 — policy drift on existing checkpoints (exploratory)
 - **Branches:** every A5/A6 online branch with saved adapters (M GRPO and filtered, steps 16/128, seeds 11-66; Y3 MASK
@@ -785,7 +789,7 @@ supervision comparison. The design studies solutions available at the start; it 
   accepted occurrences and loss denominator in all arms; a round with every occurrence masked takes no step in any arm.
   Saved rounds 0, 32, 64, 128, 192, 256. One GPU worker runs a block: the four arms in sequence in each round, each
   with its own optimizer state. Every candidate (accepted or not), cache cost and token is counted. **The supervised
-  loss: open item (Section 11 of the updated proposal).**
+  loss: 14.9.1.**
 
 ### 14.4 Evaluation and inference (R3; frozen before confirmation)
 - Fresh panels from `rs1`: rf3 = 768 three-input, rf5 = 128 five-input problems. Initial adapters: 48 attempts
@@ -812,4 +816,48 @@ supervision comparison. The design studies solutions available at the start; it 
   evaluations about 4-6 GPU-h; confirmation 6 blocks plus evaluations (incl. R2 dev measurements) about 25-35 GPU-h.
 
 ### 14.9 Dated additions (stage R)
-(none yet)
+- **14.9.1 Supervised loss of R3 (owner instruction A6-R2, PROJECT.md 2026-10-29; recorded before any R3 job).**
+  This closes the open item of Section 14. All four arms (S, I, F, O) use
+  L(theta) = -(1 / (32 x 256)) x sum_{i=1..32} m_i x sum_{t=1..T_i} log pi_theta(y_it | x_i, y_i<t).
+  - y_i: one verified successful response from the arm's source. m_i: the shared acceptance mask (m_i = 0 in all
+    four arms when F or O has no verified response within 64 attempts). T_i: response tokens incl. the sampled stop
+    token; no prompt or padding tokens. A truncated response is never a successful target.
+  - The denominator is fixed at 32 x 256, also when occurrences are masked. It is not the accepted count, the token
+    count or a response length.
+  - Teacher forcing. Targets and acceptance decisions are fixed data; the gradient passes only through the trained
+    policy's log-probabilities. No baseline, advantage normalization, importance ratio, clipping surrogate or KL term.
+  - AdamW, lr 1e-5, weight decay 0, gradient-norm clip 1.0 (per arm), default betas and eps, constant learning rate;
+    a fresh optimizer state per arm at the branch. Precision and trainable parameters as the frozen configuration
+    (BF16 base weights, FP32 LoRA r 16 adapter and optimizer state), identical in all arms. One full-batch step per
+    round per arm (micro-batch gradients accumulated). A round with all 32 occurrences masked takes no optimizer step
+    in any arm; it counts as a sampling round.
+  - Each round samples the F and O targets before any arm is updated, applies their common mask to all four arms and
+    then steps the four arms in the order S, I, F, O, each with its own optimizer state. 256 sampling rounds; adapters
+    saved at rounds 0, 32, 64, 128, 192, 256.
+  - This normalization differs from the A5 success-filtered baseline (1 / (|S| x cap)). R3 is the controlled
+    response-source experiment, not a reproduction of that baseline.
+- **14.9.2 R3 data, screening, caches and development settings (recorded before any R3 job).**
+  - Data `rs1` (`bc2rl xdata`, seed 20261030, every earlier ext dataset excluded): `rsc` 2,048 three-input screening
+    candidates (draw order), `rd3` 256 three-input (development panel), `rf3` 768 three-input and `rf5` 128
+    five-input (confirmation panels; not read before 14.9.3). rs1 is drawn before st1 (13.11.1).
+  - Screening: the 6 confirmation checkpoints, 16 independent attempts per candidate (evaluation decoding, cap 256,
+    seed 10), chunks of 256 in draw order; stop after the chunk that reaches 256 qualifying problems, or at 2,048.
+    Pool = the first 256 qualifying problems in draw order; else the first 128; fewer than 128 = failed gate.
+  - Caches (I): the 6 confirmation and 2 development checkpoints; per pool problem, attempts in batches of 8 until
+    the first verified success in attempt order, at most 64 (seed 11). Common pool = pool problems with an I target
+    for all 6 confirmation checkpoints. A development block also drops problems without a target for its checkpoint.
+    Every attempt and token (also attempts after the first success within a batch) is counted.
+  - Fresh targets (F, O): the same rule (batches of 8, at most 64, first verified success in attempt order).
+    F and O use different sampling seeds. Prompt stream: 32 occurrences per round from the block pool, stream seed
+    = the block seed (7 for development; the BC seed for confirmation).
+  - Verified success = verifier reward 1 and a sampled stop token.
+  - Development (seed 7, `bc2rl-s0-bc-devlight` step 16 and `bc2rl-s0-bc-devext` step 128): two four-arm blocks;
+    evaluations on rd3 (initial adapter 48 attempts, split 24; round-256 arms 32 attempts; seed 6) and R2 progress
+    on yd3 (16 attempts, seed 9; initial adapter and every saved round of every arm).
+  - **Development gate DR (all must hold before 14.9.3 and any confirmation block):** (1) pool >= 128; (2) both
+    development blocks complete 256 rounds with finite losses; (3) masked occurrences <= 5% per block (otherwise:
+    diagnosis and a dated decision, no confirmation); (4) every S and I target ends with a stop token and fits the cap;
+    (5) measured GPU-h per block and per evaluation give the confirmation forecast. L* and the R2 checkpoint rule
+    (14.2) are computed on the development data; L* < 0.02 makes R2 unavailable but does not stop R3.
+  - 14.9.3 (after gate DR, before any confirmation block) freezes L*, the confirmation configs and the R1
+    relationships to confirm.

@@ -1,4 +1,4 @@
-"""python -m bc2rl {generate,bc,online,evaluate,report,toy,mechdata,mech,analyze,xdata,xeval,drift} --config <yaml> [--run-id ID] [--results-dir DIR]"""
+"""python -m bc2rl {generate,bc,online,evaluate,report,toy,mechdata,mech,analyze,xdata,xeval,drift,rprep,rsource} --config <yaml> [--run-id ID] [--results-dir DIR]"""
 from __future__ import annotations
 
 import argparse
@@ -10,7 +10,7 @@ from .runtime import load_config
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="bc2rl")
     ap.add_argument("command", choices=["generate", "bc", "online", "evaluate", "report", "toy", "mechdata", "mech", "analyze",
-                                        "xdata", "xeval", "drift"])
+                                        "xdata", "xeval", "drift", "rprep", "rsource"])
     ap.add_argument("--config", required=True)
     ap.add_argument("--run-id", help="explicit run identifier; resume uses the same id (overrides config run_id)")
     ap.add_argument("--results-dir", help="directory for the small harvested distillate (e.g. $AE_RESULTS)")
@@ -51,6 +51,12 @@ def main(argv=None):
     if a.command == "drift":
         from .drift import cmd_drift
         return cmd_drift(cfg)
+    if a.command == "rprep":
+        from .rsource import cmd_rprep
+        return cmd_rprep(cfg)
+    if a.command == "rsource":
+        from .rsource import cmd_rsource
+        return cmd_rsource(cfg)
     if a.command == "xeval":
         from .extension import cmd_xeval
         return cmd_xeval(cfg)
