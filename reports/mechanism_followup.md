@@ -1,6 +1,6 @@
 # BC2RL mechanism follow-up (amendment A6)
 
-**Status: update 7, 2026-10-28 20:30 EDT.** Programs S and R (amendment Sections 13-14) and the S1 cross-difficulty table are in Section 11. No new GPU result since update 6. Look 1 results are in Section 9 (update 5). Stage G (GSPO / CTPO, Section 10) passed validation; it trains with FP32 passes; the clip-calibration probes wait for a GPU. Update 1 added the exploratory results from the
+**Status: update 7, 2026-10-28 20:15 EDT.** Programs S and R (amendment Sections 13-14) and the S1 cross-difficulty table are in Section 11. No new GPU result since update 6. Look 1 results are in Section 9 (update 5). Stage G (GSPO / CTPO, Section 10) passed validation; it trains with FP32 passes; the clip-calibration probes wait for a GPU. Update 1 added the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
 commit `c6f7d0a`; dated additions 10.1.1-10.1.3 frozen before any yf read). The A5 study (`reports/extension_study.md`)
@@ -472,5 +472,5 @@ E = excess coverage loss at K = 16; a positive contrast means more loss in the f
   (Section 8); accounting. Wave-2 decisions pending.
 - Update 6 (2026-10-28 12:14): stage-G validation result and precision decision (Section 10); accounting;
   forecast note. No new A6 result.
-- Update 7 (2026-10-28 20:30): S1 table (Section 11.1, exploratory); program S and stage R status; wave-2
+- Update 7 (2026-10-28 20:15): S1 table (Section 11.1, exploratory); program S and stage R status; wave-2
   decisions (9.7); accounting. No new GPU result; no project code run for this update.
