@@ -68,8 +68,8 @@ def test_rprep_pool_screening_and_caches(r3):
     order = [p.pid for p in ext["rsc"]]
     q = [x for x in order[:pool["screened"]] if all(scr["counts"][t][x] > 0 for t in ("c0", "c1"))]
     assert pool["pool"] == q[:6] and pool["qualified"] == len(q)
-    assert all(v["attempts"] == 2 * n for v, n in zip([scr["cost"][f"c0@{s}"] for s in (0, 16)][:len(scr["chunks"])],
-                                                   scr["chunks"]))
+    offs = [sum(scr["chunks"][:i]) for i in range(len(scr["chunks"]))]       # cost keys use the cumulative offset
+    assert all(scr["cost"][f"c0@{o}"]["attempts"] == 2 * n for o, n in zip(offs, scr["chunks"]))
     c0 = json.load(open(os.path.join(out, "caches", "c0.json")))
     assert set(c0["targets"]) == set(pool["pool"])
     found = [t for t in c0["targets"].values() if t]
