@@ -731,7 +731,7 @@ why online training changed the policy.
   - st1: 11,495 candidates (A 1,954, B 9,541). Prescreen (16 attempts, seed 7, light / extended seed-11 adapters):
     pre_pool 958 + 958, pre_dev and pre_conf 471 + 471 each (all class-A candidates of the pool and conf roles).
   - Class is confounded with the target: class A targets have median 14 (p90 34); class B median 120 (p90 345).
-    In pre_pool, 99% of A but about 26% of B fall in the lowest target bin (1-60).
+    In pre_pool, all 958 A but 245 of 958 B (25.6%) fall in the lowest target bin (1-60).
   - Mean prescreen success, pre_pool: light A 0.097 / B 0.061; extended A 0.315 / B 0.173. Zero-success share:
     light A 24% / B 45%; extended A 3% / B 27%. Mean response tokens: light A 36 / B 50; extended A 20 / B 22.
   - CEM on pre_pool (13.3 cells): 178 matched pairs; 780 A and 780 B unmatched; 19 cells without common support.
