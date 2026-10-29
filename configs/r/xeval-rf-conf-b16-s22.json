@@ -1,0 +1,72 @@
+{
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-r3-conf-b16-s22-ev-rf3",
+ "xeval": {
+  "batch_seqs": 768,
+  "cap": 256,
+  "checkpoints": [
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s22/adapters/step0016.safetensors",
+    "attempts": 48,
+    "sha256": "7d022a02f2c0871f7d450e5b4d403885d2e18ddf0e0348ea62cddfbc0c61ed5e",
+    "split": 24,
+    "tag": "b16-s22"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b16-s22/adapters/S/round0256.safetensors",
+    "attempts": 32,
+    "tag": "r3-conf-b16-s22-S-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b16-s22/adapters/I/round0256.safetensors",
+    "attempts": 32,
+    "tag": "r3-conf-b16-s22-I-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b16-s22/adapters/F/round0256.safetensors",
+    "attempts": 32,
+    "tag": "r3-conf-b16-s22-F-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b16-s22/adapters/O/round0256.safetensors",
+    "attempts": 32,
+    "tag": "r3-conf-b16-s22-O-r256"
+   }
+  ],
+  "data_name": "rs1",
+  "emit_counts": false,
+  "panels": [
+   "rf3",
+   "rf5"
+  ],
+  "seed": 6,
+  "variant": "format"
+ }
+}

@@ -10,7 +10,14 @@
   rdev (14.9.2) configs/r/rprep.json, rs-dev-<init>-s7.json, xeval-rd3-dev-<init>-s7.json, xeval-yd3-dev-<init>-s7.json
                 worklist r3-dev: prep (screening on the 6 confirmation checkpoints, I caches for those 6 and the 2 dev
                 checkpoints), then the two seed-7 dev blocks, each followed by its rd3 and yd3 (R2 progress) evaluations.
-Usage: make_r_configs.py drift | rdata | rdev
+  rconf (14.9.3) configs/r/rs-conf-b<step>-s<seed>.json, xeval-rf-, xeval-yd3-, drift-conf-b<step>-s<seed>.json
+                worklist r3-conf: 6 blocks (steps 16 / 128 x seeds 11 / 22 / 33; stream and sample seed = the BC seed;
+                I targets from the rprep cache of the block's own BC checkpoint). Each block has 4 tasks so that each
+                fits one job: rsource | rf3 + rf5 (initial 48 attempts, split 24; finals 32; seed 6) | yd3 R2 progress
+                (16 attempts, seed 9; initial and every saved round of every arm) | drift (14.1 protocol, the block's
+                own BC reference, rounds 64 / 128 / 256 of every arm; the R1 references are reused). The three
+                evaluation tasks require the block's runs/<rid>/summary.json (written last, atomically).
+Usage: make_r_configs.py drift | rdata | rdev | rconf
 """
 import argparse
 import json
@@ -71,7 +78,7 @@ def ref_item(s, step):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("stage", choices=["drift", "rdata", "rdev"])
+    ap.add_argument("stage", choices=["drift", "rdata", "rdev", "rconf"])
     a = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
     if a.stage != "drift":
@@ -95,6 +102,8 @@ def main():
 def r3(stage):
     base, _ = frozen_online("light", "grpo", 11)
     keys = lambda: {k: base[k] for k in ("prompt_variant", "model", "data")}
+    if stage == "rconf":
+        return r3_conf(keys)
     if stage == "rdata":
         c = dict(keys(), run_id="bc2rl-r3-data", xdata={"name": "rs1", "seed": 20261030, "exclude_all_ext": True, "panels": {
             "rsc": {"n_inputs": 3, "count": 2048}, "rd3": {"n_inputs": 3, "count": 256},
@@ -133,6 +142,45 @@ def r3(stage):
         json.dump({"name": "r3-dev", "tasks": tasks}, f, indent=1)
         f.write("\n")
     print(f"r3-dev: {len(tasks)} tasks")
+
+
+def r3_conf(keys):
+    blocks, evals = [], []
+    for s in CONF_SEEDS:
+        for step in (16, 128):
+            ad, tag = bc_adapter(s, step), f"b{step}-s{s}"
+            rid = f"bc2rl-r3-conf-{tag}"
+            blk = dict(keys(), run_id=rid, seed=s, rsource=dict(
+                BLOCK, data_name="rs1", panel="rsc", prep_out="r3", cache_tag=tag,
+                init={"tag": tag, "adapter": ad, "sha256": SHA[ad]}, stream_seed=s, sample_seed=s))
+            ckpt = lambda arm, r: f"runs/{rid}/adapters/{arm}/round{r:04d}.safetensors"
+            ev = lambda data, panels, cks, seed: dict(keys(), run_id=f"{rid}-ev-{panels[0]}", xeval={
+                "data_name": data, "panels": panels, "checkpoints": cks, "seed": seed, "variant": "format", "cap": 256,
+                "batch_seqs": 768, "emit_counts": False})
+            rf = ev("rs1", ["rf3", "rf5"], [{"tag": tag, "adapter": ad, "sha256": SHA[ad], "attempts": 48, "split": 24}] +
+                    [{"tag": f"r3-conf-{tag}-{arm}-r256", "adapter": ckpt(arm, 256), "attempts": 32} for arm in ARMS], 6)
+            yd = ev("a6", ["yd3"], [{"tag": f"r2-conf-{tag}", "adapter": ad, "sha256": SHA[ad], "attempts": 16}] + [
+                {"tag": f"r2-conf-{tag}-{arm}-r{r:03d}", "adapter": ckpt(arm, r), "attempts": 16}
+                for arm in ARMS for r in BLOCK["save_rounds"][1:]], 9)
+            base, _ = frozen_online("light", "grpo", s)
+            dr = {k: base[k] for k in ("prompt_variant", "model", "data")}
+            dr.update(run_id=f"bc2rl-r3-drift-{tag}", drift=dict(DRIFT, refs=[ref_item(s, step)], score=[
+                {"ref": tag, "tag": f"r3c-b{step}-{arm}-s{s}-r{r:03d}", "adapter": ckpt(arm, r)}
+                for arm in ARMS for r in ROUNDS]))
+            req = [f"runs/{rid}/summary.json"]
+            blocks.append({"id": f"r3-conf-{tag}", "requires": ["rsource/r3/common_pool.json"], "steps": [
+                {"name": "rsource", "cmd": "rsource", "config": write(f"rs-conf-{tag}.json", blk)}]})
+            evals += [{"id": f"r3-conf-{tag}-rf", "requires": req, "steps": [
+                          {"name": "xeval-rf", "cmd": "xeval", "config": write(f"xeval-rf-conf-{tag}.json", rf)}]},
+                      {"id": f"r3-conf-{tag}-yd", "requires": req, "steps": [
+                          {"name": "xeval-yd3", "cmd": "xeval", "config": write(f"xeval-yd3-conf-{tag}.json", yd)}]},
+                      {"id": f"r3-conf-{tag}-drift", "requires": req, "steps": [
+                          {"name": "drift", "cmd": "drift", "config": write(f"drift-conf-{tag}.json", dr)}]}]
+    tasks = blocks + evals
+    with open(os.path.join(ROOT, "configs", "worklists", "r3-conf.json"), "w") as f:
+        json.dump({"name": "r3-conf", "tasks": tasks}, f, indent=1)
+        f.write("\n")
+    print(f"r3-conf: {len(tasks)} tasks")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,317 @@
+{
+ "name": "r3-conf",
+ "tasks": [
+  {
+   "id": "r3-conf-b16-s11",
+   "requires": [
+    "rsource/r3/common_pool.json"
+   ],
+   "steps": [
+    {
+     "name": "rsource",
+     "cmd": "rsource",
+     "config": "configs/r/rs-conf-b16-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s11",
+   "requires": [
+    "rsource/r3/common_pool.json"
+   ],
+   "steps": [
+    {
+     "name": "rsource",
+     "cmd": "rsource",
+     "config": "configs/r/rs-conf-b128-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b16-s22",
+   "requires": [
+    "rsource/r3/common_pool.json"
+   ],
+   "steps": [
+    {
+     "name": "rsource",
+     "cmd": "rsource",
+     "config": "configs/r/rs-conf-b16-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s22",
+   "requires": [
+    "rsource/r3/common_pool.json"
+   ],
+   "steps": [
+    {
+     "name": "rsource",
+     "cmd": "rsource",
+     "config": "configs/r/rs-conf-b128-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b16-s33",
+   "requires": [
+    "rsource/r3/common_pool.json"
+   ],
+   "steps": [
+    {
+     "name": "rsource",
+     "cmd": "rsource",
+     "config": "configs/r/rs-conf-b16-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s33",
+   "requires": [
+    "rsource/r3/common_pool.json"
+   ],
+   "steps": [
+    {
+     "name": "rsource",
+     "cmd": "rsource",
+     "config": "configs/r/rs-conf-b128-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b16-s11-rf",
+   "requires": [
+    "runs/bc2rl-r3-conf-b16-s11/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-rf",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-rf-conf-b16-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b16-s11-yd",
+   "requires": [
+    "runs/bc2rl-r3-conf-b16-s11/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd3",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-yd3-conf-b16-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b16-s11-drift",
+   "requires": [
+    "runs/bc2rl-r3-conf-b16-s11/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-conf-b16-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s11-rf",
+   "requires": [
+    "runs/bc2rl-r3-conf-b128-s11/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-rf",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-rf-conf-b128-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s11-yd",
+   "requires": [
+    "runs/bc2rl-r3-conf-b128-s11/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd3",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-yd3-conf-b128-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s11-drift",
+   "requires": [
+    "runs/bc2rl-r3-conf-b128-s11/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-conf-b128-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b16-s22-rf",
+   "requires": [
+    "runs/bc2rl-r3-conf-b16-s22/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-rf",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-rf-conf-b16-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b16-s22-yd",
+   "requires": [
+    "runs/bc2rl-r3-conf-b16-s22/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd3",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-yd3-conf-b16-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b16-s22-drift",
+   "requires": [
+    "runs/bc2rl-r3-conf-b16-s22/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-conf-b16-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s22-rf",
+   "requires": [
+    "runs/bc2rl-r3-conf-b128-s22/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-rf",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-rf-conf-b128-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s22-yd",
+   "requires": [
+    "runs/bc2rl-r3-conf-b128-s22/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd3",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-yd3-conf-b128-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s22-drift",
+   "requires": [
+    "runs/bc2rl-r3-conf-b128-s22/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-conf-b128-s22.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b16-s33-rf",
+   "requires": [
+    "runs/bc2rl-r3-conf-b16-s33/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-rf",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-rf-conf-b16-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b16-s33-yd",
+   "requires": [
+    "runs/bc2rl-r3-conf-b16-s33/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd3",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-yd3-conf-b16-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b16-s33-drift",
+   "requires": [
+    "runs/bc2rl-r3-conf-b16-s33/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-conf-b16-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s33-rf",
+   "requires": [
+    "runs/bc2rl-r3-conf-b128-s33/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-rf",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-rf-conf-b128-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s33-yd",
+   "requires": [
+    "runs/bc2rl-r3-conf-b128-s33/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "xeval-yd3",
+     "cmd": "xeval",
+     "config": "configs/r/xeval-yd3-conf-b128-s33.json"
+    }
+   ]
+  },
+  {
+   "id": "r3-conf-b128-s33-drift",
+   "requires": [
+    "runs/bc2rl-r3-conf-b128-s33/summary.json"
+   ],
+   "steps": [
+    {
+     "name": "drift",
+     "cmd": "drift",
+     "config": "configs/r/drift-conf-b128-s33.json"
+    }
+   ]
+  }
+ ]
+}

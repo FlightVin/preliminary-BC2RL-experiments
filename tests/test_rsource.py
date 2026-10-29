@@ -249,3 +249,49 @@ def test_r3_generated_configs():
         assert all(k["attempts"] == 32 and k["adapter"].endswith("round0256.safetensors") for k in e["checkpoints"][1:])
         if PD and os.path.isdir(os.path.join(PD, "runs")):
             assert os.path.exists(os.path.join(PD, b["init"]["adapter"]))
+
+
+def test_r3_conf_generated_configs():
+    """The real generated R3 confirmation configs (configs/r/*-conf-*; worklist r3-conf; protocol 14.4, 14.9.3): each
+    block equals the dev block of its init except the init, cache tag, seeds and run_id; the three evaluation tasks
+    require the block's summary; the drift config reuses the R1 reference of the same BC checkpoint."""
+    rd = lambda n: json.load(open(os.path.join(ROOT, "configs", "r", n)))
+    sha = json.load(open(os.path.join(ROOT, "configs", "a6", "adapter_sha256.json")))
+    wl = json.load(open(os.path.join(ROOT, "configs", "worklists", "r3-conf.json")))
+    tags = [f"b{st}-s{s}" for s in (11, 22, 33) for st in (16, 128)]
+    assert [t["id"] for t in wl["tasks"][:6]] == [f"r3-conf-{t}" for t in tags] and len(wl["tasks"]) == 24
+    for tag in tags:
+        step, s = int(tag.split("-")[0][1:]), int(tag.split("-s")[1])
+        c, d = rd(f"rs-conf-{tag}.json"), rd(f"rs-dev-{'light' if step == 16 else 'extended'}-s7.json")
+        b, bd = c["rsource"], d["rsource"]
+        assert {k for k in set(b) | set(bd) if b.get(k) != bd.get(k)} == {"cache_tag", "init", "stream_seed", "sample_seed"}
+        assert {k for k in set(c) | set(d) if c.get(k) != d.get(k)} == {"rsource", "run_id", "seed"}
+        assert b["cache_tag"] == b["init"]["tag"] == tag and b["stream_seed"] == b["sample_seed"] == c["seed"] == s
+        assert b["init"]["sha256"] == sha[b["init"]["adapter"]] and f"bc-broad-s{s}/" in b["init"]["adapter"]
+        rid = c["run_id"]
+        assert rid == f"bc2rl-r3-conf-{tag}"
+        by = {t["id"]: t for t in wl["tasks"]}
+        assert by[rid[6:]]["requires"] == ["rsource/r3/common_pool.json"]
+        for suf in ("rf", "yd", "drift"):
+            assert by[f"r3-conf-{tag}-{suf}"]["requires"] == [f"runs/{rid}/summary.json"]
+        e = rd(f"xeval-rf-conf-{tag}.json")["xeval"]
+        assert e["data_name"] == "rs1" and e["panels"] == ["rf3", "rf5"] and e["seed"] == 6
+        assert e["checkpoints"][0] == {"tag": tag, "adapter": b["init"]["adapter"], "sha256": b["init"]["sha256"],
+                                       "attempts": 48, "split": 24}
+        assert [k["adapter"] for k in e["checkpoints"][1:]] == [f"runs/{rid}/adapters/{a}/round0256.safetensors"
+                                                                for a in "SIFO"]
+        assert all(k["attempts"] == 32 for k in e["checkpoints"][1:])
+        y = rd(f"xeval-yd3-conf-{tag}.json")["xeval"]
+        assert y["data_name"] == "a6" and y["panels"] == ["yd3"] and y["seed"] == 9 and len(y["checkpoints"]) == 21
+        assert all(k["attempts"] == 16 for k in y["checkpoints"]) and y["checkpoints"][0]["adapter"] == b["init"]["adapter"]
+        assert {k["adapter"] for k in y["checkpoints"][1:]} == {f"runs/{rid}/adapters/{a}/round{r:04d}.safetensors"
+                                                               for a in "SIFO" for r in (32, 64, 128, 192, 256)}
+        dr, r1 = rd(f"drift-conf-{tag}.json")["drift"], rd(f"drift-s{s}.json")["drift"]
+        assert {k: v for k, v in dr.items() if k not in ("refs", "score")} == \
+            {k: v for k, v in r1.items() if k not in ("refs", "score")}
+        assert dr["refs"] == [r for r in r1["refs"] if r["tag"] == tag]
+        assert sorted(x["adapter"] for x in dr["score"]) == sorted(
+            f"runs/{rid}/adapters/{a}/round{r:04d}.safetensors" for a in "SIFO" for r in (64, 128, 256))
+        assert all(x["ref"] == tag for x in dr["score"])
+    alltags = [x["tag"] for t in tags for x in rd(f"drift-conf-{t}.json")["drift"]["score"]]
+    assert len(alltags) == len(set(alltags)) == 72

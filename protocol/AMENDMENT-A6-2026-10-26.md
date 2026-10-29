@@ -915,3 +915,40 @@ supervision comparison. The design studies solutions available at the start; it 
     (14.2) are computed on the development data; L* < 0.02 makes R2 unavailable but does not stop R3.
   - 14.9.3 (after gate DR, before any confirmation block) freezes L*, the confirmation configs and the R1
     relationships to confirm.
+- **14.9.3 (2026-10-29, written after gate DR and before any confirmation block; dev jobs 10976381 and
+  10978682; audit script `audits/scripts/r3_gate_dr.py` in the workspace).**
+  - **Gate DR: pass.** (1) pool 256 (334 of 1,024 screened qualified; common pool 255). (2) Both dev blocks: 256
+    rounds, 256 optimizer steps per arm, no skipped round, all 1,024 logged losses finite. (3) Masked occurrences:
+    b16 356 / 8,192 = 0.0435; b128 159 / 8,192 = 0.0194 (limit 0.05). (4) `rsource` stops before training if an S
+    or I target exceeds the cap or lacks a stop token; both blocks trained. (5) Measured cost below.
+  - **L* = 0.07.** The smallest, over arms and inits, of the largest yd3 pass@1 improvement at a saved round is
+    0.0973 (b128 S, round 128); 0.8 x 0.0973 = 0.078, rounded down to 0.07. R2 is available.
+  - **Checkpoint rule (frozen as 14.2):** within each init, the earliest saved checkpoint with |improvement - L*| <=
+    0.01 on yd3. On the dev block it finds a checkpoint for 2 of 8 branches (b128 F round 32; b128 S round 256). The
+    b16 arms improve by 0.19-0.22 by round 32, the first saved round. Most matched-progress comparisons are therefore
+    expected to be unavailable. The save grid (0 / 32 / 64 / 128 / 192 / 256) is the owner's (14.9.1) and does not
+    change. The fixed-round results (14.4 primary) do not depend on this rule.
+  - **Confirmation configs** (`scripts/make_r_configs.py rconf`; worklist `r3-conf`, 24 tasks; test
+    `test_r3_conf_generated_configs`). Six blocks: BC steps 16 and 128 x seeds 11, 22, 33. Each block equals the dev
+    block of its init except: starting checkpoint = the seed's BC adapter (sha256 checked against the rprep cache),
+    I targets from that checkpoint's cache, stream and sampling seed = the BC seed. Pool = the common pool (255).
+    Per block, three further tasks after the block's summary exists: rf3 + rf5 evaluation (initial adapter 48
+    attempts, split 24; round-256 arms 32 attempts; seed 6); yd3 R2 progress (16 attempts, seed 9; initial adapter
+    and rounds 32-256 of every arm); drift (14.1 protocol: the 256 R1 problems, the block's own BC reference
+    responses from R1, rounds 64 / 128 / 256 of every arm). The tasks are separate so that each fits one 8-h job.
+  - **R1 relationships to confirm (at most two; R1 was exploratory, Section 14.1).** Drift = KL(initial ||
+    current) per sequence at round 256 on the R1 problems, as in 14.1. Seed unit = the mean over the four arms.
+    - D1 (init): drift(b16 branch) - drift(b128 branch) > 0, per seed and arm. R1: b16 > b128 in all four GRPO
+      branch types (M, filtered, MASK, T3) at round 256.
+    - D2 (competence, b128): over problems, the partial Spearman correlation of drift with the initial selection
+      count c_a (yd rows of the b128 BC checkpoint), given the mean reference-response length, is < 0. R1: -0.24
+      to -0.30 at b128, 0 of 6 seeds positive (GRPO and filtered M).
+    - Test: seed-level t (df 2, two-sided) over the 3 seed units; Holm over D1 and D2 at family alpha 0.05. A
+      relationship is confirmed only if its Holm step passes and all 3 seed units have the predicted sign. The
+      per-token diagnostic is reported beside each, as a secondary value. These are statements about
+      association in R3 supervised training, not about mechanism.
+  - **Measured cost and forecast (planning only).** Dev: rprep 1.24 GPU-h; block training 4.48 (b16) and 2.86
+    (b128) GPU-h; yd3 progress evaluation 0.94 / 2.94 h; rd3 evaluation 0.42 / 1.00 h. The rf panels hold 896
+    problems against 256 in rd3. Forecast per confirmation seed: about 7-8 GPU-h (b16) + 9-10 GPU-h (b128); for
+    the 6 blocks about 45-55 GPU-h, against 25-35 in 14.5. The order of work does not change; the 5-slot cap
+    applies. One block worker runs first as a canary.

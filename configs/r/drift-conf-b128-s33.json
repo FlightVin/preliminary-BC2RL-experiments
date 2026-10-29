@@ -1,0 +1,114 @@
+{
+ "data": {
+  "dev_seed": 1024,
+  "format_example_inputs": 4,
+  "horizons": [
+   3,
+   5,
+   10
+  ],
+  "main_seed": 20261024,
+  "max_abs_intermediate": 10000,
+  "max_target": 1000,
+  "max_value": 20,
+  "min_value": 2,
+  "ops": [
+   "+",
+   "-",
+   "*"
+  ],
+  "version": "v1"
+ },
+ "drift": {
+  "batch_seqs": 512,
+  "cap": 256,
+  "data_name": "a6",
+  "micro": 8,
+  "n_ref": 16,
+  "out": "a6r",
+  "refs": [
+   {
+    "adapter": "runs/bc2rl-s1-bc-broad-s33/adapters/step0128.safetensors",
+    "sha256": "eb166fb1abeb0b20d2d714dd3c32b13cdbe8720acd60e419b1eab1e6dea6e6d3",
+    "tag": "b128-s33"
+   }
+  ],
+  "salt": "A6-R drift",
+  "score": [
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/S/round0064.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-S-s33-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/S/round0128.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-S-s33-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/S/round0256.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-S-s33-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/I/round0064.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-I-s33-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/I/round0128.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-I-s33-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/I/round0256.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-I-s33-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/F/round0064.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-F-s33-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/F/round0128.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-F-s33-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/F/round0256.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-F-s33-r256"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/O/round0064.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-O-s33-r064"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/O/round0128.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-O-s33-r128"
+   },
+   {
+    "adapter": "runs/bc2rl-r3-conf-b128-s33/adapters/O/round0256.safetensors",
+    "ref": "b128-s33",
+    "tag": "r3c-b128-O-s33-r256"
+   }
+  ],
+  "seed": 8,
+  "select": {
+   "yd3": 192,
+   "yd5": 64
+  }
+ },
+ "model": {
+  "lora": {
+   "alpha": 32,
+   "dropout": 0.0,
+   "r": 16
+  }
+ },
+ "prompt_variant": "format",
+ "run_id": "bc2rl-r3-drift-b128-s33"
+}
