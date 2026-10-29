@@ -915,7 +915,7 @@ supervision comparison. The design studies solutions available at the start; it 
     (14.2) are computed on the development data; L* < 0.02 makes R2 unavailable but does not stop R3.
   - 14.9.3 (after gate DR, before any confirmation block) freezes L*, the confirmation configs and the R1
     relationships to confirm.
-- **14.9.3 (2026-10-29, written after gate DR and before any confirmation block; dev jobs 10976381 and
+- **14.9.3 (2026-10-29 16:08 EDT, written after gate DR and before any confirmation block; dev jobs 10976381 and
   10978682; audit script `audits/scripts/r3_gate_dr.py` in the workspace).**
   - **Gate DR: pass.** (1) pool 256 (334 of 1,024 screened qualified; common pool 255). (2) Both dev blocks: 256
     rounds, 256 optimizer steps per arm, no skipped round, all 1,024 logged losses finite. (3) Masked occurrences:
