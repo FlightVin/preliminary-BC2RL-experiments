@@ -726,6 +726,25 @@ why online training changed the policy.
   st1 draws take nearly all of it, so rs1 could not be drawn after st1. st1 excludes every earlier ext dataset
   (13.3, unchanged code), so st1 and rs1 stay disjoint. The st1 seed, draw count and rules do not change. The st1
   manifest records the excluded keys.
+- **13.11.2 part 1 (2026-10-29 08:15 EDT; S2 development inspection, jobs 10978044 and 10978370; before st1p exists
+  and before any S3 run).** Exploratory, dev candidates only (pre_pool, pre_dev; pre_conf only as cell counts).
+  - st1: 11,495 candidates (A 1,954, B 9,541). Prescreen (16 attempts, seed 7, light / extended seed-11 adapters):
+    pre_pool 958 + 958, pre_dev and pre_conf 471 + 471 each (all class-A candidates of the pool and conf roles).
+  - Class is confounded with the target: class A targets have median 14 (p90 34); class B median 120 (p90 345).
+    In pre_pool, 99% of A but about 26% of B fall in the lowest target bin (1-60).
+  - Mean prescreen success, pre_pool: light A 0.097 / B 0.061; extended A 0.315 / B 0.173. Zero-success share:
+    light A 24% / B 45%; extended A 3% / B 27%. Mean response tokens: light A 36 / B 50; extended A 20 / B 22.
+  - CEM on pre_pool (13.3 cells): 178 matched pairs; 780 A and 780 B unmatched; 19 cells without common support.
+    Residual differences of the matched pools (A vs B): target 13.0 vs 36.6; traces 4.0 vs 1.1; input max 15.5 vs
+    13.1; success light 0.071 vs 0.062, extended 0.224 vs 0.166.
+  - Consequence: 178 pairs allow at most 2N = 128 (64 passes per problem in the A and B arms; 13.4 needs 2N to
+    divide 8,192).
+  - **Rule added (selection only; 13.3 unchanged):** prescreen every remaining class-B candidate with role pool and a
+    target in the lowest bin (ext data `st1x`, panel `pre_pool_x`; same adapters, 16 attempts, seed 7). `s2_build
+    build` adds them to pre_pool before CEM. No class-A candidate remains to add. The bins, the CEM cells and the
+    matching rule do not change.
+  - Part 2 (after the build report, before any S3 run) fixes N, the diagnostic count per cell and the representative
+    panel size, and decides gate S2. If the matched pairs stay below 128, gate S2 fails (13.3).
 
 ## 14. Stage R — retention, policy drift and the source of training responses (owner addition 2026-10-28)
 

@@ -1,0 +1,25 @@
+{
+ "name": "s2-prescreen-x",
+ "tasks": [
+  {
+   "id": "s2-prex-light-s11",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/s3/xeval-prescreenx-light-s11.json"
+    }
+   ]
+  },
+  {
+   "id": "s2-prex-extended-s11",
+   "steps": [
+    {
+     "name": "xeval",
+     "cmd": "xeval",
+     "config": "configs/s3/xeval-prescreenx-extended-s11.json"
+    }
+   ]
+  }
+ ]
+}

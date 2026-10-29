@@ -7,6 +7,10 @@ Mode `prescreen`: from the st1 candidates (scripts/s2_data.py) write ext data `s
   pre_conf  = the same for role conf_panel
   These are evaluated (xeval, independent attempts) under the light and extended seed-11 adapters. Prescreen outcomes
   only select and balance problems; they are never evaluation outcomes.
+Mode `prescreen-extra` (13.11.2): write ext data `st1x` with panel
+  pre_pool_x = every class-B candidate with role pool, not in st1s pre_pool, whose target is in the lowest target bin
+  (first-draw order). The S2 inspection found class A almost only in that bin, so these are the only B candidates that
+  can match. They are evaluated like st1s; build then adds them to pre_pool.
 Mode `build`: from the candidates and the prescreen summaries write ext data `st1p` with panels
   trA, trB   training pools by coarsened exact matching (CEM) on: prescreen success bin under light and under
              extended, number-of-forms bin, target bin. Matched A/B pairs come from one cell; the pair order is
@@ -16,6 +20,7 @@ Mode `build`: from the candidates and the prescreen summaries write ext data `st
              are not in a diagnostic panel (natural class mix; no prescreen selection).
   build_report.json: cell counts, unmatched cells, residual A - B differences of the matched pools, panel tables.
 Usage: s2_build.py prescreen --config C --pool-per-class N --panel-per-class M
+       s2_build.py prescreen-extra --config C
        s2_build.py build --config C --pre-tags pre-b16-s11,pre-b128-s11 --pool-max N --diag-per-cell K --rep R --out DIR
 """
 import argparse
@@ -71,6 +76,12 @@ def select_prescreen(cands, pool_per_class, panel_per_class):
             out[name] += [c for c in cands if c["role"] == role and c["lab"]["cls"] == cl][:n]
         out[name].sort(key=lambda c: c["first_draw"])
     return out
+
+
+def select_extra_b(cands, pre_pool_pids):
+    lo, hi = TARGET_BINS[0]
+    return [c for c in sorted(cands, key=lambda c: c["first_draw"]) if c["role"] == "pool" and c["lab"]["cls"] == "B"
+            and c["pid"] not in pre_pool_pids and lo <= c["target"] <= hi]
 
 
 def cem_pools(pre, succ, pool_max, seed):
@@ -142,10 +153,10 @@ def load_cands(cfg):
     return [json.loads(x) for x in gzip.open(path, "rt")], man
 
 
-def prescreen_succ(cfg, tags, panel):
+def prescreen_succ(cfg, tags, panel, data="st1s"):
     out = {}
     for t in tags:
-        s = json.load(open(os.path.join(cfg["proj_data"], "evals", "ext", "st1s", f"{t}.{panel}.summary.json")))
+        s = json.load(open(os.path.join(cfg["proj_data"], "evals", "ext", data, f"{t}.{panel}.summary.json")))
         for r in s["counts"]:
             if int(r["n"]) != 16:
                 raise SystemExit(f"{t}/{panel}/{r['pid']}: n = {r['n']} != 16")
@@ -155,7 +166,7 @@ def prescreen_succ(cfg, tags, panel):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=("prescreen", "build"))
+    ap.add_argument("mode", choices=("prescreen", "prescreen-extra", "build"))
     ap.add_argument("--config", required=True)
     ap.add_argument("--pool-per-class", type=int)
     ap.add_argument("--panel-per-class", type=int)
@@ -182,12 +193,28 @@ def main():
                                   "class_counts": {k: dict(Counter(c["lab"]["cls"] for c in v)) for k, v in sel.items()}})
         print(json.dumps({k: (v["count"], m["class_counts"][k]) for k, v in m["panels"].items()}))
         return
+    if a.mode == "prescreen-extra":
+        d = ext_dir(cfg, "st1x")
+        if os.path.exists(os.path.join(d, "manifest.json")):
+            raise SystemExit(f"{d} exists; not overwritten")
+        pre_pids = {json.loads(x)["pid"] for x in open(os.path.join(ext_dir(cfg, "st1s"), "pre_pool.jsonl"))}
+        extra = select_extra_b(cands, pre_pids)
+        m = write_ext(d, {"pre_pool_x": [to_problem(c, "pre_pool_x") for c in extra]},
+                      {"source": "st1", "candidates_sha256": man["candidates_sha256"], "rule": "13.11.2: role pool, "
+                       "class B, not in st1s pre_pool, target in TARGET_BINS[0]", "target_bin": TARGET_BINS[0]})
+        print(json.dumps({k: v["count"] for k, v in m["panels"].items()}))
+        return
     tags = a.pre_tags.split(",")
     pre_man = json.load(open(os.path.join(ext_dir(cfg, "st1s"), "manifest.json")))
     by_pid = {c["pid"]: c for c in cands}
     pre = {p: [by_pid[x["pid"]] for x in map(json.loads, open(os.path.join(ext_dir(cfg, "st1s"), f"{p}.jsonl")))]
            for p in pre_man["panels"]}
-    trA, trB, rep_pool = cem_pools(pre["pre_pool"], prescreen_succ(cfg, tags, "pre_pool"), a.pool_max, a.seed)
+    pool_c, pool_s = pre["pre_pool"], prescreen_succ(cfg, tags, "pre_pool")
+    xd = ext_dir(cfg, "st1x")
+    if os.path.exists(os.path.join(xd, "manifest.json")):           # 13.11.2: extra class-B prescreen candidates
+        pool_c = pool_c + [by_pid[json.loads(x)["pid"]] for x in open(os.path.join(xd, "pre_pool_x.jsonl"))]
+        pool_s = {**pool_s, **prescreen_succ(cfg, tags, "pre_pool_x", data="st1x")}
+    trA, trB, rep_pool = cem_pools(pool_c, pool_s, a.pool_max, a.seed)
     sd3d, tab_d = diag_panel(pre["pre_dev"], prescreen_succ(cfg, tags, "pre_dev"), a.diag_per_cell, a.seed + 1)
     sd3f, tab_f = diag_panel(pre["pre_conf"], prescreen_succ(cfg, tags, "pre_conf"), a.diag_per_cell, a.seed + 2)
     used = {c["pid"] for c in sd3d + sd3f}
@@ -204,7 +231,7 @@ def main():
     d = ext_dir(cfg, "st1p")
     if os.path.exists(os.path.join(d, "manifest.json")):
         raise SystemExit(f"{d} exists; not overwritten")
-    report = {"pools": rep_pool, "diag_dev": tab_d, "diag_conf": tab_f, "pre_tags": tags, "seed": a.seed,
+    report = {"pools": rep_pool, "pool_candidates": len(pool_c), "diag_dev": tab_d, "diag_conf": tab_f, "pre_tags": tags, "seed": a.seed,
               "bins": {"succ": SUCC_BINS, "forms": FORM_BINS, "target": TARGET_BINS, "rate": RATE_BINS},
               "rep_class_shares": {k: dict(Counter(c["lab"]["cls"] for c in sel[k])) for k in ("sr3d", "sr3f")}}
     m = write_ext(d, panels, {"source": "st1", "candidates_sha256": man["candidates_sha256"], "report": report,

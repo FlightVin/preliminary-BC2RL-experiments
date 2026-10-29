@@ -135,3 +135,29 @@ def test_s2_build_prescreen_cem_and_diag():
     diag, tab = s2_build.diag_panel([c for c in cands if c["role"] == "dev_panel"], succ, 3, seed=2)
     cnt = Counter((c["lab"]["cls"], s2_build.binned((succ[c["pid"]][0] + succ[c["pid"]][1]) / 32, s2_build.RATE_BINS)) for c in diag)
     assert max(cnt.values()) <= 3 and all(t["taken"] == min(3, t["available"]) for t in tab)
+
+
+def test_s2_select_extra_b_and_generated_prescreenx_configs():
+    """13.11.2: extra prescreen candidates = role pool, class B, not in pre_pool, target in the lowest target bin, in
+    first-draw order; the generated st1x xeval configs match the st1s prescreen configs except data and panel."""
+    import json
+    import os
+    cands = _synth_cands()
+    sel = s2_build.select_prescreen(cands, 20, 10)
+    pre = {c["pid"] for c in sel["pre_pool"]}
+    extra = s2_build.select_extra_b(cands, pre)
+    lo, hi = s2_build.TARGET_BINS[0]
+    want = [c["pid"] for c in cands if c["role"] == "pool" and c["lab"]["cls"] == "B" and c["pid"] not in pre
+            and lo <= c["target"] <= hi]
+    assert [c["pid"] for c in extra] == want and len(want) > 0 and not pre & set(want)
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for init in ("light", "extended"):
+        x = json.load(open(os.path.join(root, "configs", "s3", f"xeval-prescreenx-{init}-s11.json")))
+        o = json.load(open(os.path.join(root, "configs", "s3", f"xeval-prescreen-{init}-s11.json")))
+        assert x["xeval"]["data_name"] == "st1x" and x["xeval"]["panels"] == ["pre_pool_x"]
+        assert x["xeval"]["checkpoints"] == o["xeval"]["checkpoints"] and x["xeval"]["seed"] == o["xeval"]["seed"] == 7
+        assert {k: v for k, v in x["xeval"].items() if k not in ("data_name", "panels")} == \
+            {k: v for k, v in o["xeval"].items() if k not in ("data_name", "panels")}
+    wl = json.load(open(os.path.join(root, "configs", "worklists", "s2-prescreen-x.json")))
+    assert [t["steps"][0]["config"] for t in wl["tasks"]] == ["configs/s3/xeval-prescreenx-light-s11.json",
+                                                              "configs/s3/xeval-prescreenx-extended-s11.json"]

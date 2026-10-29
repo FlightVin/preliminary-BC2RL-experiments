@@ -4,6 +4,8 @@
 Stdlib only.
   prescreen (13.3)  configs/s3/xeval-prescreen-<init>-s11.json  worklist s2-prescreen
                     light / extended seed-11 BC adapters on ext data st1s (pre_pool, pre_dev, pre_conf), 16 attempts
+  prescreen-extra (13.11.2)  configs/s3/xeval-prescreenx-<init>-s11.json  worklist s2-prescreen-x
+                    the same adapters, attempts and seed on ext data st1x (pre_pool_x)
   dev (13.4)        configs/s3/on-<init>-<arm>-s11.json         run bc2rl-s3-<init>-<arm>-s11  worklist s3-dev
                     configs/s3/xeval-init-<init>-s11.json, xeval-<init>-<arm>-s11.json (dev panels sd3d, sr3d)
 Every online config is the frozen M-arm GRPO config of its seed and initial adapter (the A5/A6 configuration) with only
@@ -11,6 +13,7 @@ the Section 13.4 keys changed: pool_ext, class_per_round, train_classes, class_g
 Arms: A (pool A, 2N problems), B (pool B, 2N), AB (N + N; 16 + 16 per round), AB-mB (AB, B terms masked),
 AB-mA (AB, A terms masked). Every arm has 2N unique problems and 8,192 / 2N passes per problem.
 Usage: make_s3_configs.py prescreen
+       make_s3_configs.py prescreen-extra
        make_s3_configs.py dev --pool N
 """
 import argparse
@@ -63,21 +66,23 @@ def arm_keys(arm, n):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("stage", choices=["prescreen", "dev"])
+    ap.add_argument("stage", choices=["prescreen", "prescreen-extra", "dev"])
     ap.add_argument("--pool", type=int, help="N: problems per class in the AB arms (A / B arms use 2N)")
     a = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
     s = DEV_SEED
     base, _ = frozen_online("light", "grpo", s)
-    if a.stage == "prescreen":
+    if a.stage in ("prescreen", "prescreen-extra"):
+        x = a.stage == "prescreen-extra"
         tasks = []
         for init in ("light", "extended"):
             ad = bc_adapter(s, INIT_STEP[init])
             ck = [{"tag": f"pre-b{INIT_STEP[init]}-s{s}", "adapter": ad, "attempts": 16, "sha256": SHA[ad]}]
-            ev = xeval(base, f"bc2rl-s2-pre-{init}-s{s}", "st1s", ["pre_pool", "pre_dev", "pre_conf"], ck, seed=PRE_SEED)
-            tasks.append({"id": f"s2-pre-{init}-s{s}", "steps": [{"name": "xeval", "cmd": "xeval",
-                          "config": write(f"xeval-prescreen-{init}-s{s}.json", ev)}]})
-        worklist("s2-prescreen", tasks)
+            ev = xeval(base, f"bc2rl-s2-pre{'x' if x else ''}-{init}-s{s}", "st1x" if x else "st1s",
+                       ["pre_pool_x"] if x else ["pre_pool", "pre_dev", "pre_conf"], ck, seed=PRE_SEED)
+            tasks.append({"id": f"s2-pre{'x' if x else ''}-{init}-s{s}", "steps": [{"name": "xeval", "cmd": "xeval",
+                          "config": write(f"xeval-prescreen{'x' if x else ''}-{init}-s{s}.json", ev)}]})
+        worklist("s2-prescreen-x" if x else "s2-prescreen", tasks)
         return
     if not a.pool:
         sys.exit("dev needs --pool N (fixed in the S2 dated addition)")
