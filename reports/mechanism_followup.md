@@ -1,5 +1,7 @@
 # BC2RL mechanism follow-up (amendment A6)
 
+**Closed 2026-10-30 (owner amendments A7, A8): the study stopped on 2026-10-29 at 18:23 EDT. The final results, including the completed Stage G and S3 dev runs, are in `reports/final_report.md`. This file is the detailed record up to update 9; it is not updated further.**
+
 **Status: update 9, 2026-10-29 12:17 EDT.** New since update 8: the stage-G clip calibration (Section 10); the S2 build and gate S2 pass (Section 11.2); the R1 drift results (exploratory, Section 11.3); the first R3 measurements (one of two dev blocks done). Stage-G dev runs (3 of 12 done), S3 dev (canary) and the second R3 dev block are running. No confirmation outcome of stage G, S or R exists. Look 1 results are in Section 9 (update 5). Update 1 added the exploratory results from the
 existing A5 records (Y1) and from the development panels (yd). **No confirmation-panel (yf) outcome has been read.**
 Every pre-registered test runs once, at look 1. Protocol: `protocol/AMENDMENT-A6-2026-10-26.md` (pre-registered at
@@ -538,3 +540,4 @@ and the c_b baseline reimplemented, not imported). 180 checkpoint files and 24 r
 - Update 9 (2026-10-29 12:17): stage-G calibration and dev progress (Section 10); S2 build, gate S2 and S3 dev
   status (11.2); R1 drift results (11.3, exploratory); first R3 measurements and revised stage-R forecast;
   accounting. No confirmation outcome read.
+- Closed (2026-10-30): final results in `reports/final_report.md`.

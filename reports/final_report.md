@@ -1,6 +1,6 @@
 # BC2RL final report: what we know, how sure we are, and what is open
 
-**Status: final, 2026-10-29 (owner amendments A7 and A8).** The owner stopped the study on 2026-10-29 at 18:23 EDT.
+**Status: final, 2026-10-30 (owner amendments A7 and A8).** The owner stopped the study on 2026-10-29 at 18:23 EDT.
 This report closes it. A fresh run starts from a reset workspace. The detailed records stay in place:
 `reports/initial_study.md`, `reports/extension_study.md`, `reports/mechanism_followup.md` and the protocols in
 `protocol/`. This report adds no new test. It collects the results, states how sure each one is, and lists the open
@@ -107,7 +107,28 @@ the current model (O).
 - **S3 development runs are complete** (seed 11; 5 arms x 2 starting models; all 12 worklist tasks done by
   2026-10-29 16:46, workspace log). They test whether training on one class
   helps or harms the other.
-- [S3 PENDING: development transfer contrasts, from the read-only export.]
+- **S3 asks whether updates on one class change coverage on the other.** The contrast T_B->A compares AB with AB-mB:
+  both arms see the same prompts, but AB-mB takes no gradient from class B. T_B->A > 0 means the class B updates
+  add coverage loss on class A. T_A->B is the same test in the other direction. E is the standardized excess loss_16
+  on the class subgroup (1-11 of 24 initial successes) of the 3-input dev panel (498 problems: A 262, B 236).
+  Intervals are problem-bootstrap 95% only, because there is one seed.
+
+  | contrast | light BC | extended BC | extended - light |
+  |---|---|---|---|
+  | T_B->A (B updates, effect on A) | **+0.226** [+0.157, +0.291] | +0.018 [-0.014, +0.049] | [-0.277, -0.131] |
+  | T_A->B (A updates, effect on B) | -0.038 [-0.098, +0.019] | +0.002 [-0.072, +0.077] | [-0.040, +0.117] |
+
+- **From light BC, class B updates add coverage loss on class A.** The interval excludes 0. From extended BC, the
+  effect is not distinguishable from 0, and the init difference excludes 0. Class A updates show no effect on class B
+  from either starting model.
+- **Single-class training shows the same direction more strongly.** Training on B only gives E on class A of +0.83
+  (light) and +0.87 (extended), and class A pass@1 falls by 0.10 and 0.33. Training on A only gives E on class B of
+  +0.47 and +0.61, with pass@1 almost unchanged (-0.01, -0.08). These single-class arms have no masked control.
+- **Class B gave less learning signal than class A.** In the AB arm, the share of mixed (informative) groups was 0.15
+  (light) and 0.21 (extended) for B, against 0.35 and 0.37 for A. Equal prompts did not give equal signal.
+- **These results are exploratory.** They come from one seed, they have no seed interval, and the S3 confirmation
+  (at least 3 seeds) did not run. The S2 confounds above apply: a class effect is not attributable to multiplication
+  alone. The source is the workspace audit script `audits/scripts/s3_dev_analysis.py` on the S3 export (job 10988302).
 
 ### 4.5 Sequence-level and prefix objectives (Stage G; development runs, seed 11)
 Stage G asks whether GSPO (sequence-level ratio and clipping) or CTPO (cumulative-prefix ratio) changes the coverage
@@ -118,12 +139,35 @@ adaptive or fixed clip band).
   noisy for the sequence ratio (noise 48-78% of the signal), so all arms train with FP32 gradient passes.
 - **Clip bands were calibrated before any dev run:** token band 0.011, sequence band 0.016. The GSPO paper's band
   (3e-4) would have clipped 92-95% of sequences in this setting.
-- **The 11 harvested dev runs reached round 256** without failure, with 1-34 skipped rounds each (a round with no
-  usable gradient takes no step). The 12th (extended T4) has also finished: its yd evaluation, which needs all 12
-  run summaries, has started. Its record is not yet harvested. In-run validation pass@1 (144 problems x 4 attempts; a
-  health check, not an outcome) rose in every run: light from 0.03 to 0.14-0.20, extended from 0.13 to 0.20-0.23.
-  The clipped fraction of the 4-update arms was 0.07-0.27 of units per step.
-- [G PENDING: yd evaluation of the 12 dev finals (g-yd-s11), then the dev comparison. Gate D is not decided.]
+- **All 12 dev runs reached round 256** with finite losses, with 1-34 skipped rounds each (a round with no usable
+  gradient takes no step). In the 4-update arms, the first step of every round had a ratio of exactly 1, as designed.
+  The mean clipped fraction over all steps was 0.07-0.27 of units.
+- **Gate D (decided on training diagnostics only) is not met in one run.** The rule needs the step-4 median token
+  |log ratio| of L4 to be at least 3e-4. Light L4 reaches 3.0e-3; extended L4 reaches only 1.0e-4. S4 (sequence
+  median 0.010-0.011) and the clipping fractions (0.10-0.37 over steps 2-4) pass. By the protocol rule, a D2 failure
+  stops Stage G and the report states that the experiment does not exercise the distinction for that arm. Two parts
+  of the gate were not checked from the laptop: the 3x noise-floor condition and the CTPO cumulative-ratio median.
+  This reading comes from the workspace audit script `audits/scripts/g_gate_d.py`, not from a project gate job.
+- **yd results of the 12 finals (descriptive; one seed, no interval; 384 3-input and 96 5-input problems, 32
+  attempts each):**
+
+  | init | panel | C1 | L1 | L4 | S4 | T4 | T4F |
+  |---|---|---|---|---|---|---|---|
+  | light | yd3 pass@1 / pass@4 | 0.341 / 0.452 | 0.359 / 0.548 | 0.376 / 0.411 | 0.393 / 0.458 | 0.377 / 0.419 | 0.367 / 0.512 |
+  | extended | yd3 pass@1 / pass@4 | 0.488 / 0.587 | 0.475 / 0.624 | 0.506 / 0.560 | 0.492 / 0.590 | 0.513 / 0.578 | 0.512 / 0.617 |
+  | light | yd5 pass@1 | 0.000 | 0.062 | 0.088 | 0.000 | 0.050 | 0.004 |
+  | extended | yd5 pass@1 | 0.095 | 0.068 | 0.150 | 0.000 | 0.100 | 0.090 |
+
+  - On 3-input problems, all objectives end within about 0.05 pass@1 of each other in each starting model. The
+    pre-registered contrasts (L1 - C1, L4 - L1, S4 - L4) are between -0.014 and +0.031 in pass@1.
+  - Four updates per batch (L4) raise pass@1 a little over one update (L1) but lower pass@4 (light 0.548 to 0.411;
+    extended 0.624 to 0.560). This is the same reliability-for-coverage trade seen in the main study, here from
+    rollout reuse. One seed; it needs confirmation.
+  - **GSPO (S4) ends at 0 on the 5-input panel for both starting models.** From extended BC, every other arm keeps
+    0.068-0.150; from light BC, C1 also ends at 0 and T4F at 0.004. This is the largest difference in the table. It
+    is one seed, and its cause is not examined.
+  - The coverage-loss estimator (E) was not computed for the dev finals: the per-problem counts stay on compute
+    storage, and the stop came first.
 - The confirmation runs did not run.
 
 ## 5. What remains open, and the next step for each
@@ -133,9 +177,9 @@ adaptive or fixed clip band).
 | Do harder-problem updates add to the loss? (C1) | Seed interval [-0.08, +0.10] at 6 seeds | About 20 paired seeds for the planned precision; or a design with lower seed variance |
 | BC length itself vs the initial distribution it produces | 3 matched pairs; none spans step 16 vs 128; no seed interval | Build BC checkpoints designed to overlap in initial success (for example, different data at equal steps) |
 | Does the objective matter? | Seed interval includes 0 (5 of 6 seeds positive) | More seeds for the GRPO vs filtered interaction (Stage G compares other objectives and does not answer this) |
-| Why are multiplication-needing problems lost? | Association only; the classes also differ in target size and number of traces | S3 confirmation (at least 3 seeds) with the S2 matched pools; then a design that matches traces as well |
+| Why are multiplication-needing problems lost? Do class B updates harm class A? | Association only; the classes also differ in target size and number of traces. S3 dev (one seed): class B updates add loss on class A from light BC only | S3 confirmation (at least 3 seeds) with the S2 matched pools; then a design that matches traces as well |
 | Does the source of training targets change retention? | R3 dev only (one seed) | R3 confirmation as frozen in protocol 14.9.3 (about 45-55 GPU-h) |
-| Do GSPO or CTPO change coverage loss? | Dev runs only; yd evaluation [G PENDING] | Gate D on the dev results, then the confirmation runs of protocol 12 |
+| Do GSPO or CTPO change coverage loss? | Dev runs only (one seed); gate D not met for extended L4 (workspace audit script); E not computed | Check gate D in a project job (with the noise floors); if the owner wants Stage G to continue, decide how to handle the D2 failure in a dated addition, then confirmation runs. Examine the GSPO 5-input collapse first |
 | Does any of this generalize? | One model size, one task, one training length | Not tested; any claim beyond this setting is unsupported |
 
 ## 6. Limits on every claim
@@ -146,9 +190,11 @@ adaptive or fixed clip band).
 - The BC path is not bit-reproducible; re-run adapters differ from the originals by less than the seed spread.
 
 ## 7. Resources
-- GPU use from job 10947200 (A6 start) to 18:53 EDT on 2026-10-29: **124.1 GPU-hours**, all on preempt GPUs
-  (56 job attempts; Slurm `sacct`, BC2RL job names, all attempts including preempted ones). By stage: A6 wave 1 76.2;
-  Stage G 17.3; R1 7.9; R3 13.9; S2 1.3; S3 7.5. Before A6: 40.65 GPU-h.
+- GPU use from job 10947200 (A6 start) to the last GPU job (g-dev4, ended 2026-10-30): **133.2 GPU-hours**, all on
+  preempt GPUs (60 job attempts; Slurm `sacct` read 2026-10-30, BC2RL job names, all attempts including preempted
+  ones). By stage: A6 wave 1 76.2; Stage G 26.4; R1 7.9; R3 13.9; S2 1.3; S3 7.5. Before A6: 40.65 GPU-h.
+- After the A8 stop, g-dev4 finished the Stage G dev runs and the yd evaluations on its one GPU. One CPU job
+  (10988302) ran the tests (122 passed) and the S3 export.
 - The study never used general GPUs and never held more than 5 GPU slots. From 18:23 on 2026-10-29 it held one.
 
 ## 8. Records
@@ -156,6 +202,7 @@ adaptive or fixed clip band).
   Stage G, program S and stage R, with their dated additions).
 - Detailed results: `reports/mechanism_followup.md` (look 1: Section 9; S1: 11.1; R1: 11.3). Gate DR, L* and the
   R3 dev improvements: protocol A6 14.9.3. Stage G dev records: harvested `summary.json` files, summarized by the
-  workspace script `audits/scripts/g_dev_summary.py`.
+  workspace scripts `audits/scripts/g_dev_summary.py` and `audits/scripts/g_gate_d.py`. S3 dev contrasts: workspace
+  script `audits/scripts/s3_dev_analysis.py` on the export of job 10988302.
 - The project brief as it stood at the stop: `reports/PROJECT-A6-record-20261029.md`.
 - Audits: the harness workspace `audits/` (not in this repository).
